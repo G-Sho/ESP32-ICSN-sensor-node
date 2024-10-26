@@ -1,0 +1,120 @@
+Date : 2024-10-17 17:12:35
+Directory : g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0
+Total : 57 files,  1261 codes, 71 comments, 217 blanks, all 1549 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| C++      |         29 |      1,056 |         62 |        215 |      1,333 |
+| Ini      |         28 |        205 |          9 |          2 |        216 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++--------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                     | files      | code       | comment    | blank      | total      |
++--------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                        |         57 |      1,261 |         71 |        217 |      1,549 |
+| . (Files)                                                                                                                |          2 |         23 |          9 |          2 |         34 |
+| include                                                                                                                  |          1 |          7 |          0 |          0 |          7 |
+| lib                                                                                                                      |         51 |      1,114 |         44 |        191 |      1,349 |
+| lib (Files)                                                                                                              |          1 |          7 |          0 |          0 |          7 |
+| lib\controllers                                                                                                          |          2 |         89 |          3 |          8 |        100 |
+| lib\domain                                                                                                               |         15 |        206 |          5 |         58 |        269 |
+| lib\domain (Files)                                                                                                       |          1 |          7 |          0 |          0 |          7 |
+| lib\domain\model                                                                                                         |         14 |        199 |          5 |         58 |        262 |
+| lib\domain\model (Files)                                                                                                 |          1 |          7 |          0 |          0 |          7 |
+| lib\domain\model\ICN                                                                                                     |          7 |         91 |          0 |         27 |        118 |
+| lib\domain\model\message                                                                                                 |          6 |        101 |          5 |         31 |        137 |
+| lib\gateways                                                                                                             |          9 |        365 |         13 |         47 |        425 |
+| lib\gateways (Files)                                                                                                     |          1 |          7 |          0 |          0 |          7 |
+| lib\gateways\driver                                                                                                      |          2 |         53 |          0 |          7 |         60 |
+| lib\gateways\fast                                                                                                        |          2 |        142 |         10 |         13 |        165 |
+| lib\gateways\hash                                                                                                        |          4 |        163 |          3 |         27 |        193 |
+| lib\interactor                                                                                                           |          4 |        141 |         17 |         10 |        168 |
+| lib\interactor (Files)                                                                                                   |          1 |          7 |          0 |          0 |          7 |
+| lib\interactor\node                                                                                                      |          3 |        134 |         17 |         10 |        161 |
+| lib\interactor\node (Files)                                                                                              |          1 |          7 |          0 |          0 |          7 |
+| lib\interactor\node\add                                                                                                  |          2 |        127 |         17 |         10 |        154 |
+| lib\presenter                                                                                                            |          3 |         38 |          0 |          5 |         43 |
+| lib\presenter (Files)                                                                                                    |          1 |          7 |          0 |          0 |          7 |
+| lib\presenter\console                                                                                                    |          2 |         31 |          0 |          5 |         36 |
+| lib\sensor                                                                                                               |          4 |        107 |          6 |         24 |        137 |
+| lib\usecases                                                                                                             |          7 |         92 |          0 |         26 |        118 |
+| lib\usecases (Files)                                                                                                     |          1 |          7 |          0 |          0 |          7 |
+| lib\usecases\node                                                                                                        |          6 |         85 |          0 |         26 |        111 |
+| lib\usecases\node (Files)                                                                                                |          1 |          7 |          0 |          0 |          7 |
+| lib\usecases\node\add                                                                                                    |          5 |         78 |          0 |         26 |        104 |
+| lib\view                                                                                                                 |          3 |         32 |          0 |          3 |         35 |
+| lib\view (Files)                                                                                                         |          1 |          7 |          0 |          0 |          7 |
+| lib\view\console                                                                                                         |          2 |         25 |          0 |          3 |         28 |
+| lib\viewmodels                                                                                                           |          3 |         37 |          0 |         10 |         47 |
+| lib\viewmodels (Files)                                                                                                   |          1 |          7 |          0 |          0 |          7 |
+| lib\viewmodels\console                                                                                                   |          2 |         30 |          0 |         10 |         40 |
+| src                                                                                                                      |          2 |        110 |         18 |         24 |        152 |
+| test                                                                                                                     |          1 |          7 |          0 |          0 |          7 |
++--------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++--------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                                                 | language | code       | comment    | blank      | total      |
++--------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\desktop.ini                                       | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\include\desktop.ini                               | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\controllers\NodeController.hpp                | C++      |         82 |          3 |          8 |         93 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\controllers\desktop.ini                       | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\desktop.ini                                   | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\desktop.ini                            | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\ICN\CS.hpp                       | C++      |         16 |          0 |          6 |         22 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\ICN\CSRepository.hpp             | C++      |         12 |          0 |          3 |         15 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\ICN\FIB.hpp                      | C++      |         16 |          0 |          6 |         22 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\ICN\FIBRepository.hpp            | C++      |         12 |          0 |          3 |         15 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\ICN\PIT.hpp                      | C++      |         16 |          0 |          6 |         22 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\ICN\PITRepository.hpp            | C++      |         12 |          0 |          3 |         15 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\ICN\desktop.ini                  | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\desktop.ini                      | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\message\Content.hpp              | C++      |         18 |          1 |          6 |         25 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\message\ContentName.hpp          | C++      |         18 |          1 |          6 |         25 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\message\HopCount.hpp             | C++      |         22 |          1 |          7 |         30 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\message\NodeId.hpp               | C++      |         18 |          1 |          6 |         25 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\message\SignalCode.hpp           | C++      |         18 |          1 |          6 |         25 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\domain\model\message\desktop.ini              | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\desktop.ini                          | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\driver\DriverFIBRepository.hpp       | C++      |         46 |          0 |          7 |         53 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\driver\desktop.ini                   | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\fast\FastFIBRepository.hpp           | C++      |        135 |         10 |         13 |        158 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\fast\desktop.ini                     | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\hash\HashCSRepository.hpp            | C++      |         52 |          1 |          9 |         62 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\hash\HashFIBRepository.hpp           | C++      |         52 |          1 |          9 |         62 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\hash\HashPITRepository.hpp           | C++      |         52 |          1 |          9 |         62 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\gateways\hash\desktop.ini                     | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\interactor\desktop.ini                        | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\interactor\node\add\NodeAddInteractor.hpp     | C++      |        120 |         17 |         10 |        147 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\interactor\node\add\desktop.ini               | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\interactor\node\desktop.ini                   | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\presenter\console\ConsoleNodeAddPresenter.hpp | C++      |         24 |          0 |          5 |         29 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\presenter\console\desktop.ini                 | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\presenter\desktop.ini                         | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\sensor\DHTHumidity.cpp                        | C++      |         31 |          3 |          9 |         43 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\sensor\DHTTemperature.cpp                     | C++      |         31 |          3 |          9 |         43 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\sensor\Sensor.h                               | C++      |         38 |          0 |          6 |         44 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\sensor\desktop.ini                            | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\usecases\desktop.ini                          | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\usecases\node\add\NodeAddInputData.hpp        | C++      |         27 |          0 |         10 |         37 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\usecases\node\add\NodeAddOutputData.hpp       | C++      |         23 |          0 |         10 |         33 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\usecases\node\add\NodeAddPresenter.hpp        | C++      |         10 |          0 |          3 |         13 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\usecases\node\add\NodeAddUseCase.hpp          | C++      |         11 |          0 |          3 |         14 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\usecases\node\add\desktop.ini                 | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\usecases\node\desktop.ini                     | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\view\console\ConsoleView.hpp                  | C++      |         18 |          0 |          3 |         21 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\view\console\desktop.ini                      | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\view\desktop.ini                              | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\viewmodels\console\ConsoleViewModel.hpp       | C++      |         23 |          0 |         10 |         33 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\viewmodels\console\desktop.ini                | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\lib\viewmodels\desktop.ini                        | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\platformio.ini                                    | Ini      |         16 |          9 |          2 |         27 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\src\desktop.ini                                   | Ini      |          7 |          0 |          0 |          7 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\src\main.cpp                                      | C++      |        103 |         18 |         24 |        145 |
+| g:\マイドライブ\dev\実装関係\goto_dev\PlatfromIO\ICSN Software low power v.2.1.0\test\desktop.ini                                  | Ini      |          7 |          0 |          0 |          7 |
+| Total                                                                                                                    |          |      1,261 |         71 |        217 |      1,549 |
++--------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
