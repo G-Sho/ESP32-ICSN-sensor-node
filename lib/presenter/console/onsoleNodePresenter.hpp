@@ -1,18 +1,18 @@
-#ifndef INCLUDED_CONSOLE_NODE_ADD_PRESENTER_hpp_
-#define INCLUDED_CONSOLE_NODE_ADD_PRESENTER_hpp_
+#ifndef INCLUDED_CONSOLE_NODE_PRESENTER_hpp_
+#define INCLUDED_CONSOLE_NODE_PRESENTER_hpp_
 
-#include "node\add\NodeAddPresenter.hpp"
-#include "node\add\NodeAddOutputData.hpp" 
+#include "node\NodePresenter.hpp"
+#include "node\NodeOutputData.hpp" 
 #include "console\ConsoleView.hpp"
 #include "console\ConsoleViewModel.hpp"
 
-class ConsoleNodeAddPresenter : public NodeAddPresenter
+class ConsoleNodePresenter : public NodePresenter
 {
 private:
   ConsoleView consoleView;
 
 public: 
-  void output(NodeAddOutputData outputData) override
+  void output(NodeOutputData outputData) override
   {
     String senderId = outputData.getSenderId();
     String destId = outputData.getDestId();
@@ -26,4 +26,4 @@ public:
   };
 };
 
-#endif // INCLUDED_CONSOLE_NODE_ADD_PRESENTER_hpp_
+#endif // INCLUDED_CONSOLE_NODE__PRESENTER_hpp_

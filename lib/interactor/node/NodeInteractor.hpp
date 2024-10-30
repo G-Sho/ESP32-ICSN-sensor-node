@@ -1,7 +1,7 @@
-#ifndef INCLUDED_NODE_ADD_INTERACTOR_hpp_
-#define INCLUDED_NODE_ADD_INTERACTOR_hpp_
+#ifndef INCLUDED_NODE__INTERACTOR_hpp_
+#define INCLUDED_NODE__INTERACTOR_hpp_
 
-#include "node\add\NodeAddUseCase.hpp"
+#include "node\NodeUseCase.hpp"
 #include "model\ICN\CS.hpp"
 #include "stub\StubCSRepository.hpp"
 #include "model\ICN\FIB.hpp"
@@ -9,34 +9,34 @@
 #include "fast\FastFIBRepository.hpp"
 #include "model\ICN\PIT.hpp"
 #include "stub\StubPITRepository.hpp"
-// #include "node\add\NodeAddPresenter.h"
-// #include "console\ConsoleNodeAddPresenter.hpp"
-#include "node\add\NodeAddInputData.hpp"
-#include "node\add\NodeAddOutputData.hpp"
+// #include "node\NodePresenter.h"
+// #include "console\ConsoleNodePresenter.hpp"
+#include "node\NodeInputData.hpp"
+#include "node\NodeOutputData.hpp"
 
 // SIGNAL
 #define SIGNAL_INTEREST '1' // Interest
 #define SIGNAL_DATA '2'     // Data
 #define SIGANAL_INVALID '3' // Invalid message
 
-class NodeAddInteractor : public NodeAddUseCase
+class NodeInteractor : public NodeUseCase
 {
 private:
   StubCSRepository csRepository;
   // StubFIBRepository fibRepository;
   FastFIBRepository fibRepository;
   StubPITRepository pitRepository;
-  // NodeAddPresenter nodeAddPresenter;
-  // ConsoleNodeAddPresenter consoleNodeAddPresenter;
+  // NodePresenter nodePresenter;
+  // ConsoleNodePresenter consoleNodePresenter;
 
 public:
-  NodeAddOutputData handleInterestReceive(NodeAddInputData inputData) override
+  NodeOutputData handleInterestReceive(NodeInputData inputData) override
   {
     // Interestを受信したときの処理
     if (inputData.getHopCount() >= 16)
     {
       // owari ni sasetai. packet haki sitai.
-      NodeAddOutputData outputData(
+      NodeOutputData outputData(
           String("NULL"),
           String("NULL"),
           String(SIGANAL_INVALID),
@@ -44,21 +44,21 @@ public:
           String("NULL"),
           String("NULL"));
       // SHUTURYOKU
-      // consoleNodeAddPresenter.output(outputData);
+      // consoleNodePresenter.output(outputData);
       return outputData;
     }
 
     if (csRepository.find(ContentName(inputData.getContentName())))
     { // if this node has the content
       // single
-      NodeAddOutputData outputData(
+      NodeOutputData outputData(
           inputData.getDestId(),
           inputData.getSenderId(),
           String(SIGNAL_DATA),
           inputData.getHopCount() + 1,
           inputData.getContentName(),
           csRepository.get(ContentName(inputData.getContentName())).getValue());
-      // consoleNodeAddPresenter.output(outputData);
+      // consoleNodePresenter.output(outputData);
       return outputData;
     }
     else
@@ -69,19 +69,19 @@ public:
       pitRepository.save(pit);
       if (fibRepository.find(inputData.getContentName()))
       { // single
-        NodeAddOutputData outputData(
+        NodeOutputData outputData(
             inputData.getDestId(),
             fibRepository.get(inputData.getContentName()).getValue(),
             String(SIGNAL_INTEREST),
             inputData.getHopCount() + 1,
             inputData.getContentName(),
             inputData.getContent());
-        // consoleNodeAddPresenter.output(outputData);
+        // consoleNodePresenter.output(outputData);
         return outputData;
       }
       else
       { // broadcast
-        NodeAddOutputData outputData(
+        NodeOutputData outputData(
             inputData.getDestId(),
             String("-1"),
             String(SIGNAL_INTEREST),
@@ -89,13 +89,13 @@ public:
             inputData.getContentName(),
             inputData.getContent());
         // SHUTURYOKU
-        // consoleNodeAddPresenter.output(outputData);
+        // consoleNodePresenter.output(outputData);
         return outputData;
       }
     }
   };
 
-  NodeAddOutputData handleDataReceive(NodeAddInputData inputData) override
+  NodeOutputData handleDataReceive(NodeInputData inputData) override
   {
     unsigned long previousMillis = millis();
     unsigned long currentMillis = 0;
@@ -106,7 +106,7 @@ public:
       CS cs(ContentName(inputData.getContentName()), Content(inputData.getContent()));
       csRepository.save(cs);
       // single
-      NodeAddOutputData outputData(
+      NodeOutputData outputData(
           inputData.getDestId(),
           pitRepository.get(inputData.getContentName()).getValue(),
           String(SIGNAL_DATA),
@@ -114,14 +114,14 @@ public:
           inputData.getContentName(),
           inputData.getContent());
       // SHUTURYOKU
-      // consoleNodeAddPresenter.output(outputData);
+      // consoleNodePresenter.output(outputData);
       pitRepository.remove(ContentName(inputData.getContentName()));
       return outputData;
     }
     else
     {
       // owari ni sasetai. packet haki sitai.
-      NodeAddOutputData outputData(
+      NodeOutputData outputData(
           String("NULL"),
           String("NULL"),
           String(SIGANAL_INVALID),
@@ -129,16 +129,16 @@ public:
           String("NULL"),
           String("NULL"));
       // SHUTURYOKU
-      // consoleNodeAddPresenter.output(outputData);
+      // consoleNodePresenter.output(outputData);
       return outputData;
     }
   };
 
-  void handleSensorDataReceive(NodeAddInputData inputData) override
+  void handleSensorDataReceive(NodeInputData inputData) override
   {
     CS cs(ContentName(inputData.getContentName()), Content(inputData.getContent()));
     csRepository.save(cs);
   };
 };
 
-#endif // INCLUDED_NODE_ADD_INTERACTOR_hpp_
+#endif // INCLUDED_NODE__INTERACTOR_hpp_

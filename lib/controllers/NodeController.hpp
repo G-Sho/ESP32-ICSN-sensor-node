@@ -2,9 +2,9 @@
 #define INCLUDED_MESSAGE_CONTROLLER_hpp_
 
 #include <Arduino_JSON.h>
-#include "node\add\NodeAddInteractor.hpp"
-#include "node\add\NodeAddInputData.hpp"
-#include "node\add\NodeAddOutputData.hpp"
+#include "node\NodeInteractor.hpp"
+#include "node\NodeInputData.hpp"
+#include "node\NodeOutputData.hpp"
 
 // SIGNAL
 #define SIGNAL_INTEREST '1' // Interest
@@ -14,7 +14,7 @@
 class NodeController
 {
 private:
-  NodeAddInteractor nodeAddInteractor;
+  NodeInteractor nodeInteractor;
 
 public:
   String receiveMessage(uint32_t to, String msg)
@@ -33,8 +33,8 @@ public:
       int hopCount = myObject["hopCount"];
       String contentName = JSON.stringify(myObject["contentName"]).substring(1, JSON.stringify(myObject["contentName"]).length() - 1);
       String content = JSON.stringify(myObject["content"]).substring(1, JSON.stringify(myObject["content"]).length() - 1);
-      NodeAddInputData inputData = NodeAddInputData(senderId, destId, signalCode, hopCount, contentName, content);
-      NodeAddOutputData outputData = (nodeAddInteractor.handleInterestReceive(inputData));
+      NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
+      NodeOutputData outputData = (nodeInteractor.handleInterestReceive(inputData));
       JSONVar jsonData;
       jsonData["destId"] = outputData.getDestId();
       jsonData["senderId"] = outputData.getSenderId();
@@ -51,8 +51,8 @@ public:
       int hopCount = myObject["hopCount"];
       String contentName = JSON.stringify(myObject["contentName"]).substring(1, JSON.stringify(myObject["contentName"]).length() - 1);
       String content = JSON.stringify(myObject["content"]).substring(1, JSON.stringify(myObject["content"]).length() - 1);
-      NodeAddInputData inputData = NodeAddInputData(senderId, destId, signalCode, hopCount, contentName, content);
-      NodeAddOutputData outputData = (nodeAddInteractor.handleDataReceive(inputData));
+      NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
+      NodeOutputData outputData = (nodeInteractor.handleDataReceive(inputData));
       JSONVar jsonData;
       jsonData["destId"] = outputData.getDestId();
       jsonData["senderId"] = outputData.getSenderId();
@@ -78,8 +78,8 @@ public:
     String contentName = JSON.stringify(myObject["contentName"]).substring(1, JSON.stringify(myObject["contentName"]).length() - 1);
     String content = JSON.stringify(myObject["content"]).substring(1, JSON.stringify(myObject["content"]).length() - 1);
 
-    NodeAddInputData inputData = NodeAddInputData(senderId, destId, signalCode, 0, contentName, content);
-    nodeAddInteractor.handleSensorDataReceive(inputData);
+    NodeInputData inputData = NodeInputData(senderId, destId, signalCode, 0, contentName, content);
+    nodeInteractor.handleSensorDataReceive(inputData);
   }
 };
 

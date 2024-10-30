@@ -1,9 +1,7 @@
-#ifndef INCLUDED_NODE_ADD_OUTPUT_DATA_hpp_
-#define INCLUDED_NODE_ADD_OUTPUT_DATA_hpp_
+#ifndef INCLUDED_NODE_INPUT_DATA_hpp_
+#define INCLUDED_NODE_INPUT_DATA_hpp_
 
-#include "Arduino.h"
-
-class NodeAddOutputData
+class NodeInputData
 {
 private:
   String senderId;
@@ -14,7 +12,7 @@ private:
   String content;
 
 public:
-  NodeAddOutputData(String senderId, String destId, String signalCode, int hopCount, String contentName, String content)
+  NodeInputData(String senderId, String destId, String signalCode, int hopCount, String contentName, String content)
       : senderId(senderId), destId(destId), signalCode(signalCode), hopCount(hopCount), contentName(contentName), content(content) {}
 
   String getSenderId() { return senderId; };
@@ -30,4 +28,4 @@ public:
   String getContent() { return content; };
 };
 
-#endif // INCLUDED_NODE_ADD_OUTPUT_DATA_hpp_
+#endif // INCLUDED_NODE_INPUT_DATA_hpp_

@@ -1,7 +1,7 @@
-#ifndef INCLUDED_NODE_ADD_INPUT_DATA_hpp_
-#define INCLUDED_NODE_ADD_INPUT_DATA_hpp_
+#ifndef INCLUDED_NODE_OUTPUT_DATA_hpp_
+#define INCLUDED_NODE_OUTPUT_DATA_hpp_
 
-class NodeAddInputData
+class NodeOutputData
 {
 private:
   String senderId;
@@ -12,7 +12,7 @@ private:
   String content;
 
 public:
-  NodeAddInputData(String senderId, String destId, String signalCode, int hopCount, String contentName, String content)
+  NodeOutputData(String senderId, String destId, String signalCode, int hopCount, String contentName, String content)
       : senderId(senderId), destId(destId), signalCode(signalCode), hopCount(hopCount), contentName(contentName), content(content) {}
 
   String getSenderId() { return senderId; };
@@ -28,4 +28,4 @@ public:
   String getContent() { return content; };
 };
 
-#endif // INCLUDED_NODE_ADD_INPUT_DATA_hpp_
+#endif // INCLUDED_NODE_OUTPUT_DATA_hpp_
