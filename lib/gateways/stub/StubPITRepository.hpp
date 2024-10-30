@@ -1,7 +1,7 @@
 #ifndef INCLUDED_STUB_PIT_REPOSITORY_hpp_
 #define INCLUDED_STUB_PIT_REPOSITORY_hpp_
 
-#include "model\ICN\PITRepository.hpp"
+#include "interface/PITRepository.hpp"
 #include <map>
 #include <queue>
 

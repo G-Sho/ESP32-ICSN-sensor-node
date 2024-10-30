@@ -1,7 +1,7 @@
 #ifndef INCLUDED_STUB_FIB_REPOSITY_hpp_
 #define INCLUDED_STUB_FIB_REPOSITY_hpp_
 
-#include "model\ICN\FIBRepository.hpp"
+#include "interface/FIBRepository.hpp"
 #include <map>
 #include <queue>
 

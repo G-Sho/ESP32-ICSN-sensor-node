@@ -1,7 +1,7 @@
 #ifndef INCLUDED_STUB_CS_REPOSITY_hpp_
 #define INCLUDED_STUB_CS_REPOSITY_hpp_
 
-#include "model\ICN\CSRepository.hpp"
+#include "interface/CSRepository.hpp"
 #include <map>
 #include <queue>
 
