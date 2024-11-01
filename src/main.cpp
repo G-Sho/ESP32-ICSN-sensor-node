@@ -21,10 +21,6 @@ void kickRoutine()
   bReadyTicker = true;
 }
 
-unsigned long previousMillis = 0;
-// timer
-hw_timer_t *timer1 = NULL;
-
 // Painless Mesh
 painlessMesh mesh;
 Scheduler userScheduler; // to control your personal task
@@ -100,12 +96,10 @@ void nodeTimeAdjustedCallback(int32_t offset)
 
 void setup()
 {
-  // timer
-  timer1 = timerBegin(0, getApbFrequency()/1000000, true);
-  timerStart(timer1);
-
+  enableCore1WDT();
   Serial.begin(115200);
   sensorObj.run();
+  
   // タイマー割り込みを開始する
   ticker.attach(iIntervalTime, kickRoutine);
 
@@ -142,4 +136,6 @@ void loop()
 
     msgReception(chipId, msg);
   }
+  
+  delay(1);
 }
