@@ -1,15 +1,15 @@
 #ifndef INCLUDED_FIB_REPOSITORY_hpp_
 #define INCLUDED_FIB_REPOSITORY_hpp_
 
-#include "model\ICN\FIB.hpp"
+#include "model\ICN\FIBPair.hpp"
 #include "model\message\ContentName.hpp"
-#include "model\message\NodeId.hpp"
+#include "model\message\DestinationId.hpp"
 
 class FIBRepository{
-    virtual void save(FIB fib) {};
+    virtual void save(FIBPair fibPair) {};
     virtual void remove(ContentName contentName) {};
     virtual bool find(ContentName contentName);
-    virtual NodeId get(ContentName contentName);
+    virtual DestinationId get(ContentName contentName);
 };
 
 #endif // INCLUDED_FIB_REPOSITORY_hpp_

@@ -8,14 +8,14 @@
 class StubCSRepository : public CSRepository
 {
 private:
-    std::map<String, String> m_cs;
-    std::queue<String> m_csManagement;
+    std::map<std::string, std::string> m_cs;
+    std::queue<std::string> m_csManagement;
     int const m_maxSize = 100;
 
 public:
-    void save(CS cs) override
+    void save(CSPair csPair) override
     {
-        auto it = m_cs.find(cs.getContentName().getValue());
+        auto it = m_cs.find(csPair.getContentName().getValue());
         if (it != m_cs.end())
             return;
 
@@ -28,8 +28,8 @@ public:
             m_csManagement.pop();
         }
 
-        m_cs[cs.getContentName().getValue()] = cs.getContent().getValue();
-        m_csManagement.push(cs.getContentName().getValue());
+        m_cs[csPair.getContentName().getValue()] = csPair.getContent().getValue();
+        m_csManagement.push(csPair.getContentName().getValue());
     };
 
     void remove(ContentName contentName) override

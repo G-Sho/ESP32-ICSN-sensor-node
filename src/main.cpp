@@ -2,9 +2,9 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "painlessMesh.h"
-#include <Arduino_JSON.h>
+#include <ArduinoJSON.h>
 #include <Ticker.h>
-#include <NodeController.hpp>
+#include <ArduinoController.hpp>
 #include "Sensor.h"
 
 // MESH Details
@@ -15,7 +15,7 @@
 // タイマー制御用
 Ticker ticker;
 bool bReadyTicker = false;
-const int iIntervalTime = 20; // 計測間隔（10秒）
+const int iIntervalTime = 10; // 計測間隔（10秒）
 void kickRoutine()
 {
   bReadyTicker = true;
@@ -24,33 +24,43 @@ void kickRoutine()
 // Painless Mesh
 painlessMesh mesh;
 Scheduler userScheduler; // to control your personal task
-uint32_t chipId;         // chipId of this node
 
 // self-made
-NodeController nodeController;
+ArduinoController arduinoController;
 DHTTemperature sensorObj;
 
 // SIGNAL
-#define SIGNAL_INTEREST '1' // Interest
-#define SIGNAL_DATA '2'     // Data
-#define SIGANAL_INVALID '3' // Invalid message
+#define SIGNAL_INTEREST "1" // Interest
+#define SIGNAL_DATA "2"     // Data
+#define SIGNAL_INVALID "3"  // Invalid message
 
 /*********************< Callback classes and functions >**********************/
 
 void msgReception(uint32_t to, String const &msg)
-{  
-  String processedmsg = nodeController.receiveMessage(to, msg);
-  JSONVar myObject = JSON.parse(processedmsg.c_str());
-  String senderId = JSON.stringify(myObject["senderId"]).substring(1, JSON.stringify(myObject["senderId"]).length() - 1); // chipId of sender
-  String destId = JSON.stringify(myObject["destId"]).substring(1, JSON.stringify(myObject["destId"]).length() - 1);       // chipId of destination
-  String signalCode = JSON.stringify(myObject["signalCode"]).substring(1, JSON.stringify(myObject["signalCode"]).length() - 1);
+{
+  String processedmsg = arduinoController.receiveMessage(to, msg);
+  Serial.printf("Processed msg=%s\n", processedmsg.c_str());
 
-  if (signalCode[0] != SIGANAL_INVALID)
+  StaticJsonDocument<200> doc;
+  DeserializationError error = deserializeJson(doc, processedmsg);
+  if (error)
   {
-    if (destId == "-1")
-      mesh.sendBroadcast(processedmsg);
-    else
-      mesh.sendSingle((uint32_t)(destId.toInt()), processedmsg);
+    Serial.print("Deserialization failure: ");
+    Serial.println(error.c_str());
+    exit(0);
+  }
+
+  String signalCode = doc["signalCode"];
+  if (signalCode != SIGNAL_INVALID)
+  {
+    JsonArray destId = doc["destId"];
+    for (JsonVariant value : destId)
+    {
+      if (value.as<String>() == "-1")
+        mesh.sendBroadcast(processedmsg);
+      else
+        mesh.sendSingle((uint32_t)((value.as<String>()).toInt()), processedmsg);
+    }
   }
 }
 
@@ -58,23 +68,21 @@ void msgReception(uint32_t to, String const &msg)
 void readSensorData()
 {
   sensorObj.read();
-  // JSON作って送る
-  JSONVar jsonData;
-  jsonData["destId"] = String((int)mesh.getNodeId());
-  jsonData["senderId"] = String((int)mesh.getNodeId());
-  jsonData["signalCode"] = SIGNAL_DATA;
-  jsonData["hopCount"] = 0;
-  jsonData["contentName"] = sensorObj.getContentName();
-  jsonData["content"] = sensorObj.getData();
-  String data = JSON.stringify(jsonData);
-  nodeController.reciveSensorData(data);
+
+  StaticJsonDocument<200> doc;
+  doc["contentName"] = sensorObj.getContentName();
+  doc["content"] = sensorObj.getData();
+
+  String sensorData;
+  serializeJson(doc, sensorData);
+  arduinoController.reciveSensorData(sensorData);
 }
 
 // Needed for painless library
 void receivedCallback(uint32_t from, String &msg)
 {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
-  msgReception(chipId, msg);
+  msgReception(mesh.getNodeId(), msg);
 }
 
 void newConnectionCallback(uint32_t nodeId)
@@ -99,7 +107,7 @@ void setup()
   enableCore1WDT();
   Serial.begin(115200);
   sensorObj.run();
-  
+
   // タイマー割り込みを開始する
   ticker.attach(iIntervalTime, kickRoutine);
 
@@ -111,8 +119,6 @@ void setup()
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-
-  chipId = mesh.getNodeId();
 }
 
 void loop()
@@ -134,8 +140,10 @@ void loop()
     String msg;
     msg = Serial.readStringUntil('\n');
 
-    msgReception(chipId, msg);
+    Serial.printf("Received from Serial msg=%s\n", msg.c_str());
+
+    msgReception(mesh.getNodeId(), msg);
   }
-  
+
   delay(1);
 }

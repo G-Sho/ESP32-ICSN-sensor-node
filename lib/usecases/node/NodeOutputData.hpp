@@ -1,31 +1,34 @@
 #ifndef INCLUDED_NODE_OUTPUT_DATA_hpp_
 #define INCLUDED_NODE_OUTPUT_DATA_hpp_
 
+#include <string>
+#include <vector>
+
 class NodeOutputData
 {
 private:
-  String senderId;
-  String destId;
-  String signalCode;
+  std::string senderId;
+  std::vector<std::string> destId;
+  std::string signalCode;
   int hopCount;
-  String contentName;
-  String content;
+  std::string contentName;
+  std::string content;
 
 public:
-  NodeOutputData(String senderId, String destId, String signalCode, int hopCount, String contentName, String content)
+  NodeOutputData(std::string senderId, std::vector<std::string> destId, std::string signalCode, int hopCount, std::string contentName, std::string content)
       : senderId(senderId), destId(destId), signalCode(signalCode), hopCount(hopCount), contentName(contentName), content(content) {}
 
-  String getSenderId() { return senderId; };
+  std::string getSenderId() { return senderId; };
 
-  String getDestId() { return destId; };
+  std::vector<std::string> getDestId() { return destId; };
 
-  String getSignalCode() { return signalCode; };
+  std::string getSignalCode() { return signalCode; };
 
   int getHopCount() { return hopCount; };
 
-  String getContentName() { return contentName; };
+  std::string getContentName() { return contentName; };
 
-  String getContent() { return content; };
+  std::string getContent() { return content; };
 };
 
 #endif // INCLUDED_NODE_OUTPUT_DATA_hpp_
