@@ -1,5 +1,5 @@
-#ifndef INCLUDED_FAST_FIB_REPOSITORY_hpp_
-#define INCLUDED_FAST_FIB_REPOSITORY_hpp_
+#ifndef INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_
+#define INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_
 
 #include "interface/FIBRepository.hpp"
 #include <map>       //std::map
@@ -7,7 +7,7 @@
 
 #define THRESHOLD 5 // システム定義の閾値
 
-class FastFIBRepository : public FIBRepository
+class TwoStageLookupFIBRepository : public FIBRepository
 {
 private:
     // FIBエントリの構造体
@@ -15,8 +15,8 @@ private:
     {
         bool isVir;
         int maximumDepth;
-        String nodeId;
-        FIBEntry(bool flg, int num, String Id)
+        std::vector<std::string> nodeId;
+        FIBEntry(bool flg, int num, std::vector<std::string> Id)
         {
             isVir = flg;
             maximumDepth = num;
@@ -24,16 +24,16 @@ private:
         }
     };
 
-    std::map<String, FIBEntry> fib{
-        {"/humid", FIBEntry(false, 1, "1553658797")},
-        {"/temp", FIBEntry(false, 1, "1553658821")}};
+    std::map<std::string, FIBEntry> fib{
+        {"/humid", FIBEntry(false, 1, {"1553658797"})},
+        {"/temp", FIBEntry(false, 1, {"1553658821"})}};
 
     // FIBを検索する関数
-    FIBEntry *LookupFIB(const String &name, int pfx)
+    FIBEntry *LookupFIB(const std::string &name, int pfx)
     {
         // 実際のFIB検索処理をここに実装
         int num = 0;
-        String str = name;
+        std::string str = name;
         for (int i = 0; i <= name.length(); i++)
         {
             if (name[i] == '/')
@@ -41,7 +41,7 @@ private:
                 num++;
                 if (num > pfx)
                 {
-                    str = name.substring(0, i);
+                    str = name.substr(0, i);
                     break;
                 }
             }
@@ -70,7 +70,7 @@ private:
     };
 
     // FIBのLongest Prefix Match (LPM) 処理を行う関数
-    FIBEntry *FIB_LPM_LOOKUP(const String &name, int n, int M)
+    FIBEntry *FIB_LPM_LOOKUP(const std::string &name, int n, int M)
     {
         FIBEntry *FIB_entry = nullptr;
         FIBEntry *FIB_entry_1s = nullptr;
@@ -119,7 +119,7 @@ private:
     }
 
 public:
-    void save(FIB fib) override {
+    void save(FIBPair fibPair) override {
         // mijissou
     };
 
@@ -140,7 +140,7 @@ public:
             return false;
     };
 
-    NodeId get(ContentName contentName) override
+    DestinationId get(ContentName contentName) override
     {
         int n = 0; // number of name components in an Interest packet
         for (int i = 0; i < contentName.getValue().length(); i++)
@@ -148,10 +148,10 @@ public:
                 n++;
         FIBEntry *result = FIB_LPM_LOOKUP(contentName.getValue(), n, THRESHOLD);
         if (result)
-            return NodeId(result->nodeId);
+            return DestinationId(result->nodeId);
         else
-            return NodeId("NULL");
+            return DestinationId({"NULL"});
     };
 };
 
-#endif // INCLUDED_FAST_FIB_REPOSITORY_hpp_
+#endif // INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_

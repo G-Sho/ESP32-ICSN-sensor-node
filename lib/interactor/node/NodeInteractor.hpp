@@ -12,8 +12,8 @@
 #include "model\ICN\CSPair.hpp"
 #include "stub\StubCSRepository.hpp"
 #include "model\ICN\FIBPair.hpp"
-#include "stub\StubFIBRepository.hpp"
-// #include "fast\FastFIBRepository.hpp"
+// #include "stub\StubFIBRepository.hpp"
+#include "self-made/TwoStageLookupFIBRepository.hpp"
 #include "model\ICN/PITPair.hpp"
 #include "stub\StubPITRepository.hpp"
 // #include "node\NodePresenter.h"
@@ -30,8 +30,8 @@ class NodeInteractor : public NodeUseCase
 {
 private:
   StubCSRepository csRepository;
-  StubFIBRepository fibRepository;
-  // FastFIBRepository fibRepository;
+  // StubFIBRepository fibRepository;
+  TwoStageLookupFIBRepository fibRepository;
   StubPITRepository pitRepository;
   // NodePresenter nodePresenter;
   // ConsoleNodePresenter consoleNodePresenter;
