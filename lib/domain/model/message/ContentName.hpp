@@ -1,22 +1,20 @@
 #ifndef INCLUDED_CONTENT_NAME_hpp_
 #define INCLUDED_CONTENT_NAME_hpp_
 
-#include "Arduino.h"
-
 class ContentName
 {
 private:
-  String value;
+  std::string value;
 
 public:
-  ContentName(String value)
+  ContentName(std::string value)
   {
     // 規則を書く
 
     this->value = value;
   };
 
-  String getValue()
+  std::string getValue()
   {
     return value;
   };

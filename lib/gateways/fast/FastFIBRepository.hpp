@@ -1,7 +1,7 @@
 #ifndef INCLUDED_FAST_FIB_REPOSITORY_hpp_
 #define INCLUDED_FAST_FIB_REPOSITORY_hpp_
 
-#include "model\ICN\FIBRepository.hpp"
+#include "interface/FIBRepository.hpp"
 #include <map>       //std::map
 #include <algorithm> // std::min
 

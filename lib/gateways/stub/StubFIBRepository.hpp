@@ -1,21 +1,21 @@
 #ifndef INCLUDED_STUB_FIB_REPOSITY_hpp_
 #define INCLUDED_STUB_FIB_REPOSITY_hpp_
 
-#include "model\ICN\FIBRepository.hpp"
+#include "interface/FIBRepository.hpp"
 #include <map>
 #include <queue>
 
 class StubFIBRepository : public FIBRepository
 {
 private:
-    std::map<String, String> m_fib;
-    std::queue<String> m_fibManagement;
+    std::map<std::string, std::vector<std::string>> m_fib;
+    std::queue<std::string> m_fibManagement;
     int const m_maxSize = 100;
 
 public:
-    void save(FIB fib) override
+    void save(FIBPair fibPair) override
     {
-        auto it = m_fib.find(fib.getContentName().getValue());
+        auto it = m_fib.find(fibPair.getContentName().getValue());
         if (it != m_fib.end())
             return;
 
@@ -28,8 +28,8 @@ public:
             m_fibManagement.pop();
         }
         
-        m_fib[fib.getContentName().getValue()] = fib.getNodeId().getValue();
-        m_fibManagement.push(fib.getContentName().getValue());
+        m_fib[fibPair.getContentName().getValue()] = fibPair.getDestinationId().getValue();
+        m_fibManagement.push(fibPair.getContentName().getValue());
     };
 
     void remove(ContentName contentName) override
@@ -45,13 +45,13 @@ public:
         return (it != m_fib.end());
     };
 
-    NodeId get(ContentName contentName) override
+    DestinationId get(ContentName contentName) override
     {
         auto it = m_fib.find(contentName.getValue());
         if (it == m_fib.end())
-            return NodeId("NULL");
+            return DestinationId({"NULL"});
         else
-            return NodeId(m_fib[contentName.getValue()]);
+            return DestinationId(m_fib[contentName.getValue()]);
     };
 };
 

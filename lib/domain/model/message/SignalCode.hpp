@@ -6,17 +6,17 @@
 class SignalCode
 {
 private:
-  String value;
+  std::string value;
 
 public:
-  SignalCode(String value)
+  SignalCode(std::string value)
   {
     // 規則を書く
 
     this->value = value;
   };
 
-  String getValue()
+  std::string getValue()
   {
     return value;
   };

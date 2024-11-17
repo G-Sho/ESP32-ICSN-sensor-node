@@ -4,14 +4,14 @@
 #include "model\message\ContentName.hpp"
 #include "model\message\Content.hpp"
 
-class CS
+class CSPair
 {
 private:
   ContentName contentName;
   Content content;
 
 public:
-  CS(const ContentName& contentName, const Content& content)
+  CSPair(const ContentName& contentName, const Content& content)
   : contentName(contentName), content(content) {}
 
   ContentName getContentName() { return contentName; };
