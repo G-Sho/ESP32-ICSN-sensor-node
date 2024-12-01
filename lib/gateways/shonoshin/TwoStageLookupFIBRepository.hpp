@@ -43,6 +43,60 @@ private:
 
     std::map<std::string, FIBEntry> fib;
 
+    // 新しいFIB Tableを構築する関数
+    void SaveFIB(const std::string &contentName, const std::set<std::string> &nodeId, int m){
+        if (THRESHOLD >= m && fib.count(contentName))
+        {
+            fib[contentName].setIsVir(false);
+            for (auto x : nodeId)
+            {
+                fib[contentName].nodeId.insert(x);
+            }
+        }
+        else if (THRESHOLD >= m && !fib.count(contentName))
+        {
+            fib[contentName] = FIBEntry(false, m, nodeId);
+        }
+        else
+        {
+            int num = 0;
+            std::string str = contentName;
+            for (int i = 0; i <= str.length(); i++)
+            {
+                if (str[i] == '/')
+                {
+                    num++;
+                    if (num > THRESHOLD)
+                    {
+                        str = str.substr(0, i);
+                        break;
+                    }
+                }
+            }
+
+            if (fib.count(str))
+            {
+                chmax(fib[str].maximumDepth, m);
+            }
+            else
+            {
+                fib[str] = FIBEntry(true, m, {""});
+            }
+
+            if (fib.count(contentName))
+            {
+                for (auto x : nodeId)
+                {
+                    fib[contentName].nodeId.insert(x);
+                }
+            }
+            else
+            {
+                fib[contentName] = FIBEntry(false, m, nodeId);
+            }
+        }
+    };
+
     // FIBを検索する関数
     FIBEntry *LookupFIB(const std::string &name, int pfx)
     {
@@ -141,56 +195,7 @@ public:
             if (fibPair.getContentName().getValue()[i] == '/')
                 m++;
 
-        if (THRESHOLD >= m && fib.count(fibPair.getContentName().getValue()))
-        {
-            fib[fibPair.getContentName().getValue()].setIsVir(false);
-            for (auto x : fibPair.getDestinationId().getValue())
-            {
-                fib[fibPair.getContentName().getValue()].nodeId.insert(x);
-            }
-        }
-        else if (THRESHOLD >= m && !fib.count(fibPair.getContentName().getValue()))
-        {
-            fib[fibPair.getContentName().getValue()] = FIBEntry(false, m, fibPair.getDestinationId().getValue());
-        }
-        else
-        {
-            int num = 0;
-            std::string str = fibPair.getContentName().getValue();
-            for (int i = 0; i <= str.length(); i++)
-            {
-                if (str[i] == '/')
-                {
-                    num++;
-                    if (num > THRESHOLD)
-                    {
-                        str = str.substr(0, i);
-                        break;
-                    }
-                }
-            }
-
-            if (fib.count(str))
-            {
-                chmax(fib[str].maximumDepth, m);
-            }
-            else
-            {
-                fib[str] = FIBEntry(true, m, {""});
-            }
-
-            if (fib.count(fibPair.getContentName().getValue()))
-            {
-                for (auto x : fibPair.getDestinationId().getValue())
-                {
-                    fib[fibPair.getContentName().getValue()].nodeId.insert(x);
-                }
-            }
-            else
-            {
-                fib[fibPair.getContentName().getValue()] = FIBEntry(false, m, fibPair.getDestinationId().getValue());
-            }
-        }
+        SaveFIB(fibPair.getContentName().getValue(), fibPair.getDestinationId().getValue(), m);
 
         // fib table すべてを出力する
         // auto begin = fib.begin(), end = fib.end();
