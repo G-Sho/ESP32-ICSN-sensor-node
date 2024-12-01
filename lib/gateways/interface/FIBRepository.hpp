@@ -6,7 +6,7 @@
 #include "model\message\DestinationId.hpp"
 
 class FIBRepository{
-    virtual void save(FIBPair fibPair, int hopCount) {};
+    virtual void save(FIBPair fibPair) {};
     virtual void remove(ContentName contentName) {};
     virtual bool find(ContentName contentName);
     virtual DestinationId get(ContentName contentName);
