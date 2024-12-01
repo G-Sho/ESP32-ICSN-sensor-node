@@ -8,7 +8,7 @@
 class StubPITRepository : public PITRepository
 {
 private:
-    std::map<std::string, std::vector<std::string>> m_pit;
+    std::map<std::string, std::set<std::string>> m_pit;
     std::queue<std::string> m_pitManagement;
     int const m_maxSize = 100;
 

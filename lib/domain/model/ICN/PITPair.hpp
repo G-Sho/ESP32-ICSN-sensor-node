@@ -1,8 +1,8 @@
 #ifndef INCLUDED_PIT_PAIR_hpp_
 #define INCLUDED_PIT_PAIR_hpp_
 
-#include "model\message\ContentName.hpp"
-#include "model\message\DestinationId.hpp"
+#include "model/message/ContentName.hpp"
+#include "model/message/DestinationId.hpp"
 
 class PITPair
 {

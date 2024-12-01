@@ -1,7 +1,7 @@
 #ifndef INCLUDED_CONSOLE_VIEW_hpp_
 #define INCLUDED_CONSOLE_VIEW_hpp_
 
-#include "console\ConsoleViewModel.hpp"
+#include "console/ConsoleViewModel.hpp"
 
 class ConsoleView
 {

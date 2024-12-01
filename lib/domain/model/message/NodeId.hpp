@@ -1,22 +1,22 @@
 #ifndef INCLUDED_NODE_ID_hpp_
 #define INCLUDED_NODE_ID_hpp_
 
-#include "Arduino.h"
+#include<string>
 
 class NodeId
 {
 private:
-  String value;
+  std::string value;
 
 public:
-  NodeId(String value)
+  NodeId(std::string value)
   {
     // 規則を書く
 
     this->value = value;
   };
 
-  String getValue()
+  std::string getValue()
   {
     return value;
   };

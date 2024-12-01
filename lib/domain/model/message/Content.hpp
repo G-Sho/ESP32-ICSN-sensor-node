@@ -1,6 +1,8 @@
 #ifndef INCLUDED_CONTENT_hpp_
 #define INCLUDED_CONTENT_hpp_
 
+#include<string>
+
 class Content
 {
 private:

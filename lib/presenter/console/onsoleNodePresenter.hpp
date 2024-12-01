@@ -1,10 +1,10 @@
 #ifndef INCLUDED_CONSOLE_NODE_PRESENTER_hpp_
 #define INCLUDED_CONSOLE_NODE_PRESENTER_hpp_
 
-#include "node\NodePresenter.hpp"
-#include "node\NodeOutputData.hpp" 
-#include "console\ConsoleView.hpp"
-#include "console\ConsoleViewModel.hpp"
+#include "node/NodePresenter.hpp"
+#include "node/NodeOutputData.hpp" 
+#include "console/ConsoleView.hpp"
+#include "console/ConsoleViewModel.hpp"
 
 class ConsoleNodePresenter : public NodePresenter
 {

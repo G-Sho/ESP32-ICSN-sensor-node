@@ -27,7 +27,7 @@ Scheduler userScheduler; // to control your personal task
 
 // self-made
 ArduinoController arduinoController;
-DHTTemperature sensorObj;
+DHTHumidity sensorObj;
 
 // SIGNAL
 #define SIGNAL_INTEREST "1" // Interest

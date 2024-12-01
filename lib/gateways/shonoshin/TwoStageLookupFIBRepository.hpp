@@ -6,6 +6,16 @@
 #include <algorithm> // std::min
 
 #define THRESHOLD 5 // システム定義の閾値
+template <typename T>
+bool chmax(T &a, const T &b)
+{
+    if (a < b)
+    {
+        a = b;
+        return 1;
+    }
+    return 0;
+}
 
 class TwoStageLookupFIBRepository : public FIBRepository
 {
@@ -13,20 +23,25 @@ private:
     // FIBエントリの構造体
     struct FIBEntry
     {
+    public:
         bool isVir;
         int maximumDepth;
-        std::vector<std::string> nodeId;
-        FIBEntry(bool flg, int num, std::vector<std::string> Id)
+        std::set<std::string> nodeId;
+        FIBEntry() = default;
+        FIBEntry(bool flg, int num, std::set<std::string> Id)
         {
             isVir = flg;
             maximumDepth = num;
             nodeId = Id;
         }
+        bool getIsVir() { return isVir; };
+        int getMaximumDepth() { return maximumDepth; };
+        std::set<std::string> getNodeId() { return nodeId; };
+        void setIsVir(bool flg) { isVir = flg; };
+        void setMaximumDepth(int m) { maximumDepth = m; };
     };
 
-    std::map<std::string, FIBEntry> fib{
-        {"/humid", FIBEntry(false, 1, {"1553658797"})},
-        {"/temp", FIBEntry(false, 1, {"1553658821"})}};
+    std::map<std::string, FIBEntry> fib;
 
     // FIBを検索する関数
     FIBEntry *LookupFIB(const std::string &name, int pfx)
@@ -119,8 +134,73 @@ private:
     }
 
 public:
-    void save(FIBPair fibPair) override {
-        // mijissou
+    void save(FIBPair fibPair) override
+    {
+        int m = 0; // fibPair.getContentName()の最大深度の取得
+        for (int i = 0; i < fibPair.getContentName().getValue().size(); i++)
+            if (fibPair.getContentName().getValue()[i] == '/')
+                m++;
+
+        if (THRESHOLD >= m && fib.count(fibPair.getContentName().getValue()))
+        {
+            fib[fibPair.getContentName().getValue()].setIsVir(false);
+            for (auto x : fibPair.getDestinationId().getValue())
+            {
+                fib[fibPair.getContentName().getValue()].nodeId.insert(x);
+            }
+        }
+        else if (THRESHOLD >= m && !fib.count(fibPair.getContentName().getValue()))
+        {
+            fib[fibPair.getContentName().getValue()] = FIBEntry(false, m, fibPair.getDestinationId().getValue());
+        }
+        else
+        {
+            int num = 0;
+            std::string str = fibPair.getContentName().getValue();
+            for (int i = 0; i <= str.length(); i++)
+            {
+                if (str[i] == '/')
+                {
+                    num++;
+                    if (num > THRESHOLD)
+                    {
+                        str = str.substr(0, i);
+                        break;
+                    }
+                }
+            }
+
+            if (fib.count(str))
+            {
+                chmax(fib[str].maximumDepth, m);
+            }
+            else
+            {
+                fib[str] = FIBEntry(true, m, {""});
+            }
+
+            if (fib.count(fibPair.getContentName().getValue()))
+            {
+                for (auto x : fibPair.getDestinationId().getValue())
+                {
+                    fib[fibPair.getContentName().getValue()].nodeId.insert(x);
+                }
+            }
+            else
+            {
+                fib[fibPair.getContentName().getValue()] = FIBEntry(false, m, fibPair.getDestinationId().getValue());
+            }
+        }
+
+        // fib table すべてを出力する
+        // auto begin = fib.begin(), end = fib.end();
+        // for (auto iter = begin; iter != end; iter++)
+        // {
+        //     for (const auto x : iter->second.getNodeId())
+        //     {
+        //         Serial.printf("%s => %s\n", iter->first.c_str(), x.c_str());
+        //     }
+        // }
     };
 
     void remove(ContentName contentName) override {

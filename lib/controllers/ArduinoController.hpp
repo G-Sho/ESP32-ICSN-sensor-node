@@ -2,10 +2,9 @@
 #define INCLUDED_Arduino_CONTROLLER_hpp_
 
 #include <ArduinoJSON.h>
-#include <string>
-#include "node\NodeInteractor.hpp"
-#include "node\NodeInputData.hpp"
-#include "node\NodeOutputData.hpp"
+#include "node/NodeInteractor.hpp"
+#include "node/NodeInputData.hpp"
+#include "node/NodeOutputData.hpp"
 
 // SIGNAL
 #define SIGNAL_INTEREST "1"   // Interest
@@ -37,9 +36,9 @@ public:
 
     if (signalCode == SIGNAL_INTEREST)
     {
-      int hopCount = inputDoc["hopCount"];
-      std::string contentName = inputDoc["contentName"];
-      std::string content = inputDoc["content"];
+      int hopCount = inputDoc["hopCount"] | -1;
+      std::string contentName = inputDoc["contentName"] | "unknown";
+      std::string content = inputDoc["content"] | "unknown";
       NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
 
       NodeOutputData outputData = (nodeInteractor.handleInterestReceive(inputData));
@@ -49,6 +48,7 @@ public:
       JsonArray destId = outputDoc.createNestedArray("destId");
       for (auto x : outputData.getDestId())
       {
+        Serial.printf("%s/n",x);
         destId.add(x);
       }
       outputDoc["signalCode"] = outputData.getSignalCode();
@@ -62,7 +62,7 @@ public:
     }
     else if (signalCode == SIGNAL_DATA)
     {
-      int hopCount = inputDoc["hopCount"];
+      int hopCount = inputDoc["hopCount"] | -1;
       std::string contentName = inputDoc["contentName"] | "unknown";
       std::string content = inputDoc["content"] | "unknown";
       NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
@@ -101,7 +101,7 @@ public:
     std::string senderId = "unknown";
     std::string destId = "unknown";
     std::string signalcode = "unknown";
-    int hopCount = 0;
+    int hopCount = -1;
     std::string contentName = inputDoc["contentName"] | "unknown";
     std::string content = inputDoc["content"] | "unknown";
     NodeInputData inputData = NodeInputData(senderId, destId, signalcode, hopCount, contentName, content);

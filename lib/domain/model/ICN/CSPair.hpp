@@ -1,8 +1,8 @@
 #ifndef INCLUDED_CS_hpp_
 #define INCLUDED_CS_hpp_
 
-#include "model\message\ContentName.hpp"
-#include "model\message\Content.hpp"
+#include "model/message/ContentName.hpp"
+#include "model/message/Content.hpp"
 
 class CSPair
 {
