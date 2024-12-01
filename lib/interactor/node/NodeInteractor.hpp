@@ -7,19 +7,20 @@
 #include "model/message/HopCount.hpp"
 #include "model/message/ContentName.hpp"
 #include "model/message/Content.hpp"
-
-#include "node/NodeUseCase.hpp"
-#include "model/ICN/CSPair.hpp"
-#include "stub/StubCSRepository.hpp"
-#include "model/ICN/FIBPair.hpp"
 // #include "stub/StubFIBRepository.hpp"
-#include "shonoshin/TwoStageLookupFIBRepository.hpp"
-#include "model/ICN/PITPair.hpp"
-#include "stub/StubPITRepository.hpp"
-// #include "node/NodePresenter.h"
-// #include "console/ConsoleNodePresenter.hpp"
+// #include "stub/StubPITRepository.hpp"
+// #include "stub/StubCSRepository.hpp"
 #include "node/NodeInputData.hpp"
 #include "node/NodeOutputData.hpp"
+#include "node/NodeUseCase.hpp"
+#include "model/ICN/FIBPair.hpp"
+#include "model/ICN/PITPair.hpp"
+#include "model/ICN/CSPair.hpp"
+#include "shonoshin/TwoStageLookupFIBRepository.hpp"
+#include "shonoshin/FIFOPITRepository.hpp"
+#include "shonoshin/FIFOCSRepository.hpp"
+// #include "node/NodePresenter.h"
+// #include "console/ConsoleNodePresenter.hpp"
 
 // SIGNAL
 #define SIGNAL_INTEREST "1" // Interest
@@ -29,10 +30,12 @@
 class NodeInteractor : public NodeUseCase
 {
 private:
-  StubCSRepository csRepository;
   // StubFIBRepository fibRepository;
+  // StubPITRepository pitRepository;
+  // StubCSRepository csRepository;
   TwoStageLookupFIBRepository fibRepository;
-  StubPITRepository pitRepository;
+  FIFOPITRepository pitRepository;
+  FIFOCSRepository csRepository;
   // NodePresenter nodePresenter;
   // ConsoleNodePresenter consoleNodePresenter;
 
@@ -47,7 +50,7 @@ public:
     ContentName contentName(inputData.getContentName());
     Content content(inputData.getContent());
 
-    // Interestを受信したときの処理
+    // processing when receiving an Interest
     if (hopcount.getValue() >= 16)
     {
       // packet discard
@@ -116,7 +119,7 @@ public:
     ContentName contentName(inputData.getContentName());
     Content content(inputData.getContent());
 
-    // Dataを受信したときの処理
+    // processing when receiving an DARA
     if (pitRepository.find(contentName.getValue()))
     {
       // cache in CS

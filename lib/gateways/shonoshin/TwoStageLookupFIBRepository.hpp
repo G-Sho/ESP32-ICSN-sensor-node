@@ -6,16 +6,7 @@
 #include <algorithm> // std::min
 
 #define THRESHOLD 5 // システム定義の閾値
-template <typename T>
-bool chmax(T &a, const T &b)
-{
-    if (a < b)
-    {
-        a = b;
-        return 1;
-    }
-    return 0;
-}
+template <typename T> bool chmax(T &a, const T &b) { if (a < b) { a = b; return 1; } return 0; }
 
 class TwoStageLookupFIBRepository : public FIBRepository
 {
@@ -98,7 +89,7 @@ private:
     };
 
     // FIBを検索する関数
-    FIBEntry *LookupFIB(const std::string &name, int pfx)
+    FIBEntry *LookupFIB(const std::string& name, const int& pfx)
     {
         // 実際のFIB検索処理をここに実装
         int num = 0;
@@ -139,7 +130,7 @@ private:
     };
 
     // FIBのLongest Prefix Match (LPM) 処理を行う関数
-    FIBEntry *FIB_LPM_LOOKUP(const std::string &name, int n, int M)
+    FIBEntry *FIB_LPM_LOOKUP(const std::string& name, int n, int M)
     {
         FIBEntry *FIB_entry = nullptr;
         FIBEntry *FIB_entry_1s = nullptr;
