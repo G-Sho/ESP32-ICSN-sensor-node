@@ -1,16 +1,17 @@
-#ifndef INCLUDED_STUB_PIT_REPOSITORY_hpp_
-#define INCLUDED_STUB_PIT_REPOSITORY_hpp_
+#ifndef INCLUDED_FIFO_PIT_REPOSITORY_hpp_
+#define INCLUDED_FIFO_PIT_REPOSITORY_hpp_
 
 #include "interface/PITRepository.hpp"
 #include <map>
 #include <queue>
 
-class StubPITRepository : public PITRepository
+#define MAX_PIT_TABLE_SIZE 20
+
+class FIFOPITRepository : public PITRepository
 {
 private:
     std::map<std::string, std::set<std::string>> m_pit;
     std::queue<std::string> m_pitManagement;
-    int const m_maxSize = 100;
 
 public:
     void save(PITPair pitPair) override
@@ -20,7 +21,7 @@ public:
             return;
 
         // PITのサイズが100を超えないように消す
-        while (m_maxSize <= m_pitManagement.size())
+        while (MAX_PIT_TABLE_SIZE <= m_pitManagement.size())
         {
             auto it = m_pit.find(m_pitManagement.front());
             if (it != m_pit.end()) // if this node knows the forwarding address
@@ -55,4 +56,4 @@ public:
     };
 };
 
-#endif // INCLUDED_STUB_PIT_REPOSITY_hpp_
+#endif // INCLUDED_FIFO_PIT_REPOSITY_hpp_

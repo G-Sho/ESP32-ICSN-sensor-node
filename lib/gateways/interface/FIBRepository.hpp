@@ -1,9 +1,9 @@
 #ifndef INCLUDED_FIB_REPOSITORY_hpp_
 #define INCLUDED_FIB_REPOSITORY_hpp_
 
-#include "model\ICN\FIBPair.hpp"
-#include "model\message\ContentName.hpp"
-#include "model\message\DestinationId.hpp"
+#include "model/ICN/FIBPair.hpp"
+#include "model/message/ContentName.hpp"
+#include "model/message/DestinationId.hpp"
 
 class FIBRepository{
     virtual void save(FIBPair fibPair) {};

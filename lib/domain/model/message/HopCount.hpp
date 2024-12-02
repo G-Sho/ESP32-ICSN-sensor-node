@@ -1,7 +1,7 @@
 #ifndef INCLUDED_NUMBER_OF_HOPS_hpp_
 #define INCLUDED_NUMBER_OF_HOPS_hpp_
 
-#include "Arduino.h"
+#include<string>
 
 class HopCount
 {
