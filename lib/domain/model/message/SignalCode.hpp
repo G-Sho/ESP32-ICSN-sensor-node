@@ -1,7 +1,7 @@
 #ifndef INCLUDED_SIGNAL_CODE_hpp_
 #define INCLUDED_SIGNAL_CODE_hpp_
 
-#include "Arduino.h"
+#include<string>
 
 class SignalCode
 {

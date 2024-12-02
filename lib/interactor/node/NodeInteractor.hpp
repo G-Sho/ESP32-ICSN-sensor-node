@@ -7,19 +7,20 @@
 #include "model/message/HopCount.hpp"
 #include "model/message/ContentName.hpp"
 #include "model/message/Content.hpp"
-
-#include "node\NodeUseCase.hpp"
-#include "model\ICN\CSPair.hpp"
-#include "stub\StubCSRepository.hpp"
-#include "model\ICN\FIBPair.hpp"
-#include "stub\StubFIBRepository.hpp"
-// #include "fast\FastFIBRepository.hpp"
-#include "model\ICN/PITPair.hpp"
-#include "stub\StubPITRepository.hpp"
-// #include "node\NodePresenter.h"
-// #include "console\ConsoleNodePresenter.hpp"
-#include "node\NodeInputData.hpp"
-#include "node\NodeOutputData.hpp"
+// #include "stub/StubFIBRepository.hpp"
+// #include "stub/StubPITRepository.hpp"
+// #include "stub/StubCSRepository.hpp"
+#include "node/NodeInputData.hpp"
+#include "node/NodeOutputData.hpp"
+#include "node/NodeUseCase.hpp"
+#include "model/ICN/FIBPair.hpp"
+#include "model/ICN/PITPair.hpp"
+#include "model/ICN/CSPair.hpp"
+#include "shonoshin/TwoStageLookupFIBRepository.hpp"
+#include "shonoshin/FIFOPITRepository.hpp"
+#include "shonoshin/FIFOCSRepository.hpp"
+// #include "node/NodePresenter.h"
+// #include "console/ConsoleNodePresenter.hpp"
 
 // SIGNAL
 #define SIGNAL_INTEREST "1" // Interest
@@ -29,10 +30,12 @@
 class NodeInteractor : public NodeUseCase
 {
 private:
-  StubCSRepository csRepository;
-  StubFIBRepository fibRepository;
-  // FastFIBRepository fibRepository;
-  StubPITRepository pitRepository;
+  // StubFIBRepository fibRepository;
+  // StubPITRepository pitRepository;
+  // StubCSRepository csRepository;
+  TwoStageLookupFIBRepository fibRepository;
+  FIFOPITRepository pitRepository;
+  FIFOCSRepository csRepository;
   // NodePresenter nodePresenter;
   // ConsoleNodePresenter consoleNodePresenter;
 
@@ -47,10 +50,10 @@ public:
     ContentName contentName(inputData.getContentName());
     Content content(inputData.getContent());
 
-    // Interestを受信したときの処理
+    // processing when receiving an Interest
     if (hopcount.getValue() >= 16)
     {
-      // owari ni sasetai. packet haki sitai.
+      // packet discard
       NodeOutputData outputData(
           std::string("NULL"),
           {std::string("NULL")},
@@ -58,51 +61,49 @@ public:
           hopcount.getValue(),
           std::string("NULL"),
           std::string("NULL"));
-      // SHUTURYOKU
-      // consoleNodePresenter.output(outputData);
       return outputData;
     }
 
     if (csRepository.find(contentName))
-    { // if this node has the content
-      // single
+    {
+      // send data based on CS
       NodeOutputData outputData(
-          destinationId.getValue()[0],
+          *destinationId.getValue().begin(),
           {senderId.getValue()},
           SIGNAL_DATA,
           0,
           contentName.getValue(),
           csRepository.get(contentName).getValue());
-      // consoleNodePresenter.output(outputData);
       return outputData;
     }
     else
     {
+      // save to PIT Table
       PITPair pitPair(contentName, DestinationId({senderId.getValue()}));
       pitRepository.save(pitPair);
+
       if (fibRepository.find(contentName))
-      { // single or multi
+      {
+        // send Interest based on FIB Table
         NodeOutputData outputData(
-            destinationId.getValue()[0],
+            *destinationId.getValue().begin(),
             fibRepository.get(contentName).getValue(),
             SIGNAL_INTEREST,
             hopcount.getValue(),
             contentName.getValue(),
             content.getValue());
-        // consoleNodePresenter.output(outputData);
         return outputData;
       }
       else
-      { // broadcast
+      {
+        // broadcast Interest
         NodeOutputData outputData(
-            destinationId.getValue()[0],
+            *destinationId.getValue().begin(),
             {std::string("-1")},
             SIGNAL_INTEREST,
             hopcount.getValue(),
             contentName.getValue(),
             content.getValue());
-        // SHUTURYOKU
-        // consoleNodePresenter.output(outputData);
         return outputData;
       }
     }
@@ -117,28 +118,30 @@ public:
     hopcount.increment();
     ContentName contentName(inputData.getContentName());
     Content content(inputData.getContent());
-    
-    // Dataを受信したときの処理
+
+    // processing when receiving an DARA
     if (pitRepository.find(contentName.getValue()))
     {
+      // cache in CS
       CSPair csPair(contentName, content);
       csRepository.save(csPair);
-      // single
+      // send data based on PIT
       NodeOutputData outputData(
-          destinationId.getValue()[0],
+          *destinationId.getValue().begin(),
           pitRepository.get(contentName).getValue(),
           SIGNAL_DATA,
           hopcount.getValue(),
           contentName.getValue(),
           content.getValue());
-      // SHUTURYOKU
-      // consoleNodePresenter.output(outputData);
       pitRepository.remove(contentName);
       return outputData;
     }
     else
     {
-      // owari ni sasetai. packet haki sitai.
+      // save to PIT Table
+      FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
+      fibRepository.save(fibPair);
+      // packet discard
       NodeOutputData outputData(
           std::string("NULL"),
           {std::string("NULL")},
@@ -146,8 +149,6 @@ public:
           hopcount.getValue(),
           std::string("NULL"),
           std::string("NULL"));
-      // SHUTURYOKU
-      // consoleNodePresenter.output(outputData);
       return outputData;
     }
   };

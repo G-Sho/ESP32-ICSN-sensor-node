@@ -2,22 +2,22 @@
 #define INCLUDED_DESTINATION_ID_hpp_
 
 #include<string>
-#include <vector>
+#include <set>
 
 class DestinationId
 {
 private:
-  std::vector<std::string> value;
+  std::set<std::string> value;
 
 public:
-  DestinationId(std::vector<std::string> value)
+  DestinationId(std::set<std::string> value)
   {
     // 規則を書く
 
     this->value = value;
   };
 
-  std::vector<std::string> getValue()
+  std::set<std::string> getValue()
   {
     return value;
   };
