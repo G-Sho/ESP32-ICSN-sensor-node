@@ -7,6 +7,7 @@
 
 class FIBRepository{
     virtual void save(FIBPair fibPair) {};
+    virtual void saveForDynamic(FIBPair fibPair, std::string faceId, int hopCount) {};
     virtual void remove(ContentName contentName) {};
     virtual bool find(ContentName contentName);
     virtual DestinationId get(ContentName contentName);

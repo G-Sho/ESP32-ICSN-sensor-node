@@ -16,7 +16,8 @@
 #include "model/ICN/FIBPair.hpp"
 #include "model/ICN/PITPair.hpp"
 #include "model/ICN/CSPair.hpp"
-#include "shonoshin/TwoStageLookupFIBRepository.hpp"
+//#include "shonoshin/TwoStageLookupFIBRepository.hpp"
+#include "yamamoto/DirectedDiffusionFIBRepository.hpp"
 #include "shonoshin/FIFOPITRepository.hpp"
 #include "shonoshin/FIFOCSRepository.hpp"
 // #include "node/NodePresenter.h"
@@ -33,7 +34,8 @@ private:
   // StubFIBRepository fibRepository;
   // StubPITRepository pitRepository;
   // StubCSRepository csRepository;
-  TwoStageLookupFIBRepository fibRepository;
+  //TwoStageLookupFIBRepository fibRepository;
+  DirectedDiffusionFIBRepository fibRepository;
   FIFOPITRepository pitRepository;
   FIFOCSRepository csRepository;
   // NodePresenter nodePresenter;
@@ -77,11 +79,11 @@ public:
       return outputData;
     }
     else
-    {
+    {/* //testuyou
       // save to PIT Table
       PITPair pitPair(contentName, DestinationId({senderId.getValue()}));
       pitRepository.save(pitPair);
-
+      */
       if (fibRepository.find(contentName))
       {
         // send Interest based on FIB Table
@@ -140,7 +142,7 @@ public:
     {
       // save to PIT Table
       FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
-      fibRepository.save(fibPair);
+      fibRepository.saveForDynamic(fibPair, senderId.getValue(), hopcount.getValue());
       // packet discard
       NodeOutputData outputData(
           std::string("NULL"),
