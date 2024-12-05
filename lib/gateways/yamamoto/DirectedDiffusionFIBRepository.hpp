@@ -6,8 +6,8 @@
 #include <algorithm> // std::min
 #include <utility>
 #include <queue>
-#include <ctime>
 #include <random> //random
+#include <stdlib.h>
 
 #define THRESHOLD 5
 #define MAX_PRIORITY 100 // 優先度の最大値
@@ -43,8 +43,9 @@ private:
         if (nodeNum < 1)
             nodeNum = 1;
 
-        std::mt19937 rd(static_cast<unsigned int>(std::time(nullptr)));
-        std::uniform_int_distribution<double> dist(0.0, 1.0);
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dist(0.0, 1.0);
 
         // 戻り値用のfibリスト
         std::vector<std::pair<std::string, double>> fib_tmp = dest;
@@ -61,7 +62,7 @@ private:
                 {
                     prob = 0.1;
                 }
-                if (dist(rd) < prob)
+                if (dist(gen) < prob)
                 {
                     f_fib.insert(it->first);
                     fib_tmp.erase(it);
