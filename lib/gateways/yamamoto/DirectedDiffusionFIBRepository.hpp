@@ -7,7 +7,6 @@
 #include <utility>
 #include <queue>
 #include <random> //random
-#include <stdlib.h>
 
 #define THRESHOLD 5
 #define MAX_PRIORITY 100 // 優先度の最大値
@@ -91,6 +90,7 @@ public:
     // 1回ずつのみ処理
     void saveForDynamic(FIBPair fibPair, std::string faceId, int hopCount) override
     {
+        // FIBPairのDestinationIdはset型を使用しているが，setでは内容を書き換えられないためvectorに変換する
         // FIBPairの内容を1ノードずつFIBに登録するためのvectorを作成
         std::vector<std::pair<std::string, double>> tmp;
         for (auto &x : fibPair.getDestinationId().getValue())
