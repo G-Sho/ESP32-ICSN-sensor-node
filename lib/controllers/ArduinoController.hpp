@@ -48,7 +48,6 @@ public:
       JsonArray destId = outputDoc.createNestedArray("destId");
       for (auto x : outputData.getDestId())
       {
-        Serial.printf("%s/n",x);
         destId.add(x);
       }
       outputDoc["signalCode"] = outputData.getSignalCode();

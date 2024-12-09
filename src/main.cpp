@@ -140,7 +140,7 @@ void loop()
     String msg;
     msg = Serial.readStringUntil('\n');
 
-    Serial.printf("Received from Serial msg=%s\n", msg.c_str());
+    Serial.printf("Received from Serial, msg=%s\n", msg.c_str());
 
     msgReception(mesh.getNodeId(), msg);
   }
