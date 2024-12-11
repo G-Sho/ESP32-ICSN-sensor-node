@@ -12,15 +12,6 @@
 #define MESH_PASSWORD "MESHpassword" // password for your MESH
 #define MESH_PORT 5555               // default port
 
-// タイマー制御用
-Ticker ticker;
-bool bReadyTicker = false;
-const int iIntervalTime = 10; // 計測間隔（10秒）
-void kickRoutine()
-{
-  bReadyTicker = true;
-}
-
 // Painless Mesh
 painlessMesh mesh;
 Scheduler userScheduler; // to control your personal task
@@ -34,6 +25,9 @@ DHTHumidity sensorObj;
 #define SIGNAL_DATA "2"     // Data
 #define SIGNAL_INVALID "3"  // Invalid message
 
+// JSONDoc
+StaticJsonDocument<200> doc;
+
 /*********************< Callback classes and functions >**********************/
 
 void msgReception(uint32_t to, String const &msg)
@@ -41,7 +35,6 @@ void msgReception(uint32_t to, String const &msg)
   String processedmsg = arduinoController.receiveMessage(to, msg);
   Serial.printf("Processed msg=%s\n", processedmsg.c_str());
 
-  StaticJsonDocument<200> doc;
   DeserializationError error = deserializeJson(doc, processedmsg);
   if (error)
   {
@@ -62,6 +55,8 @@ void msgReception(uint32_t to, String const &msg)
         mesh.sendSingle((uint32_t)((value.as<String>()).toInt()), processedmsg);
     }
   }
+
+  doc.clear();
 }
 
 // Read Sensor Data
@@ -69,14 +64,15 @@ void readSensorData()
 {
   sensorObj.read();
 
-  StaticJsonDocument<200> doc;
   doc["contentName"] = sensorObj.getContentName();
   doc["content"] = sensorObj.getData();
 
   String sensorData;
   serializeJson(doc, sensorData);
+  doc.clear();
   arduinoController.reciveSensorData(sensorData);
 }
+Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 
 // Needed for painless library
 void receivedCallback(uint32_t from, String &msg)
@@ -104,12 +100,8 @@ void nodeTimeAdjustedCallback(int32_t offset)
 
 void setup()
 {
-  enableCore1WDT();
   Serial.begin(115200);
   sensorObj.run();
-
-  // タイマー割り込みを開始する
-  ticker.attach(iIntervalTime, kickRoutine);
 
   // mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages
@@ -119,19 +111,15 @@ void setup()
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+
+  userScheduler.addTask(taskReadSensorData);
+  taskReadSensorData.enable();
 }
 
 void loop()
 {
   // it will run the user scheduler as well
   mesh.update();
-
-  // タイマー割り込みによってセンサデータ読み取りを実行する
-  if (bReadyTicker)
-  {
-    readSensorData();
-    bReadyTicker = false;
-  }
 
   // シリアルに値が入力されているならその内容を送信
   if (Serial.available() > 0)
@@ -144,6 +132,4 @@ void loop()
 
     msgReception(mesh.getNodeId(), msg);
   }
-
-  delay(1);
 }

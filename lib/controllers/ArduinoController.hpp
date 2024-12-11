@@ -7,9 +7,13 @@
 #include "node/NodeOutputData.hpp"
 
 // SIGNAL
-#define SIGNAL_INTEREST "1"   // Interest
-#define SIGNAL_DATA "2"       // Data
-#define SIGANAL_INVALID "3"   // Invalid message
+#define SIGNAL_INTEREST "1" // Interest
+#define SIGNAL_DATA "2"     // Data
+#define SIGANAL_INVALID "3" // Invalid message
+
+// JSON Docs
+StaticJsonDocument<200> inputDoc;
+StaticJsonDocument<200> outputDoc;
 
 class ArduinoController
 {
@@ -19,13 +23,11 @@ private:
 public:
   String receiveMessage(uint32_t to, String msg)
   {
-    StaticJsonDocument<200> inputDoc;
-
+    Serial.printf("in receiveMessage, %s\n", msg.c_str());
     DeserializationError error = deserializeJson(inputDoc, msg);
-
     if (error)
     {
-      Serial.print("Deserialization failure: ");
+      Serial.print("Deserialization failure : ");
       Serial.println(error.c_str());
       exit(0);
     }
@@ -42,8 +44,8 @@ public:
       NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
 
       NodeOutputData outputData = (nodeInteractor.handleInterestReceive(inputData));
+      inputDoc.clear();
 
-      StaticJsonDocument<200> outputDoc;
       outputDoc["senderId"] = outputData.getSenderId();
       JsonArray destId = outputDoc.createNestedArray("destId");
       for (auto x : outputData.getDestId())
@@ -57,6 +59,7 @@ public:
 
       String returnstr;
       serializeJson(outputDoc, returnstr);
+      outputDoc.clear();
       return returnstr;
     }
     else if (signalCode == SIGNAL_DATA)
@@ -67,8 +70,8 @@ public:
       NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
 
       NodeOutputData outputData = (nodeInteractor.handleDataReceive(inputData));
+      inputDoc.clear();
 
-      StaticJsonDocument<200> outputDoc;
       outputDoc["senderId"] = outputData.getSenderId();
       JsonArray destId = outputDoc.createNestedArray("destId");
       for (auto x : outputData.getDestId())
@@ -82,13 +85,13 @@ public:
 
       String returnstr;
       serializeJson(outputDoc, returnstr);
+      outputDoc.clear();
       return returnstr;
     }
   };
 
   void reciveSensorData(String msg)
   {
-    StaticJsonDocument<200> inputDoc;
     DeserializationError error = deserializeJson(inputDoc, msg);
     if (error)
     {
@@ -106,6 +109,7 @@ public:
     NodeInputData inputData = NodeInputData(senderId, destId, signalcode, hopCount, contentName, content);
 
     nodeInteractor.handleSensorDataReceive(inputData);
+    inputDoc.clear();
   }
 };
 
