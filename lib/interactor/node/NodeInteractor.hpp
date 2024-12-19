@@ -27,6 +27,7 @@
 #define SIGNAL_INTEREST "1" // Interest
 #define SIGNAL_DATA "2"     // Data
 #define SIGANAL_INVALID "3" // Invalid message
+#define HOP_COUNT_THRESHOLD 16 // Hop Count Threshold
 
 class NodeInteractor : public NodeUseCase
 {
@@ -53,7 +54,7 @@ public:
     Content content(inputData.getContent());
 
     // processing when receiving an Interest
-    if (hopcount.getValue() >= 16)
+    if (hopcount.getValue() >= HOP_COUNT_THRESHOLD)
     {
       // packet discard
       NodeOutputData outputData(
@@ -127,6 +128,7 @@ public:
       // cache in CS
       CSPair csPair(contentName, content);
       csRepository.save(csPair);
+
       // send data based on PIT
       NodeOutputData outputData(
           *destinationId.getValue().begin(),
@@ -142,7 +144,12 @@ public:
     {
       // save to PIT Table
       FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
+<<<<<<< HEAD
       fibRepository.saveForDynamic(fibPair, senderId.getValue(), hopcount.getValue());
+=======
+      fibRepository.save(fibPair);
+
+>>>>>>> main
       // packet discard
       NodeOutputData outputData(
           std::string("NULL"),
