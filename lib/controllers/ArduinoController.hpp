@@ -19,7 +19,7 @@ private:
 public:
   String receiveMessage(uint32_t to, String msg)
   {
-    StaticJsonDocument<200> inputDoc;
+    StaticJsonDocument<200> inputDoc;   //送信文字数．
 
     DeserializationError error = deserializeJson(inputDoc, msg);
 
@@ -81,6 +81,9 @@ public:
       outputDoc["contentName"] = outputData.getContentName();
       outputDoc["content"] = outputData.getContent();
 
+      std::string toStr = std::to_string(to);
+      outputDoc["relayNode"] = senderId + toStr;    //こういう書き方
+      
       String returnstr;
       serializeJson(outputDoc, returnstr);
       return returnstr;

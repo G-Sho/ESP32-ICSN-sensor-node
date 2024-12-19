@@ -119,6 +119,8 @@ void setup()
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+  
+  Serial.printf("%u\n", mesh.getNodeId());
 }
 
 void loop()
