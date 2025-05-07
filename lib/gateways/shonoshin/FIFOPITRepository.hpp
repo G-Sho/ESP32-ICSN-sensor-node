@@ -20,7 +20,7 @@ public:
         if (it != m_pit.end())
             return;
 
-        // PITのサイズが100を超えないように消す
+        // Erase PIT so that its size does not exceed maxSize
         while (MAX_PIT_TABLE_SIZE <= m_pitManagement.size())
         {
             auto it = m_pit.find(m_pitManagement.front());
@@ -39,7 +39,7 @@ public:
         if (it != m_pit.end())
             m_pit.erase(contentName.getValue());
     };
-    
+
     bool find(ContentName contentName) override
     {
         auto it = m_pit.find(contentName.getValue());

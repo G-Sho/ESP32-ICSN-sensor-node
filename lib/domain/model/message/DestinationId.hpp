@@ -12,7 +12,7 @@ private:
 public:
   DestinationId(std::set<std::string> value)
   {
-    // 規則を書く
+    // Write the rules
 
     this->value = value;
   };

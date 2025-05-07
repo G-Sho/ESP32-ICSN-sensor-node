@@ -11,7 +11,7 @@ private:
 public:
   SignalCode(std::string value)
   {
-    // 規則を書く
+    // Write the rules
 
     this->value = value;
   };

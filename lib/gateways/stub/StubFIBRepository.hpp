@@ -19,7 +19,7 @@ public:
         if (it != m_fib.end())
             return;
 
-        // FIBのサイズが100を超えないように消す
+        // Erase FIB so that its size does not exceed maxSize
         while (m_maxSize <= m_fibManagement.size())
         {
             auto it = m_fib.find(m_fibManagement.front());

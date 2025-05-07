@@ -11,7 +11,7 @@ private:
 public:
   HopCount(int value)
   {
-    // 規則を書く
+    // Write the rules
 
     this->value = value;
   };

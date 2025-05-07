@@ -8,9 +8,9 @@
 #include "Sensor.h"
 
 // MESH Details
-#define MESH_PREFIX "RNTMESH"        // name for your MESH
-#define MESH_PASSWORD "MESHpassword" // password for your MESH
-#define MESH_PORT 5555               // default port
+#define MESH_PREFIX "ICSN"         // name for your MESH
+#define MESH_PASSWORD "MyPassword" // password for your MESH
+#define MESH_PORT 5555             // default port
 
 // Painless Mesh
 painlessMesh mesh;
@@ -33,7 +33,7 @@ StaticJsonDocument<200> doc;
 void msgReception(uint32_t to, String const &msg)
 {
   String processedmsg = arduinoController.receiveMessage(to, msg);
-  Serial.printf("Processed msg=%s\n", processedmsg.c_str());
+  // Serial.printf("Processed msg=%s\n", processedmsg.c_str());
 
   DeserializationError error = deserializeJson(doc, processedmsg);
   if (error)
@@ -103,8 +103,8 @@ void setup()
   Serial.begin(115200);
   sensorObj.run();
 
-  // mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
-  mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages
+  mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE); // all types on
+  // mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages
 
   mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT);
   mesh.onReceive(&receivedCallback);
@@ -118,17 +118,16 @@ void setup()
 
 void loop()
 {
-  // it will run the user scheduler as well
+  // It will run the user scheduler as well
   mesh.update();
 
-  // シリアルに値が入力されているならその内容を送信
+  //  If a value is entered in the serial
   if (Serial.available() > 0)
   {
-    // シリアルデータの受信 (改行まで)
+    // Read to the end of a line
     String msg;
     msg = Serial.readStringUntil('\n');
-
-    Serial.printf("Received from Serial, msg=%s\n", msg.c_str());
+    // Serial.printf("Received from Serial, msg=%s\n", msg.c_str());
 
     msgReception(mesh.getNodeId(), msg);
   }

@@ -19,7 +19,7 @@ public:
         if (it != m_pit.end())
             return;
 
-        // PITのサイズが100を超えないように消す
+        // Erase PIT so that its size does not exceed maxSize
         while (m_maxSize <= m_pitManagement.size())
         {
             auto it = m_pit.find(m_pitManagement.front());

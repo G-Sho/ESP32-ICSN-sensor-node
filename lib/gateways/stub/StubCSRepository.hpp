@@ -19,7 +19,7 @@ public:
         if (it != m_cs.end())
             return;
 
-        // CSのサイズが100を超えないように消す
+        // Erase CS so that its size does not exceed maxSize
         while (m_maxSize <= m_csManagement.size())
         {
             auto it = m_cs.find(m_csManagement.front());
