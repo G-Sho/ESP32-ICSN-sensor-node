@@ -27,7 +27,7 @@ void DHTTemperature::read()
   // CSに保存(命名規則については要検討)
   m_numberOfSensorData++;
   if (m_maxSiza <= m_numberOfSensorData)
-    m_numberOfSensorData = 0;
+    m_numberOfSensorData = 1;
 
   m_contentName = String("/temp/") + String(m_numberOfSensorData);
 }
