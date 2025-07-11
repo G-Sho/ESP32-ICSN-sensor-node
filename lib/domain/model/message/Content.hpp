@@ -16,7 +16,17 @@ public:
     this->value = value;
   };
 
-  std::string getValue()
+  static Content Null()
+  {
+    return Content({});
+  }
+
+  bool isNull() const
+  {
+    return value.empty();
+  }
+
+  std::string getValue() const
   {
     return value;
   };

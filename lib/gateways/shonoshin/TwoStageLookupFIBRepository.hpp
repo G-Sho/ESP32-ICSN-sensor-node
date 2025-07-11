@@ -1,14 +1,26 @@
 #ifndef INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_
 #define INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_
 
-#include "interface/FIBRepository.hpp"
+#include "interface/FIBRepositoryInterface.hpp"
 #include <map>       //std::map
 #include <algorithm> // std::min
+#include <unordered_map>
 
-#define THRESHOLD 5 // システム定義の閾値
-template <typename T> bool chmax(T &a, const T &b) { if (a < b) { a = b; return 1; } return 0; }
+#define THRESHOLD 5 // 論文中の M
+#define MAX_FIB_TABLE_SIZE 20
 
-class TwoStageLookupFIBRepository : public FIBRepository
+template <typename T>
+bool chmax(T &a, const T &b)
+{
+    if (a < b)
+    {
+        a = b;
+        return 1;
+    }
+    return 0;
+}
+
+class TwoStageLookupFIBRepository : public FIBRepositoryInterface
 {
 private:
     // FIBエントリの構造体
@@ -25,96 +37,87 @@ private:
             maximumDepth = num;
             nodeId = Id;
         }
-        bool getIsVir() { return isVir; };
-        int getMaximumDepth() { return maximumDepth; };
-        std::set<std::string> getNodeId() { return nodeId; };
+        bool getIsVir() const { return isVir; };
+        int getMaximumDepth() const { return maximumDepth; };
+        const std::set<std::string> &getNodeId() const { return nodeId; };
         void setIsVir(bool flg) { isVir = flg; };
         void setMaximumDepth(int m) { maximumDepth = m; };
+        void insertNodeId(const std::string &id) { nodeId.insert(id); };
     };
 
-    std::map<std::string, FIBEntry> fib;
+    // std::map<std::string, FIBEntry> fib;
+    std::list<std::pair<std::string, FIBEntry>> Q;
+    std::unordered_map<std::string, std::list<std::pair<std::string, FIBEntry>>::iterator> iter;
 
-    // 新しいFIB Tableを構築する関数
-    void SaveFIB(const std::string &contentName, const std::set<std::string> &nodeId, int m){
-        if (THRESHOLD >= m && fib.count(contentName))
+    std::string extractPrefix(const std::string &name, int pfx)
+    {
+        int cnt = 0;
+        std::string res = name;
+
+        for (int i = 0; i < res.length(); i++)
         {
-            fib[contentName].setIsVir(false);
-            for (auto x : nodeId)
+            if (res[i] == '/')
             {
-                fib[contentName].nodeId.insert(x);
+                cnt++;
+                if (cnt > pfx)
+                {
+                    return res.substr(0, i);
+                }
             }
         }
-        else if (THRESHOLD >= m && !fib.count(contentName))
+
+        return res;
+    }
+
+    // 新しいFIB Tableを構築する関数
+    void SaveFIB(const std::string &contentName, const std::set<std::string> &nodeId, int m)
+    {
+        if (THRESHOLD >= m && iter.count(contentName))
         {
-            fib[contentName] = FIBEntry(false, m, nodeId);
+            iter[contentName]->second.setIsVir(false);
+            for (const auto &x : nodeId)
+                iter[contentName]->second.insertNodeId(x);
+        }
+        else if (THRESHOLD >= m && !iter.count(contentName))
+        {
+            Q.push_front({contentName, FIBEntry(false, m, nodeId)});
+            iter[contentName] = Q.begin();
         }
         else
         {
-            int num = 0;
-            std::string str = contentName;
-            for (int i = 0; i <= str.length(); i++)
+            std::string str = extractPrefix(contentName, THRESHOLD);
+            if (iter.count(str))
             {
-                if (str[i] == '/')
-                {
-                    num++;
-                    if (num > THRESHOLD)
-                    {
-                        str = str.substr(0, i);
-                        break;
-                    }
-                }
-            }
-
-            if (fib.count(str))
-            {
-                chmax(fib[str].maximumDepth, m);
+                chmax(iter[str]->second.maximumDepth, m);
             }
             else
             {
-                fib[str] = FIBEntry(true, m, {""});
+                Q.push_front({str, FIBEntry(true, m, {""})});
+                iter[str] = Q.begin();
             }
 
-            if (fib.count(contentName))
+            if (iter.count(contentName))
             {
-                for (auto x : nodeId)
-                {
-                    fib[contentName].nodeId.insert(x);
-                }
+                for (const auto &x : nodeId)
+                    iter[contentName]->second.insertNodeId(x);
             }
             else
             {
-                fib[contentName] = FIBEntry(false, m, nodeId);
+                Q.push_front({contentName, FIBEntry(false, m, nodeId)});
+                iter[contentName] = Q.begin();
             }
         }
     };
 
     // FIBを検索する関数
-    FIBEntry *LookupFIB(const std::string& name, const int& pfx)
+    FIBEntry *LookupFIB(const std::string &name, const int &pfx)
     {
-        // 実際のFIB検索処理をここに実装
-        int num = 0;
-        std::string str = name;
-        for (int i = 0; i <= name.length(); i++)
+        std::string prefix = extractPrefix(name, pfx);
+        if (iter.count(prefix))
         {
-            if (name[i] == '/')
-            {
-                num++;
-                if (num > pfx)
-                {
-                    str = name.substr(0, i);
-                    break;
-                }
-            }
+            return &iter[prefix]->second;
         }
-        auto iter = fib.find(str);
-        if (iter != end(fib))
-        {
-            return &fib.at(str);
-        }
-        else
-        {
-            return nullptr; // 仮の戻り値としてnullを返すF
-        }
+        return nullptr;
     };
 
     // エントリが仮想かどうかを判定する関数
@@ -130,7 +133,7 @@ private:
     };
 
     // FIBのLongest Prefix Match (LPM) 処理を行う関数
-    FIBEntry *FIB_LPM_LOOKUP(const std::string& name, int n, int M)
+    FIBEntry *FIB_LPM_LOOKUP(const std::string &name, int n, int M)
     {
         FIBEntry *FIB_entry = nullptr;
         FIBEntry *FIB_entry_1s = nullptr;
@@ -174,19 +177,29 @@ private:
                     return FIB_entry;
                 }
             }
-        };
+        }
         return nullptr; // FIB_NOT_FOUND
     }
 
 public:
-    void save(FIBPair fibPair) override
+    void save(const FIBPair &fibPair) override
     {
-        int m = 0; // fibPair.getContentName()の最大深度の取得
-        for (int i = 0; i < fibPair.getContentName().getValue().size(); i++)
-            if (fibPair.getContentName().getValue()[i] == '/')
-                m++;
+        const std::string contentName = fibPair.getContentName().getValue();
 
-        SaveFIB(fibPair.getContentName().getValue(), fibPair.getDestinationId().getValue(), m);
+        // LRU 更新
+        if (iter.count(contentName) != 0)
+        {
+            Q.erase(iter[contentName]);
+        }
+        else if (Q.size() >= MAX_FIB_TABLE_SIZE)
+        {
+            std::string k = Q.back().first;
+            iter.erase(k);
+            Q.pop_back();
+        }
+
+        int m = std::count(contentName.begin(), contentName.end(), '/');
+        SaveFIB(contentName, fibPair.getDestinationId().getValue(), m);
 
         // fib table すべてを出力する
         // auto begin = fib.begin(), end = fib.end();
@@ -199,34 +212,76 @@ public:
         // }
     };
 
-    void remove(ContentName contentName) override {
-        // mijissou
+    // 削除は行うタイミングが未定のため詳細は検討すべき
+    void remove(const ContentName &contentName) override
+    {
+        std::string name = contentName.getValue();
+
+        // 実エントリ削除
+        if (iter.count(name))
+        {
+            Q.erase(iter[name]);
+            iter.erase(name);
+        }
+
+        // 関連する仮想エントリを確認（最大で1つ）
+        std::string virtualPrefix = extractPrefix(name, THRESHOLD);
+        if (iter.count(virtualPrefix))
+        {
+            int virtualMD = iter[virtualPrefix]->second.maximumDepth;
+
+            // 仮想のmaximumDepthより深いエントリが他にないか確認
+            bool stillNeeded = false;
+            for (const auto &p : Q)
+            {
+                if (p.first != virtualPrefix &&
+                    p.first.find(virtualPrefix + "/") == 0) // 仮想プレフィックスの子で
+                {
+                    int depth = std::count(p.first.begin(), p.first.end(), '/');
+                    if (depth > THRESHOLD)
+                    {
+                        stillNeeded = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!stillNeeded)
+            {
+                Q.erase(iter[virtualPrefix]);
+                iter.erase(virtualPrefix);
+            }
+        }
     };
 
-    bool find(ContentName contentName) override
+    bool find(const ContentName &contentName) override
     {
-        int n = 0; // number of name components in an Interest packet
-        for (int i = 0; i < contentName.getValue().length(); i++)
-            if (contentName.getValue()[i] == '/')
-                n++;
-        FIBEntry *result = FIB_LPM_LOOKUP(contentName.getValue(), n, THRESHOLD);
-        if (result)
-            return true;
-        else
-            return false;
+        std::string name = contentName.getValue();
+        int n = std::count(name.begin(), name.end(), '/');
+        return FIB_LPM_LOOKUP(name, n, THRESHOLD) != nullptr;
     };
 
-    DestinationId get(ContentName contentName) override
+    DestinationId get(const ContentName &contentName) override
     {
-        int n = 0; // number of name components in an Interest packet
-        for (int i = 0; i < contentName.getValue().length(); i++)
-            if (contentName.getValue()[i] == '/')
-                n++;
-        FIBEntry *result = FIB_LPM_LOOKUP(contentName.getValue(), n, THRESHOLD);
+        std::string name = contentName.getValue();
+        int n = std::count(name.begin(), name.end(), '/');
+        FIBEntry *result = FIB_LPM_LOOKUP(name, n, THRESHOLD);
+
         if (result)
+        {
+            if (iter.count(name))
+            {
+                Q.splice(Q.begin(), Q, iter[name]);
+            }
+            else
+            {
+                Q.push_front({name, *result});
+                iter[name] = Q.begin();
+            }
             return DestinationId(result->nodeId);
-        else
-            return DestinationId({"NULL"});
+        }
+
+        return DestinationId::Null();
     };
 };
 

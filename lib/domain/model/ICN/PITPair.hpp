@@ -14,9 +14,9 @@ public:
   PITPair(const ContentName& contentName, const DestinationId& destinationId)
   : contentName(contentName), destinationId(destinationId) {}
 
-  ContentName getContentName() { return contentName; };
+  ContentName getContentName() const { return contentName; };
 
-  DestinationId getDestinationId() { return destinationId; };
+  DestinationId getDestinationId() const { return destinationId; };
 };
 
 #endif // INCLUDED_PIT_PAIR_hpp_

@@ -14,9 +14,9 @@ public:
   CSPair(const ContentName& contentName, const Content& content)
   : contentName(contentName), content(content) {}
 
-  ContentName getContentName() { return contentName; };
+  ContentName getContentName() const { return contentName; };
 
-  Content getContent() { return content; };
+  Content getContent() const { return content; };
 };
 
 #endif //INCLUDED_CS_hpp_

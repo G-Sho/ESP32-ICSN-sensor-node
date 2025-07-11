@@ -1,7 +1,7 @@
 #ifndef INCLUDED_CONTENT_NAME_hpp_
 #define INCLUDED_CONTENT_NAME_hpp_
 
-#include<string>
+#include <string>
 
 class ContentName
 {
@@ -16,7 +16,17 @@ public:
     this->value = value;
   };
 
-  std::string getValue()
+  static ContentName Null()
+  {
+    return ContentName({});
+  }
+
+  bool isNull() const
+  {
+    return value.empty();
+  }
+
+  std::string getValue() const
   {
     return value;
   };

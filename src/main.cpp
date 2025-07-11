@@ -18,7 +18,7 @@ Scheduler userScheduler; // to control your personal task
 
 // self-made
 ArduinoController arduinoController;
-DHTHumidity sensorObj;
+DHTTemperature sensorObj;
 
 // SIGNAL
 #define SIGNAL_INTEREST "1" // Interest
@@ -56,6 +56,7 @@ void msgReception(uint32_t to, String const &msg)
     }
   }
 
+  Serial.printf("send msg=%s\n", processedmsg.c_str());
   doc.clear();
 }
 
@@ -83,17 +84,17 @@ void receivedCallback(uint32_t from, String &msg)
 
 void newConnectionCallback(uint32_t nodeId)
 {
-  Serial.printf("New Connection, nodeId = %u\n", nodeId);
+  // Serial.printf("New Connection, nodeId = %u\n", nodeId);
 }
 
 void changedConnectionCallback()
 {
-  Serial.printf("Changed connections\n");
+  // Serial.printf("Changed connections\n");
 }
 
 void nodeTimeAdjustedCallback(int32_t offset)
 {
-  Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
+  // Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
 }
 
 /*********************< setup and loop >**********************/
@@ -103,8 +104,8 @@ void setup()
   Serial.begin(115200);
   sensorObj.run();
 
-  mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE); // all types on
-  // mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages
+  // mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE); // all types on
+  mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages
 
   mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT);
   mesh.onReceive(&receivedCallback);

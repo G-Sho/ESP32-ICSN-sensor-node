@@ -17,8 +17,8 @@
 #include "model/ICN/PITPair.hpp"
 #include "model/ICN/CSPair.hpp"
 #include "shonoshin/TwoStageLookupFIBRepository.hpp"
-#include "shonoshin/FIFOPITRepository.hpp"
-#include "shonoshin/FIFOCSRepository.hpp"
+#include "shonoshin/LRUPITRepository.hpp"
+#include "shonoshin/pCASTINGCSRepository.hpp"
 // #include "node/NodePresenter.h"
 // #include "console/ConsoleNodePresenter.hpp"
 
@@ -35,8 +35,8 @@ private:
   // StubPITRepository pitRepository;
   // StubCSRepository csRepository;
   TwoStageLookupFIBRepository fibRepository;
-  FIFOPITRepository pitRepository;
-  FIFOCSRepository csRepository;
+  LRUPITRepository pitRepository;
+  pCASTINGCSRepository csRepository;
   // NodePresenter nodePresenter;
   // ConsoleNodePresenter consoleNodePresenter;
 
@@ -120,12 +120,12 @@ public:
     ContentName contentName(inputData.getContentName());
     Content content(inputData.getContent());
 
-    // processing when receiving an DARA
+    // processing when receiving an DATA
     if (pitRepository.find(contentName.getValue()))
     {
       // cache in CS
       CSPair csPair(contentName, content);
-      csRepository.save(csPair);
+      csRepository.save(&csPair);
 
       // send data based on PIT
       NodeOutputData outputData(
