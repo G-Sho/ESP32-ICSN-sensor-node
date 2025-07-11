@@ -125,7 +125,11 @@ public:
     {
       // cache in CS
       CSPair csPair(contentName, content);
-      csRepository.save(&csPair);
+      csRepository.save(csPair);
+      
+      // cache in FIB
+      FIBPair fibPair(contentName, senderId);
+      fibRepository.save(fibPair);
 
       // send data based on PIT
       NodeOutputData outputData(
