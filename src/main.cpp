@@ -115,6 +115,8 @@ void setup()
 
   userScheduler.addTask(taskReadSensorData);
   taskReadSensorData.enable();
+
+  arduinoController.setMesh(&mesh);
 }
 
 void loop()

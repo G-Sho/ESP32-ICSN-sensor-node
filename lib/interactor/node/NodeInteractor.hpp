@@ -23,9 +23,9 @@
 // #include "console/ConsoleNodePresenter.hpp"
 
 // SIGNAL
-#define SIGNAL_INTEREST "1" // Interest
-#define SIGNAL_DATA "2"     // Data
-#define SIGANAL_INVALID "3" // Invalid message
+#define SIGNAL_INTEREST "1"    // Interest
+#define SIGNAL_DATA "2"        // Data
+#define SIGANAL_INVALID "3"    // Invalid message
 #define HOP_COUNT_THRESHOLD 16 // Hop Count Threshold
 
 class NodeInteractor : public NodeUseCase
@@ -41,6 +41,11 @@ private:
   // ConsoleNodePresenter consoleNodePresenter;
 
 public:
+  void setMesh(painlessMesh *meshPtr)
+  {
+    csRepository.setMesh(meshPtr);
+  };
+
   NodeOutputData handleInterestReceive(NodeInputData inputData) override
   {
     SenderId senderId(inputData.getSenderId());
@@ -49,7 +54,7 @@ public:
     HopCount hopcount(inputData.getHopCount());
     hopcount.increment();
     ContentName contentName(inputData.getContentName());
-    Content content(inputData.getContent());
+    Content content({inputData.getContent(), inputData.getTime()});
 
     // processing when receiving an Interest
     if (hopcount.getValue() >= HOP_COUNT_THRESHOLD)
@@ -61,12 +66,14 @@ public:
           SIGANAL_INVALID,
           hopcount.getValue(),
           std::string("NULL"),
-          std::string("NULL"));
+          std::string("NULL"),
+          uint32_t(0));
       return outputData;
     }
 
     if (csRepository.find(contentName))
     {
+      Content res = csRepository.get(contentName);
       // send data based on CS
       NodeOutputData outputData(
           *destinationId.getValue().begin(),
@@ -74,7 +81,8 @@ public:
           SIGNAL_DATA,
           0,
           contentName.getValue(),
-          csRepository.get(contentName).getValue());
+          res.getValue().first,
+          res.getValue().second);
       return outputData;
     }
     else
@@ -92,7 +100,8 @@ public:
             SIGNAL_INTEREST,
             hopcount.getValue(),
             contentName.getValue(),
-            content.getValue());
+            content.getValue().first,
+            content.getValue().second);
         return outputData;
       }
       else
@@ -104,7 +113,8 @@ public:
             SIGNAL_INTEREST,
             hopcount.getValue(),
             contentName.getValue(),
-            content.getValue());
+            content.getValue().first,
+            content.getValue().second);
         return outputData;
       }
     }
@@ -118,7 +128,7 @@ public:
     HopCount hopcount(inputData.getHopCount());
     hopcount.increment();
     ContentName contentName(inputData.getContentName());
-    Content content(inputData.getContent());
+    Content content({inputData.getContent(), inputData.getTime()});
 
     // processing when receiving an DATA
     if (pitRepository.find(contentName.getValue()))
@@ -126,9 +136,9 @@ public:
       // cache in CS
       CSPair csPair(contentName, content);
       csRepository.save(csPair);
-      
+
       // cache in FIB
-      FIBPair fibPair(contentName, senderId);
+      FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
       fibRepository.save(fibPair);
 
       // send data based on PIT
@@ -138,7 +148,8 @@ public:
           SIGNAL_DATA,
           hopcount.getValue(),
           contentName.getValue(),
-          content.getValue());
+          content.getValue().first,
+          content.getValue().second);
       pitRepository.remove(contentName);
       return outputData;
     }
@@ -155,7 +166,8 @@ public:
           SIGANAL_INVALID,
           hopcount.getValue(),
           std::string("NULL"),
-          std::string("NULL"));
+          std::string("NULL"),
+          uint32_t(0));
       return outputData;
     }
   };
@@ -163,7 +175,7 @@ public:
   void handleSensorDataReceive(NodeInputData inputData) override
   {
     ContentName contentName(inputData.getContentName());
-    Content content(inputData.getContent());
+    Content content({inputData.getContent(), inputData.getTime()});
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
   };

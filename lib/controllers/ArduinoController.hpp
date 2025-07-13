@@ -21,6 +21,11 @@ private:
   NodeInteractor nodeInteractor;
 
 public:
+  void setMesh(painlessMesh *meshPtr)
+  {
+    nodeInteractor.setMesh(meshPtr); // NodeInteractor へ伝播
+  };
+
   String receiveMessage(uint32_t to, String msg)
   {
     // Serial.printf("in receiveMessage, %s\n", msg.c_str());
@@ -41,7 +46,8 @@ public:
       int hopCount = inputDoc["hopCount"] | -1;
       std::string contentName = inputDoc["contentName"] | "unknown";
       std::string content = inputDoc["content"] | "unknown";
-      NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
+      uint32_t time = inputDoc["time"];
+      NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content, time);
 
       NodeOutputData outputData = (nodeInteractor.handleInterestReceive(inputData));
       inputDoc.clear();
@@ -67,7 +73,8 @@ public:
       int hopCount = inputDoc["hopCount"] | -1;
       std::string contentName = inputDoc["contentName"] | "unknown";
       std::string content = inputDoc["content"] | "unknown";
-      NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content);
+      uint32_t time = inputDoc["time"];
+      NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content, time);
 
       NodeOutputData outputData = (nodeInteractor.handleDataReceive(inputData));
       inputDoc.clear();
@@ -102,11 +109,12 @@ public:
 
     std::string senderId = "unknown";
     std::string destId = "unknown";
-    std::string signalcode = "unknown";
+    std::string signalCode = "unknown";
     int hopCount = -1;
     std::string contentName = inputDoc["contentName"] | "unknown";
     std::string content = inputDoc["content"] | "unknown";
-    NodeInputData inputData = NodeInputData(senderId, destId, signalcode, hopCount, contentName, content);
+    uint32_t time = inputDoc["time"];
+    NodeInputData inputData = NodeInputData(senderId, destId, signalCode, hopCount, contentName, content, time);
 
     nodeInteractor.handleSensorDataReceive(inputData);
     inputDoc.clear();

@@ -10,10 +10,11 @@
 class pCASTINGCSRepository : public pCASTINGCSRepositoryInterface
 {
 private:
-    std::list<std::pair<std::string, std::string>> Q;                                               // {key, value}
-    std::unordered_map<std::string, std::list<std::pair<std::string, std::string>>::iterator> iter; // <key, iterator>
+    std::list<std::tuple<std::string, std::string, double>> Q;                                               // {key, value}
+    std::unordered_map<std::string, std::list<std::tuple<std::string, std::string, double>>::iterator> iter; // <key, iterator>
     std::mt19937 gen;
     std::uniform_real_distribution<> dis;
+    painlessMesh *mesh = nullptr;
 
     static std::mt19937::result_type initSeed()
     {
@@ -44,9 +45,19 @@ public:
     pCASTINGCSRepository()
         : gen(initSeed()), dis(0.0, 1.0) {}
 
-    void save(const CSPair &csPair, const double &EN, const double &OC, const double &FR) override
+    void setMesh(painlessMesh *meshPtr)
+    {
+        mesh = meshPtr;
+    };
+
+    void save(const CSPair &csPair) override
     {
         const std::string &name = csPair.getContentName().getValue();
+        const std::string &content = csPair.getContent().getValue().first;
+        const uint32_t &timeStamp = csPair.getContent().getValue().second;
+        double EN = 1.0;
+        double OC = Q.size() / MAX_CS_TABLE_SIZE;
+        double FR = 1.0 - ((mesh->getNodeTime() - timeStamp) / 100.0);
 
         if (pCASTING(EN, OC, FR))
         {
@@ -57,11 +68,11 @@ public:
             else if (Q.size() >= MAX_CS_TABLE_SIZE)
             {
                 auto it = --Q.end();
-                const std::string &k = it->first;
+                const std::string &k = std::get<0>(*it);
                 iter.erase(k);
                 Q.pop_back();
             }
-            Q.push_front({name, csPair.getContent().getValue()});
+            Q.push_front({name, content, timeStamp});
             iter[name] = Q.begin();
         }
     };
@@ -88,11 +99,12 @@ public:
             return Content::Null();
 
         auto it = iter[name];
-        const std::string &v = it->second;
+        const std::string &v = std::get<1>(*it);
+        double t = std::get<2>(*it);
         Q.erase(it);
-        Q.push_front({name, v});
+        Q.push_front({name, v, t});
         iter[name] = Q.begin();
-        return Content(v);
+        return Content({v, t});
     };
 };
 

@@ -6,7 +6,7 @@
 #include "model/message/Content.hpp"
 
 class pCASTINGCSRepositoryInterface{
-    virtual void save(const CSPair &csPair, const double &EN, const double &OC, const double &FR) {};
+    virtual void save(const CSPair &csPair) {};
     virtual void remove(const ContentName &contentName) {};
     virtual bool find(const ContentName &contentName);
     virtual Content get(const ContentName &contentName);

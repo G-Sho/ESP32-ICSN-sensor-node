@@ -6,10 +6,10 @@
 class Content
 {
 private:
-  std::string value;
+  std::pair<std::string, uint32_t> value;
 
 public:
-  Content(std::string value)
+  Content(std::pair<std::string, uint32_t> value)
   {
     // Write the rules
 
@@ -21,12 +21,7 @@ public:
     return Content({});
   }
 
-  bool isNull() const
-  {
-    return value.empty();
-  }
-
-  std::string getValue() const
+  std::pair<std::string, uint32_t> getValue() const
   {
     return value;
   };

@@ -3,6 +3,7 @@
 
 #include "model/message/ContentName.hpp"
 #include "model/message/Content.hpp"
+#include "model/message/Time.hpp"
 
 class CSPair
 {
@@ -11,12 +12,12 @@ private:
   Content content;
 
 public:
-  CSPair(const ContentName& contentName, const Content& content)
-  : contentName(contentName), content(content) {}
+  CSPair(const ContentName &contentName, const Content &content)
+      : contentName(contentName), content(content) {}
 
   ContentName getContentName() const { return contentName; };
 
   Content getContent() const { return content; };
 };
 
-#endif //INCLUDED_CS_hpp_
+#endif // INCLUDED_CS_hpp_
