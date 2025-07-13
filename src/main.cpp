@@ -67,6 +67,7 @@ void readSensorData()
 
   doc["contentName"] = sensorObj.getContentName();
   doc["content"] = sensorObj.getData();
+  doc["time"] = mesh.getNodeTime();
 
   String sensorData;
   serializeJson(doc, sensorData);
