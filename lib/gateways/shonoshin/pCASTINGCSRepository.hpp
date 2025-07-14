@@ -41,6 +41,25 @@ private:
         return (randVal <= computeFu(EN, OC, FR));
     }
 
+    void removeExpiredEntries()
+    {
+        auto now = mesh->getNodeTime();
+        for (auto it = Q.begin(); it != Q.end();)
+        {
+            double timeStamp = std::get<2>(*it);
+            double FR = 1.0 - ((now - timeStamp) / 100.0);
+            if (FR <= 0.0)
+            {
+                iter.erase(std::get<0>(*it));
+                it = Q.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
 public:
     pCASTINGCSRepository()
         : gen(initSeed()), dis(0.0, 1.0) {}
@@ -52,6 +71,8 @@ public:
 
     void save(const CSPair &csPair) override
     {
+        removeExpiredEntries();
+
         const std::string &name = csPair.getContentName().getValue();
         const std::string &content = csPair.getContent().getValue().first;
         const uint32_t &timeStamp = csPair.getContent().getValue().second;
@@ -94,6 +115,8 @@ public:
 
     Content get(const ContentName &contentName) override
     {
+        removeExpiredEntries();
+        
         const std::string &name = contentName.getValue();
         if (iter.count(name) == 0)
             return Content::Null();
