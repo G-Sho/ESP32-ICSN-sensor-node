@@ -18,7 +18,7 @@ Scheduler userScheduler; // to control your personal task
 
 // self-made
 ArduinoController arduinoController;
-DHTTemperature sensorObj;
+// DHTTemperature sensorObj;
 
 // SIGNAL
 #define SIGNAL_INTEREST "1" // Interest
@@ -60,14 +60,23 @@ void msgReception(uint32_t to, String const &msg)
   doc.clear();
 }
 
+int cnt = 0;
+
 // Read Sensor Data
 void readSensorData()
 {
-  sensorObj.read();
+  // sensorObj.read();
 
-  doc["contentName"] = sensorObj.getContentName();
-  doc["content"] = sensorObj.getData();
+  // doc["contentName"] = sensorObj.getContentName();
+  // doc["content"] = sensorObj.getData();
+
+  doc["contentName"] = "/Hoge/" + std::to_string(cnt);
+  cnt++;
+  doc["content"] = "0325";
   doc["time"] = mesh.getNodeTime();
+
+  Serial.print("mesh.getNodeTime(): ");
+  Serial.println(mesh.getNodeTime());
 
   String sensorData;
   serializeJson(doc, sensorData);
@@ -103,7 +112,7 @@ void nodeTimeAdjustedCallback(int32_t offset)
 void setup()
 {
   Serial.begin(115200);
-  sensorObj.run();
+  // sensorObj.run();
 
   // mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE); // all types on
   mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages

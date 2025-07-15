@@ -1,15 +1,16 @@
-#ifndef INCLUDED_CS_REPOSITORY_hpp_
-#define INCLUDED_CS_REPOSITORY_hpp_
+#pragma once
 
 #include "model/ICN/CSPair.hpp"
 #include "model/message/ContentName.hpp"
 #include "model/message/Content.hpp"
 
-class CSRepository{
-    virtual void save(CSPair csPair) {};
-    virtual void remove(ContentName contentName) {};
-    virtual bool find(ContentName contentName);
-    virtual Content get(ContentName contentName);
-};
+class CSRepository
+{
+public:
+    virtual void save(const CSPair &csPair) = 0;
+    virtual void remove(const ContentName &contentName) = 0;
+    virtual bool find(const ContentName &contentName) = 0;
+    virtual Content get(const ContentName &contentName) = 0;
 
-#endif // INCLUDED_CS_REPOSIORY_hpp_
+    virtual ~CSRepository() = default;
+};

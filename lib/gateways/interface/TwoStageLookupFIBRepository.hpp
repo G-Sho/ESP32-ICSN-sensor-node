@@ -1,13 +1,14 @@
-#ifndef INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_
-#define INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_
+#pragma once
 
-#include "interface/FIBRepositoryInterface.hpp"
-#include <map>       //std::map
-#include <algorithm> // std::min
+#include "FIBRepository.hpp"
+#include <algorithm>
 #include <unordered_map>
+#include <set>
+#include <string>
+#include <list>
 
-#define THRESHOLD 5 // 論文中の M
-#define MAX_FIB_TABLE_SIZE 20
+constexpr size_t MAX_FIB_TABLE_SIZE = 20;
+constexpr int MAX_VIRTUAL_DEPTH = 5;
 
 template <typename T>
 bool chmax(T &a, const T &b)
@@ -20,7 +21,7 @@ bool chmax(T &a, const T &b)
     return 0;
 }
 
-class TwoStageLookupFIBRepository : public FIBRepositoryInterface
+class TwoStageLookupFIBRepository : public FIBRepository
 {
 private:
     // FIBエントリの構造体
@@ -72,27 +73,27 @@ private:
     // 新しいFIB Tableを構築する関数
     void SaveFIB(const std::string &contentName, const std::set<std::string> &nodeId, int m)
     {
-        if (THRESHOLD >= m && iter.count(contentName))
+        if (MAX_VIRTUAL_DEPTH >= m && iter.count(contentName))
         {
             iter[contentName]->second.setIsVir(false);
             for (const auto &x : nodeId)
                 iter[contentName]->second.insertNodeId(x);
         }
-        else if (THRESHOLD >= m && !iter.count(contentName))
+        else if (MAX_VIRTUAL_DEPTH >= m && !iter.count(contentName))
         {
             Q.push_front({contentName, FIBEntry(false, m, nodeId)});
             iter[contentName] = Q.begin();
         }
         else
         {
-            std::string str = extractPrefix(contentName, THRESHOLD);
+            std::string str = extractPrefix(contentName, MAX_VIRTUAL_DEPTH);
             if (iter.count(str))
             {
                 chmax(iter[str]->second.maximumDepth, m);
             }
             else
             {
-                Q.push_front({str, FIBEntry(true, m, {""})});
+                Q.push_front({str, FIBEntry(true, m, {})});
                 iter[str] = Q.begin();
             }
 
@@ -182,107 +183,8 @@ private:
     }
 
 public:
-    void save(const FIBPair &fibPair) override
-    {
-        const std::string contentName = fibPair.getContentName().getValue();
-
-        // LRU 更新
-        if (iter.count(contentName) != 0)
-        {
-            Q.erase(iter[contentName]);
-        }
-        else if (Q.size() >= MAX_FIB_TABLE_SIZE)
-        {
-            std::string k = Q.back().first;
-            iter.erase(k);
-            Q.pop_back();
-        }
-
-        int m = std::count(contentName.begin(), contentName.end(), '/');
-        SaveFIB(contentName, fibPair.getDestinationId().getValue(), m);
-
-        // fib table すべてを出力する
-        // auto begin = fib.begin(), end = fib.end();
-        // for (auto iter = begin; iter != end; iter++)
-        // {
-        //     for (const auto x : iter->second.getNodeId())
-        //     {
-        //         Serial.printf("%s => %s\n", iter->first.c_str(), x.c_str());
-        //     }
-        // }
-    };
-
-    // 削除は行うタイミングが未定のため詳細は検討すべき
-    void remove(const ContentName &contentName) override
-    {
-        std::string name = contentName.getValue();
-
-        // 実エントリ削除
-        if (iter.count(name))
-        {
-            Q.erase(iter[name]);
-            iter.erase(name);
-        }
-
-        // 関連する仮想エントリを確認（最大で1つ）
-        std::string virtualPrefix = extractPrefix(name, THRESHOLD);
-        if (iter.count(virtualPrefix))
-        {
-            int virtualMD = iter[virtualPrefix]->second.maximumDepth;
-
-            // 仮想のmaximumDepthより深いエントリが他にないか確認
-            bool stillNeeded = false;
-            for (const auto &p : Q)
-            {
-                if (p.first != virtualPrefix &&
-                    p.first.find(virtualPrefix + "/") == 0) // 仮想プレフィックスの子で
-                {
-                    int depth = std::count(p.first.begin(), p.first.end(), '/');
-                    if (depth > THRESHOLD)
-                    {
-                        stillNeeded = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!stillNeeded)
-            {
-                Q.erase(iter[virtualPrefix]);
-                iter.erase(virtualPrefix);
-            }
-        }
-    };
-
-    bool find(const ContentName &contentName) override
-    {
-        std::string name = contentName.getValue();
-        int n = std::count(name.begin(), name.end(), '/');
-        return FIB_LPM_LOOKUP(name, n, THRESHOLD) != nullptr;
-    };
-
-    DestinationId get(const ContentName &contentName) override
-    {
-        std::string name = contentName.getValue();
-        int n = std::count(name.begin(), name.end(), '/');
-        FIBEntry *result = FIB_LPM_LOOKUP(name, n, THRESHOLD);
-
-        if (result)
-        {
-            if (iter.count(name))
-            {
-                Q.splice(Q.begin(), Q, iter[name]);
-            }
-            else
-            {
-                Q.push_front({name, *result});
-                iter[name] = Q.begin();
-            }
-            return DestinationId(result->nodeId);
-        }
-
-        return DestinationId::Null();
-    };
+    void save(const FIBPair &fibPair) override;
+    void remove(const ContentName &contentName) override;
+    bool find(const ContentName &contentName) override;
+    DestinationId get(const ContentName &contentName) override;
 };
-
-#endif // INCLUDED_TWO_STAGE_LOOKUP_FIB_REPOSITORY_hpp_

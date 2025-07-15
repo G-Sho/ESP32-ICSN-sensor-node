@@ -54,5 +54,5 @@
         "queue": "cpp",
         "set": "cpp"
     },
-    "idf.portWin": "COM6"
+    "idf.portWin": "COM4"
 }

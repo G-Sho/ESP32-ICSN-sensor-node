@@ -17,8 +17,11 @@
 #include "model/ICN/PITPair.hpp"
 #include "model/ICN/CSPair.hpp"
 #include "shonoshin/TwoStageLookupFIBRepository.hpp"
-#include "shonoshin/LRUPITRepository.hpp"
-#include "shonoshin/pCASTINGCSRepository.hpp"
+// #include "shonoshin/LRUPITRepository.hpp"
+// #include "shonoshin/pCASTINGCSRepository.hpp"
+#include "interface/pCASTINGCSRepository.hpp"
+#include "interface/LRUPITRepository.hpp"
+#include "interface/TwoStageLookupFIBRepository.hpp"
 // #include "node/NodePresenter.h"
 // #include "console/ConsoleNodePresenter.hpp"
 
@@ -174,10 +177,40 @@ public:
 
   void handleSensorDataReceive(NodeInputData inputData) override
   {
+    // ContentName contentName(inputData.getContentName());
+    // Content content({inputData.getContent(), inputData.getTime()});
+    // CSPair csPair(contentName, content);
+    // csRepository.save(csPair);
+    // // csRepository.printCache();
+
+    // --- Test 1: Save & Find ---
     ContentName contentName(inputData.getContentName());
     Content content({inputData.getContent(), inputData.getTime()});
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
+
+    bool found = csRepository.find(contentName);
+    Serial.printf("[Test1] key found: %s\n", found ? "success" : "failure");
+
+    // --- Test 2: Get content ---
+    Content result = csRepository.get(contentName);
+    Serial.printf("[Test2] key content: %s\n", result.getValue().first.c_str());
+
+    // --- Test 3: Remove content ---
+    csRepository.remove(contentName);
+    bool afterRemove = csRepository.find(contentName);
+    Serial.printf("[Test3] key remove result: %s\n", afterRemove ? "failure" : "success");
+
+    // --- Test 4: Expired entry handling ---
+    ContentName name2("/Hoge/Expired");
+    Content expiredContent({"expired_value", 0.0}); // 時間切れのエントリ
+    CSPair expiredPair(name2, expiredContent);
+    csRepository.save(expiredPair);
+
+    // 更新後のキャッシュ状態確認
+    csRepository.printCache();
+
+    Serial.printf("=== All tests done ===\n");
   };
 };
 
