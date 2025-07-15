@@ -21,7 +21,7 @@ bool chmax(T &a, const T &b)
     return 0;
 }
 
-class TwoStageLookupFIBRepository : public FIBRepository
+class TwoStageLookupFIBRepository : public IFIBRepository
 {
 private:
     // FIBエントリの構造体

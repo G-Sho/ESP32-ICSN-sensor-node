@@ -12,7 +12,7 @@
 constexpr size_t MAX_CS_TABLE_SIZE = 20;
 #define CACHE_ENTRY_TTL_US 1000000000.0 // 1秒間（1,000,000 μs）
 
-class pCASTINGCSRepository : public CSRepository
+class pCASTINGCSRepository : public ICSRepository
 {
 private:
     std::list<std::tuple<std::string, std::string, double>> Q;                                               // {key, value}

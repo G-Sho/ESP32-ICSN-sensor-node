@@ -9,7 +9,7 @@
 
 constexpr size_t MAX_PIT_TABLE_SIZE = 20;
 
-class LRUPITRepository : public PITRepository {
+class LRUPITRepository : public IPITRepository {
 private:
     std::list<std::pair<std::string, std::set<std::string>>> Q;
     std::unordered_map<std::string, std::list<std::pair<std::string, std::set<std::string>>>::iterator> iter;
