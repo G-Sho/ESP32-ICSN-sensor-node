@@ -1,5 +1,4 @@
-#ifndef INCLUDED_DESTINATION_ID_hpp_
-#define INCLUDED_DESTINATION_ID_hpp_
+#pragma once
 
 #include <string>
 #include <set>
@@ -7,30 +6,16 @@
 class DestinationId
 {
 private:
-  std::set<std::string> value;
+  std::set<std::string> ids;
 
 public:
-  DestinationId(std::set<std::string> value)
-  {
-    // Write the rules
+  DestinationId(const std::set<std::string> &s) : ids(s) {}
 
-    this->value = value;
-  };
+  std::set<std::string> getValue() const { return ids; }
 
-  static DestinationId Null()
-  {
-    return DestinationId({});
-  }
+  static DestinationId Null() { return DestinationId({}); }
 
-  bool isNull() const
-  {
-    return value.empty();
-  }
+  bool isNull() const { return ids.empty(); }
 
-  std::set<std::string> getValue() const
-  {
-    return value;
-  };
+  bool operator==(const DestinationId &other) const { return ids == other.ids; }
 };
-
-#endif // INCLUDED_DESTINATION_ID_hpp_

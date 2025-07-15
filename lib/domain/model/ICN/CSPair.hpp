@@ -1,5 +1,4 @@
-#ifndef INCLUDED_CS_hpp_
-#define INCLUDED_CS_hpp_
+#pragma once
 
 #include "model/message/ContentName.hpp"
 #include "model/message/Content.hpp"
@@ -8,16 +7,13 @@
 class CSPair
 {
 private:
-  ContentName contentName;
-  Content content;
+  ContentName name;
+  Content value;
 
 public:
-  CSPair(const ContentName &contentName, const Content &content)
-      : contentName(contentName), content(content) {}
+  CSPair(const ContentName &n, const Content &v) : name(n), value(v) {}
+  
+  const ContentName getContentName() const { return name; };
 
-  ContentName getContentName() const { return contentName; };
-
-  Content getContent() const { return content; };
+  const Content getContent() const { return value; };
 };
-
-#endif // INCLUDED_CS_hpp_

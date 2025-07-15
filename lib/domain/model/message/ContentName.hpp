@@ -1,35 +1,18 @@
-#ifndef INCLUDED_CONTENT_NAME_hpp_
-#define INCLUDED_CONTENT_NAME_hpp_
+#pragma once
 
 #include <string>
 
 class ContentName
 {
 private:
-  std::string value;
+  std::string name;
 
 public:
-  ContentName(std::string value)
-  {
-    // Write the rules
+  ContentName(const std::string &v) : name(v) {}
 
-    this->value = value;
-  };
+  static ContentName Null() { return ContentName({}); }
 
-  static ContentName Null()
-  {
-    return ContentName({});
-  }
+  bool isNull() const { return name.empty(); }
 
-  bool isNull() const
-  {
-    return value.empty();
-  }
-
-  std::string getValue() const
-  {
-    return value;
-  };
+  std::string getValue() const { return name; }
 };
-
-#endif // INCLUDED_CONTENT_NAME_hpp_

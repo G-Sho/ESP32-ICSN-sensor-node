@@ -1,22 +1,13 @@
-#ifndef INCLUDED_PIT_PAIR_hpp_
-#define INCLUDED_PIT_PAIR_hpp_
+#pragma once
 
 #include "model/message/ContentName.hpp"
 #include "model/message/DestinationId.hpp"
 
-class PITPair
-{
-private:
-  ContentName contentName;
-  DestinationId destinationId;
-
+class PITPair {
+    ContentName name;
+    DestinationId destId;
 public:
-  PITPair(const ContentName& contentName, const DestinationId& destinationId)
-  : contentName(contentName), destinationId(destinationId) {}
-
-  ContentName getContentName() const { return contentName; };
-
-  DestinationId getDestinationId() const { return destinationId; };
+    PITPair(const ContentName &c, const DestinationId &d) : name(c), destId(d) {}
+    const ContentName& getContentName() const { return name; }
+    const DestinationId& getDestinationId() const { return destId; }
 };
-
-#endif // INCLUDED_PIT_PAIR_hpp_

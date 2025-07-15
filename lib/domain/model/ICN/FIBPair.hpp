@@ -1,22 +1,15 @@
-#ifndef INCLUDED_FIB_hpp_
-#define INCLUDED_FIB_hpp_
+#pragma once
 
 #include "model/message/ContentName.hpp"
 #include "model/message/DestinationId.hpp"
 
 class FIBPair
 {
-private:
-  ContentName contentName;
-  DestinationId destinationId;
+  ContentName name;
+  DestinationId destId;
 
 public:
-  FIBPair(const ContentName& contentName, const DestinationId& destinationId)
-  : contentName(contentName), destinationId(destinationId) {}
-
-  ContentName getContentName() const { return contentName; };
-
-  DestinationId getDestinationId() const { return destinationId; };
+  FIBPair(const ContentName &c, const DestinationId &d) : name(c), destId(d) {}
+  const ContentName &getContentName() const { return name; }
+  const DestinationId &getDestinationId() const { return destId; }
 };
-
-#endif // INCLUDED_FIB_hpp_

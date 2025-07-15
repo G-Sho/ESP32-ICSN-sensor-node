@@ -1,7 +1,6 @@
-#ifndef INCLUDED_CONTENT_hpp_
-#define INCLUDED_CONTENT_hpp_
+#pragma once
 
-#include<string>
+#include <string>
 
 class Content
 {
@@ -9,22 +8,9 @@ private:
   std::pair<std::string, uint32_t> value;
 
 public:
-  Content(std::pair<std::string, uint32_t> value)
-  {
-    // Write the rules
+  Content(const std::pair<std::string, uint32_t> &v) : value(v) {}
 
-    this->value = value;
-  };
+  static Content Null() { return Content({}); }
 
-  static Content Null()
-  {
-    return Content({});
-  }
-
-  std::pair<std::string, uint32_t> getValue() const
-  {
-    return value;
-  };
+  std::pair<std::string, uint32_t> getValue() const { return value; };
 };
-
-#endif // INCLUDED_CONTENT_hpp_
