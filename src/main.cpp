@@ -4,7 +4,8 @@
 #include "painlessMesh.h"
 #include <ArduinoJSON.h>
 #include <Ticker.h>
-#include <ArduinoController.hpp>
+#include "config/Config.hpp"
+#include "controller/ArduinoController.hpp"
 #include "Sensor.h"
 
 // MESH Details
@@ -21,12 +22,13 @@ ArduinoController arduinoController;
 // DHTTemperature sensorObj;
 
 // SIGNAL
-#define SIGNAL_INTEREST "1" // Interest
-#define SIGNAL_DATA "2"     // Data
-#define SIGNAL_INVALID "3"  // Invalid message
+#define SIGNAL_INTEREST "INTEREST" // Interest
+#define SIGNAL_DATA "DATA"     // Data
+#define SIGNAL_INVALID "INVALID"  // Invalid message
 
 // JSONDoc
-StaticJsonDocument<200> doc;
+// StaticJsonDocument<200> doc;
+JsonDocument doc;
 
 /*********************< Callback classes and functions >**********************/
 
@@ -75,8 +77,8 @@ void readSensorData()
   doc["content"] = "0325";
   doc["time"] = mesh.getNodeTime();
 
-  Serial.print("mesh.getNodeTime(): ");
-  Serial.println(mesh.getNodeTime());
+  // Serial.print("mesh.getNodeTime(): ");
+  // Serial.println(mesh.getNodeTime());
 
   String sensorData;
   serializeJson(doc, sensorData);
@@ -84,6 +86,54 @@ void readSensorData()
   arduinoController.reciveSensorData(sensorData);
 }
 Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
+
+// Test
+void testArduinoController()
+{
+  struct TestCase
+  {
+    const char *name;
+    const char *json;
+  };
+
+  TestCase testCases[] = {
+      {"Interest A",
+       R"({
+        "senderId": "nodeA",
+        "signalCode": "INTEREST",
+        "contentName": "sensor/temp",
+        "content": "22.5",
+        "hopCount": 1,
+        "time": 100000
+      })"},
+      {"Interest B",
+       R"({
+        "senderId": "nodeB",
+        "signalCode": "INTEREST",
+        "contentName": "sensor/humidity",
+        "content": "55.0",
+        "hopCount": 2,
+        "time": 200000
+      })"},
+      {"Interest C",
+       R"({
+        "senderId": "nodeC",
+        "signalCode": "INTEREST",
+        "contentName": "sensor/light",
+        "content": "760",
+        "hopCount": 3,
+        "time": 300000
+      })"}};
+  for (const auto &test : testCases)
+  {
+    Serial.printf("\n[TEST] Running: %s\n", test.name);
+    String jsonStr(test.json);
+    String response = arduinoController.receiveMessage(123, jsonStr);
+    Serial.println("[TEST] Response:");
+    Serial.println(response);
+  }
+}
+Task taskTestArduinoController(TASK_SECOND * 10, TASK_FOREVER, &testArduinoController);
 
 // Needed for painless library
 void receivedCallback(uint32_t from, String &msg)
@@ -113,6 +163,10 @@ void setup()
 {
   Serial.begin(115200);
   // sensorObj.run();
+  if (!loadSystemConfig("/config.json"))
+    Serial.println("Failed to load system config!");
+  else
+    Serial.println("System config loaded successfully.");
 
   // mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE); // all types on
   mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages
@@ -126,6 +180,9 @@ void setup()
   userScheduler.addTask(taskReadSensorData);
   taskReadSensorData.enable();
 
+  userScheduler.addTask(taskTestArduinoController);
+  taskTestArduinoController.enable();
+  
   arduinoController.setMesh(&mesh);
 }
 

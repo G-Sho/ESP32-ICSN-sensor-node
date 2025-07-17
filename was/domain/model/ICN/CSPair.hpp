@@ -13,7 +13,7 @@ private:
 public:
   CSPair(const ContentName &n, const Content &v) : name(n), value(v) {}
   
-  const ContentName getContentName() const { return name; };
+  const ContentName &getContentName() const { return name; };
 
-  const Content getContent() const { return value; };
+  const Content &getContent() const { return value; };
 };
