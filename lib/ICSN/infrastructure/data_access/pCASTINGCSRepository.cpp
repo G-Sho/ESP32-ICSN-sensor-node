@@ -9,7 +9,7 @@ void pCASTINGCSRepository::save(const CSPair &csPair)
     const std::string &content = csPair.getContent().getValue().first;
     const uint32_t &timeStamp = csPair.getContent().getValue().second;
     double EN = 1.0;
-    double OC = Q.size() / systemConfig.maxCsTableSize;
+    double OC = (double)Q.size() / (double)systemConfig.maxCsTableSize;
     double FR = 1.0 - ((mesh->getNodeTime() - timeStamp) / systemConfig.cacheEntryTtlUs);
 
     if (pCASTING(EN, OC, FR))
