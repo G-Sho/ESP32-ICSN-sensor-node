@@ -7,6 +7,7 @@
 #include <set>
 #include <string>
 #include <list>
+#include <Arduino.h>
 
 template <typename T>
 bool chmax(T &a, const T &b)
@@ -185,4 +186,28 @@ public:
     void remove(const ContentName &contentName) override;
     bool find(const ContentName &contentName) override;
     DestinationId get(const ContentName &contentName) override;
+
+    void printCache() const
+    {
+        Serial.printf("=== Forwarding Interest Table ===\n");
+        int index = 0;
+
+        for (const auto &entry : Q)
+        {
+            const std::string &key = entry.first;
+            const FIBEntry &value = entry.second;
+
+            Serial.printf("[%d] Key: %s, IsVirtual: %s, MaximumDepth: %d, NodeIds: {",
+                          index++, key.c_str(),
+                          value.getIsVir() ? "true" : "false",
+                          value.getMaximumDepth());
+            for (const auto &id : value.getNodeId())
+            {
+                Serial.printf("%s ", id.c_str());
+            }
+            Serial.printf("}\n");
+        }
+
+        Serial.printf("======================\n\n");
+    }
 };

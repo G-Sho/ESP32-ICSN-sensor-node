@@ -4,7 +4,8 @@
 #include "message/ContentName.hpp"
 #include "message/DestinationId.hpp"
 
-class IPITRepository {
+class IPITRepository
+{
 public:
     virtual void save(const PITPair &pitPair) = 0;
     virtual void remove(const ContentName &contentName) = 0;

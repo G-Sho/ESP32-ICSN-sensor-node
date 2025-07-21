@@ -84,20 +84,20 @@ public:
 
     void printCache() const
     {
-        Serial.printf("=== Cache Contents ===\n");
+        Serial.printf("=== Content Store ===\n");
         int index = 0;
 
-        double now = mesh ? mesh->getNodeTime() : 0.0;
+        uint32_t now = mesh ? mesh->getNodeTime() : 0;
 
         for (const auto &entry : Q)
         {
             const std::string &key = std::get<0>(entry);
             const std::string &value = std::get<1>(entry);
-            double timestamp = std::get<2>(entry);
-            double FR = 1.0 - ((now - timestamp) / systemConfig.cacheEntryTtlUs);
+            uint32_t timestamp = std::get<2>(entry);
+            double FR = 1.0 - (double)((now - timestamp) / systemConfig.cacheEntryTtlUs);
             const char *status = (FR <= 0.0) ? "Expired" : "Valid";
 
-            Serial.printf("[%d] Key: %s, Value: %s, Timestamp: %.2f, Freshness: %.2f, Status: %s\n",
+            Serial.printf("[%d] Key: %s, Value: %s, Timestamp: %lu, Freshness: %.2f, Status: %s\n",
                           index++, key.c_str(), value.c_str(), timestamp, FR, status);
         }
 

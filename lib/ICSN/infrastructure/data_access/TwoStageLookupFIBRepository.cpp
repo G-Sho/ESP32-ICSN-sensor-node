@@ -20,15 +20,14 @@ void TwoStageLookupFIBRepository::save(const FIBPair &fibPair)
     int m = std::count(contentName.begin(), contentName.end(), '/');
     SaveFIB(contentName, fibPair.getDestinationId().getValue(), m);
 
-    // fib table すべてを出力する
-    // auto begin = fib.begin(), end = fib.end();
-    // for (auto iter = begin; iter != end; iter++)
-    // {
-    //     for (const auto x : iter->second.getNodeId())
-    //     {
-    //         Serial.printf("%s => %s\n", iter->first.c_str(), x.c_str());
-    //     }
-    // }
+    // Print cache contents
+    Serial.printf("Saved: Key=%s, Value: {", contentName.c_str());
+    for (const auto &id : fibPair.getDestinationId().getValue())
+    {
+        Serial.printf("%s ", id.c_str());
+    }
+    Serial.printf("}\n");
+    printCache();
 };
 
 // 削除は行うタイミングが未定のため詳細は検討すべき
@@ -71,6 +70,10 @@ void TwoStageLookupFIBRepository::remove(const ContentName &contentName)
             iter.erase(virtualPrefix);
         }
     }
+
+    // Print cache contents after removal
+    Serial.printf("Removed: Key=%s\n", name.c_str());
+    printCache();
 };
 
 bool TwoStageLookupFIBRepository::find(const ContentName &contentName)
@@ -99,6 +102,20 @@ DestinationId TwoStageLookupFIBRepository::get(const ContentName &contentName)
         }
         return DestinationId(result->nodeId);
     }
+
+    // Print cache contents after retrieval
+    Serial.printf("Retrieved: Key=%s, Value: {", name.c_str());
+    if (iter.count(name))
+    {
+        for (const auto &id : iter[name]->second.nodeId)
+        {
+            Serial.printf("%s ", id.c_str());
+        }
+        Serial.printf("}\n");
+        return DestinationId(iter[name]->second.nodeId);
+    }
+    Serial.printf("}\n");
+    printCache();
 
     return DestinationId::Null();
 };

@@ -28,6 +28,10 @@ void pCASTINGCSRepository::save(const CSPair &csPair)
         Q.push_front({name, content, timeStamp});
         iter[name] = Q.begin();
     }
+
+    // Print cache contents
+    Serial.printf("Saved: Key=%s, Value=%s, Timestamp=%lu\n", name.c_str(), content.c_str(), timeStamp);
+    printCache();
 }
 
 void pCASTINGCSRepository::remove(const ContentName &contentName)
@@ -38,6 +42,10 @@ void pCASTINGCSRepository::remove(const ContentName &contentName)
         Q.erase(iter[name]);
         iter.erase(name);
     }
+
+    // Print cache contents after removal
+    Serial.printf("Removed: Key=%s\n", name.c_str());
+    printCache();
 }
 
 bool pCASTINGCSRepository::find(const ContentName &contentName)
@@ -60,4 +68,8 @@ Content pCASTINGCSRepository::get(const ContentName &contentName)
     Q.push_front({name, v, t});
     iter[name] = Q.begin();
     return Content({v, t});
+
+    // Print cache contents after retrieval
+    Serial.printf("Retrieved: Key=%s, Value=%s, Timestamp=%.2f\n", name.c_str(), v.c_str(), t);
+    printCache();
 }

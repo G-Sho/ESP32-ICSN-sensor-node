@@ -7,7 +7,6 @@
 
 constexpr const char* VALUE_NA = "N/A";             // 使用しない、該当しない値
 constexpr const char* VALUE_UNKNOWN = "UNKNOWN";    // 未知・未確認の情報
-constexpr const char* DEST_BROADCAST = "BROADCAST"; // ブロードキャスト用途
 
 struct OutputData
 {

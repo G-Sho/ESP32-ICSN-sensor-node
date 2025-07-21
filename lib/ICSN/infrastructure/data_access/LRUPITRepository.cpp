@@ -21,6 +21,14 @@ void LRUPITRepository::save(const PITPair &pitPair) {
         iter.erase(k);
         Q.pop_back();
     }
+
+    // Print cache contents
+    Serial.printf("Saved: Key=%s, Value: {", name.c_str());
+    for (const auto &id : preId) {
+        Serial.printf("%s ", id.c_str());
+    }
+    Serial.printf("}\n");
+    printCache();
 }
 
 void LRUPITRepository::remove(const ContentName &contentName) {
@@ -29,6 +37,10 @@ void LRUPITRepository::remove(const ContentName &contentName) {
         Q.erase(iter[name]);
         iter.erase(name);
     }
+
+    // Print cache contents after removal
+    Serial.printf("Removed: Key=%s\n", name.c_str());
+    printCache();
 }
 
 bool LRUPITRepository::find(const ContentName &contentName) {
@@ -47,5 +59,13 @@ DestinationId LRUPITRepository::get(const ContentName &contentName) {
     Q.push_front({name, v});
     iter[name] = Q.begin();
 
+    // Print cache contents after retrieval
+    Serial.printf("Retrieved: Key=%s, Value: {", name.c_str());
+    for (const auto &id : v) {
+        Serial.printf("%s ", id.c_str());
+    }
+    Serial.printf("}\n");
+    printCache();
+    
     return DestinationId(v);
 }

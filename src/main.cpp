@@ -42,19 +42,27 @@ void msgReception(uint32_t to, String const &msg)
   {
     Serial.print("Deserialization failure: ");
     Serial.println(error.c_str());
-    exit(0);
+    return;
   }
 
   String signalCode = doc["signalCode"];
-  if (signalCode != SIGNAL_INVALID)
+  if (signalCode == SIGNAL_DATA || signalCode == SIGNAL_INTEREST)
   {
     JsonArray destId = doc["destId"];
-    for (JsonVariant value : destId)
-    {
-      if (value.as<String>() == "-1")
-        mesh.sendBroadcast(processedmsg);
-      else
+
+    bool hasBroadcast = false;
+    for (JsonVariant value : destId) {
+      if (value.as<String>() == DEST_BROADCAST) {
+        hasBroadcast = true;
+        break;
+      }
+    }
+    if (hasBroadcast) {
+      mesh.sendBroadcast(processedmsg);
+    } else {
+      for (JsonVariant value : destId) {
         mesh.sendSingle((uint32_t)((value.as<String>()).toInt()), processedmsg);
+      }
     }
   }
 
@@ -71,13 +79,10 @@ void readSensorData()
   // doc["contentName"] = sensorObj.getContentName();
   // doc["content"] = sensorObj.getData();
 
-  doc["contentName"] = "/Hoge/" + std::to_string(cnt);
+  doc["contentName"] = "/Hoge/" + String(cnt);
   cnt++;
   doc["content"] = "0325";
   doc["time"] = mesh.getNodeTime();
-
-  // Serial.print("mesh.getNodeTime(): ");
-  // Serial.println(mesh.getNodeTime());
 
   String sensorData;
   serializeJson(doc, sensorData);
