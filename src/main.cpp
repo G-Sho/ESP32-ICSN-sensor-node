@@ -62,9 +62,8 @@ void msgReception(uint32_t to, String const &msg)
   doc.clear();
 }
 
-int cnt = 0;
-
 // Read Sensor Data
+int cnt = 0;
 void readSensorData()
 {
   // sensorObj.read();
@@ -87,55 +86,9 @@ void readSensorData()
 }
 Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 
-// Test
-void testArduinoController()
-{
-  struct TestCase
-  {
-    const char *name;
-    const char *json;
-  };
 
-  TestCase testCases[] = {
-      {"Interest A",
-       R"({
-        "senderId": "nodeA",
-        "signalCode": "INTEREST",
-        "contentName": "sensor/temp",
-        "content": "22.5",
-        "hopCount": 1,
-        "time": 100000
-      })"},
-      {"Interest B",
-       R"({
-        "senderId": "nodeB",
-        "signalCode": "INTEREST",
-        "contentName": "sensor/humidity",
-        "content": "55.0",
-        "hopCount": 2,
-        "time": 200000
-      })"},
-      {"Interest C",
-       R"({
-        "senderId": "nodeC",
-        "signalCode": "INTEREST",
-        "contentName": "sensor/light",
-        "content": "760",
-        "hopCount": 3,
-        "time": 300000
-      })"}};
-  for (const auto &test : testCases)
-  {
-    Serial.printf("\n[TEST] Running: %s\n", test.name);
-    String jsonStr(test.json);
-    String response = arduinoController.receiveMessage(123, jsonStr);
-    Serial.println("[TEST] Response:");
-    Serial.println(response);
-  }
-}
-Task taskTestArduinoController(TASK_SECOND * 10, TASK_FOREVER, &testArduinoController);
+/*********************< Needed for painless library >**********************/
 
-// Needed for painless library
 void receivedCallback(uint32_t from, String &msg)
 {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
@@ -179,9 +132,6 @@ void setup()
 
   userScheduler.addTask(taskReadSensorData);
   taskReadSensorData.enable();
-
-  userScheduler.addTask(taskTestArduinoController);
-  taskTestArduinoController.enable();
   
   arduinoController.setMesh(&mesh);
 }

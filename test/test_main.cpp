@@ -1,99 +1,156 @@
 #include <Arduino.h>
 #include <unity.h>
-#include "ArduinoController.h"
+#include <ArduinoJson.h>
+#include "controller/ArduinoController.hpp"
 
-// テスト対象のインスタンス
-ArduinoController arduinoController;
+ArduinoController controller;
 
-// ---------- テストケース 1: hop count 超過で discard ----------
-void test_hop_count_exceeded()
+// ---------- Interest受信テスト ----------
+
+// TC1: CS Hit → Data応答
+void test_interest_cs_hit()
 {
-    const char *json = R"({
-        "senderId": "node1",
+    controller.mockAddToCS("/sensor/temp", "23C");
+
+    String interest = R"({
         "signalCode": "INTEREST",
-        "contentName": "sensor1/temp",
-        "content": "",
-        "hopCount": 99,  // 許容外（仮定）
-        "time": 123456
+        "contentName": "/sensor/temp",
+        "hopCount": 3,
+        "destId":["-1"]
     })";
 
-    String result = arduinoController.receiveMessage(1, String(json));
-    String signalCode = result["signalCode"];
-    TEST_ASSERT_EQUAL_STRING("INVALID", result.c_str()); // 仮に discard を返す仕様とする
+    String result = controller.receiveMessage(0, interest);
+    TEST_ASSERT_NOT_EQUAL(-1, result.indexOf("DATA"));
+    TEST_ASSERT_NOT_EQUAL(-1, result.indexOf("/sensor/temp"));
 }
 
-// ---------- テストケース 2: CS にヒット ----------
-void test_content_store_hit()
+// TC2: CS Miss + FIB Hit → Interest転送
+void test_interest_fib_hit()
 {
-    const char *sensorData = R"({
-        "senderId": "nodeX",
+    controller.mockAddToFIB("/sensor/temp", 123);
+
+    String interest = R"({
+        "signalCode": "INTEREST",
+        "contentName": "/sensor/temp",
+        "hopCount": 2,
+        "destId":["-1"]
+    })";
+
+    String result = controller.receiveMessage(0, interest);
+    TEST_ASSERT_NOT_EQUAL(-1, result.indexOf("INTEREST"));
+    TEST_ASSERT_NOT_EQUAL(-1, result.indexOf("/sensor/temp"));
+}
+
+// TC3: CS Miss + FIB Miss → 廃棄
+void test_interest_drop_no_fib_cs()
+{
+    String interest = R"({
+        "signalCode": "INTEREST",
+        "contentName": "/unknown/path",
+        "hopCount": 3,
+        "destId":["-1"]
+    })";
+
+    String result = controller.receiveMessage(0, interest);
+    TEST_ASSERT_TRUE(result.length() == 0 || result.indexOf("INVALID") != -1);
+}
+
+// TC4: hopCount 0 → 廃棄
+void test_interest_hop_zero()
+{
+    String interest = R"({
+        "signalCode": "INTEREST",
+        "contentName": "/sensor/light",
+        "hopCount": 0,
+        "destId":["-1"]
+    })";
+
+    String result = controller.receiveMessage(0, interest);
+    TEST_ASSERT_TRUE(result.length() == 0 || result.indexOf("INVALID") != -1);
+}
+
+// ---------- Data受信テスト ----------
+
+// TC5: PIT Hit → Data転送 + CS保存
+void test_data_with_pit_hit()
+{
+    controller.mockAddToPIT("/sensor/humidity", 789);
+
+    String data = R"({
         "signalCode": "DATA",
-        "contentName": "Goto/birthday",
-        "content": "0325",
-        "hopCount": 1,
-        "time": 1000000000
-    })";
-    arduinoController.reciveSensorData(sensorData);
-    
-    const char *json = R"({
-        "senderId": "node2",
-        "signalCode": "INTEREST",
-        "contentName": "Goto/birthday",
-        "content": "",
-        "hopCount": 1,
-        "time": 100000
+        "contentName": "/sensor/humidity",
+        "content": "40%",
+        "time": 12345,
+        "destId": ["-1"]
     })";
 
-    String result = arduinoController.receiveMessage(2, String(json));
-    String signalCode = result["signalCode"];
-    TEST_ASSERT_EQUAL_STRING("INVALID", result.c_str()); // 仮に discard を返す仕様とする
+    String result = controller.receiveMessage(0, data);
+    TEST_ASSERT_NOT_EQUAL(-1, result.indexOf("DATA"));
+    TEST_ASSERT_NOT_EQUAL(-1, result.indexOf("humidity"));
 }
 
-// ---------- テストケース 3: CS miss, FIB hit ----------
-void test_forward_via_fib()
+// TC6: PIT Miss → 廃棄（INVALID応答または空）
+void test_data_with_pit_miss()
 {
-    arduinoController.addFIBEntry("sensor/humidity", "nextHopNode");
-
-    const char *json = R"({
-        "senderId": "nodeB",
-        "signalCode": "INTEREST",
-        "contentName": "sensor/humidity",
-        "content": "",
-        "hopCount": 1,
-        "time": 200000
+    String data = R"({
+        "signalCode": "DATA",
+        "contentName": "/sensor/unknown",
+        "content": "NA",
+        "time": 1000,
+        "destId": ["-1"]
     })";
 
-    String result = arduinoController.receiveMessage(123, String(json));
-    TEST_ASSERT_EQUAL_STRING("FORWARD:FIB", result.c_str()); // 仮にFORWARD:FIBを返す仕様
+    String result = controller.receiveMessage(0, data);
+    TEST_ASSERT_TRUE(result.length() == 0 || result.indexOf("INVALID") != -1);
 }
 
-// ---------- テストケース 4: CS miss, FIB miss ----------
-void test_broadcast_interest()
+// ---------- Sensor読み出し ----------
+
+// TC7: 正常なSensor読み取り
+void test_sensor_data_reading()
 {
-    const char *json = R"({
-        "senderId": "nodeC",
-        "signalCode": "INTEREST",
-        "contentName": "sensor/light",
-        "content": "",
-        "hopCount": 1,
-        "time": 300000
-    })";
+    String sensorData = controller.mockReadSensor("/sensor/light", "100lx");
 
-    String result = arduinoController.receiveMessage(123, String(json));
-    TEST_ASSERT_EQUAL_STRING("BROADCAST", result.c_str()); // ブロードキャストされたか確認
+    JsonDocument testDoc;
+    DeserializationError err = deserializeJson(testDoc, sensorData);
+    TEST_ASSERT_FALSE(err);
+    TEST_ASSERT_EQUAL_STRING("/sensor/light", testDoc["contentName"]);
+    TEST_ASSERT_EQUAL_STRING("100lx", testDoc["content"]);
+    TEST_ASSERT_TRUE(testDoc["time"].is<int>() || testDoc["time"].is<long>() || testDoc["time"].is<unsigned long>());
 }
+
+// TC8: センサが空文字を返す → 無効処理
+void test_sensor_data_invalid()
+{
+    String sensorData = controller.mockReadSensor("/sensor/empty", "");
+
+    JsonDocument testDoc;
+    DeserializationError err = deserializeJson(testDoc, sensorData);
+    TEST_ASSERT_FALSE(err);
+    TEST_ASSERT_EQUAL_STRING("", testDoc["content"]);
+}
+
+// ---------- Unity用 setup / loop ----------
 
 void setup()
 {
-    delay(1000);
     UNITY_BEGIN();
 
-    RUN_TEST(test_hop_count_exceeded);
-    RUN_TEST(test_content_store_hit);
-    RUN_TEST(test_forward_via_fib);
-    RUN_TEST(test_broadcast_interest);
+    RUN_TEST(test_interest_cs_hit);
+    RUN_TEST(test_interest_fib_hit);
+    RUN_TEST(test_interest_drop_no_fib_cs);
+    RUN_TEST(test_interest_hop_zero);
+
+    RUN_TEST(test_data_with_pit_hit);
+    RUN_TEST(test_data_with_pit_miss);
+
+    RUN_TEST(test_sensor_data_reading);
+    RUN_TEST(test_sensor_data_invalid);
 
     UNITY_END();
 }
 
-void loop() {}
+void loop()
+{
+    // Not used in tests
+}

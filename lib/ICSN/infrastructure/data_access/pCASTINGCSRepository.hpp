@@ -69,6 +69,11 @@ public:
 
     void setMesh(painlessMesh *meshPtr)
     {
+        if (meshPtr == nullptr)
+        {
+            Serial.println("Error: Mesh pointer is null.");
+            return;
+        }
         mesh = meshPtr;
     };
 

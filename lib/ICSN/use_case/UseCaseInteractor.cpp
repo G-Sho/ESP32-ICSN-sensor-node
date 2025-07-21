@@ -7,7 +7,6 @@
 #include "message/Content.hpp"
 #include "data_structure/OutputData.hpp"
 
-
 /// @brief Interestパケットを受信したときの処理
 /// @param inputData 入力された Interest データ構造
 /// @return 応答パケット（DATA, INTEREST, INVALID）
@@ -32,8 +31,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
             hopcount.getValue(),
             VALUE_NA,
             VALUE_NA,
-            0
-        );
+            0);
     }
 
     if (csRepository.find(contentName))
@@ -145,3 +143,29 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
     csRepository.save(csPair);
     // csRepository.printCache();
 }
+
+#ifdef UNIT_TEST
+void UseCaseInteractor::mockAddToCS(const std::string &name, const std::string &content)
+{
+    ContentName contentName(name);
+    Content contentObj({content, millis()});
+    CSPair pair(contentName, contentObj);
+    csRepository.save(pair);
+}
+
+void UseCaseInteractor::mockAddToFIB(const std::string &name, uint32_t nextHop)
+{
+    ContentName contentName(name);
+    DestinationId dest({std::to_string(nextHop)});
+    FIBPair pair(contentName, dest);
+    fibRepository.save(pair);
+}
+
+void UseCaseInteractor::mockAddToPIT(const std::string &name, uint32_t fromNode)
+{
+    ContentName contentName(name);
+    DestinationId dest({std::to_string(fromNode)});
+    PITPair pair(contentName, dest);
+    pitRepository.save(pair);
+}
+#endif
