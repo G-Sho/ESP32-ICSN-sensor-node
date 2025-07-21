@@ -10,7 +10,7 @@ void pCASTINGCSRepository::save(const CSPair &csPair)
     const uint32_t &timeStamp = csPair.getContent().getValue().second;
     double EN = 1.0;
     double OC = (double)Q.size() / (double)systemConfig.maxCsTableSize;
-    double FR = 1.0 - ((mesh->getNodeTime() - timeStamp) / systemConfig.cacheEntryTtlUs);
+    double FR = 1.0 - ((double)(mesh->getNodeTime() - timeStamp) / (double)systemConfig.cacheEntryTtlUs);
 
     if (pCASTING(EN, OC, FR))
     {
@@ -28,9 +28,7 @@ void pCASTINGCSRepository::save(const CSPair &csPair)
         Q.push_front({name, content, timeStamp});
         iter[name] = Q.begin();
     }
-
-    // Print cache contents
-    Serial.printf("Saved: Key=%s, Value=%s, Timestamp=%lu\n", name.c_str(), content.c_str(), timeStamp);
+    
     printCache();
 }
 

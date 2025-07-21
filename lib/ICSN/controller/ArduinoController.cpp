@@ -10,13 +10,13 @@ static JsonDocument outputDoc;
 // Helper: parse JSON to InputData
 static InputData parseJsonToInputData(JsonDocument &doc, uint32_t to)
 {
-    std::string senderId = doc["senderId"] | "";
+    std::string senderId = doc["senderId"].is<const char *>() ? doc["senderId"].as<const char *>() : "";
     std::string destId = std::to_string(to);
-    std::string signalCode = doc["signalCode"] | "";
-    int hopCount = doc["hopCount"] | 0;
-    std::string contentName = doc["contentName"] | "";
-    std::string content = doc["content"] | "";
-    uint32_t time = doc["time"] | 0;
+    std::string signalCode = doc["signalCode"].is<const char *>() ? doc["signalCode"].as<const char *>() : "";
+    int hopCount = doc["hopCount"].is<int>() ? doc["hopCount"].as<int>() : 0;
+    std::string contentName = doc["contentName"].is<const char *>() ? doc["contentName"].as<const char *>() : "";
+    std::string content = doc["content"].is<const char *>() ? doc["content"].as<const char *>() : "";
+    uint32_t time = doc["time"].is<uint32_t>() ? doc["time"].as<uint32_t>() : 0;
 
     return InputData(senderId, {destId}, signalCode, hopCount, contentName, content, time);
 }
@@ -123,13 +123,13 @@ void ArduinoController::mockAddToPIT(const std::string &name, uint32_t fromNode)
 String ArduinoController::mockReadSensor(const std::string &name, const std::string &content)
 {
     OutputData output(
-        "0",                // senderId
-        {"-1"},             // destId
-        "DATA",             // signalCode
-        0,                  // hopCount
-        name,               // contentName
-        content,            // content
-        millis()            // time
+        "0",     // senderId
+        {"-1"},  // destId
+        "DATA",  // signalCode
+        0,       // hopCount
+        name,    // contentName
+        content, // content
+        millis() // time
     );
 
     parseOutputDataToJson(output);

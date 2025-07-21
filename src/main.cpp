@@ -35,7 +35,7 @@ JsonDocument doc;
 void msgReception(uint32_t to, String const &msg)
 {
   String processedmsg = arduinoController.receiveMessage(to, msg);
-  // Serial.printf("Processed msg=%s\n", processedmsg.c_str());
+  Serial.printf("Processed msg=%s\n", processedmsg.c_str());
 
   DeserializationError error = deserializeJson(doc, processedmsg);
   if (error)

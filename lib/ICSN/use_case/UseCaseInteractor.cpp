@@ -141,6 +141,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
     Content content({inputData.content, inputData.time});
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
+
     // csRepository.printCache();
 }
 

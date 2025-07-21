@@ -13,8 +13,8 @@
 class pCASTINGCSRepository : public ICSRepository
 {
 private:
-    std::list<std::tuple<std::string, std::string, double>> Q;                                               // {key, value}
-    std::unordered_map<std::string, std::list<std::tuple<std::string, std::string, double>>::iterator> iter; // <key, iterator>
+    std::list<std::tuple<std::string, std::string, uint32_t>> Q;                                               // {key, value}
+    std::unordered_map<std::string, std::list<std::tuple<std::string, std::string, uint32_t>>::iterator> iter; // <key, iterator>
     std::mt19937 gen;
     std::uniform_real_distribution<> dis;
     painlessMesh *mesh = nullptr;
@@ -49,8 +49,8 @@ private:
         auto now = mesh->getNodeTime();
         for (auto it = Q.begin(); it != Q.end();)
         {
-            double timeStamp = std::get<2>(*it);
-            double FR = 1.0 - ((now - timeStamp) / systemConfig.cacheEntryTtlUs);
+            uint32_t timeStamp = std::get<2>(*it);
+            double FR = 1.0 - ((double)(now - timeStamp) / (double)systemConfig.cacheEntryTtlUs);
             if (FR <= 0.0)
             {
                 iter.erase(std::get<0>(*it));
@@ -94,9 +94,10 @@ public:
             const std::string &key = std::get<0>(entry);
             const std::string &value = std::get<1>(entry);
             uint32_t timestamp = std::get<2>(entry);
-            double FR = 1.0 - (double)((now - timestamp) / systemConfig.cacheEntryTtlUs);
+            double FR = 1.0 - ((double)(now - timestamp) / (double)systemConfig.cacheEntryTtlUs);
             const char *status = (FR <= 0.0) ? "Expired" : "Valid";
 
+            // Print cache entry
             Serial.printf("[%d] Key: %s, Value: %s, Timestamp: %lu, Freshness: %.2f, Status: %s\n",
                           index++, key.c_str(), value.c_str(), timestamp, FR, status);
         }
