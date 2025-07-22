@@ -32,7 +32,7 @@ JsonDocument doc;
 
 /*********************< Callback classes and functions >**********************/
 
-void msgReception(uint32_t to, String const &msg)
+void msgReception(uint32_t from, uint32_t to, String const &msg)
 {
   String processedmsg = arduinoController.receiveMessage(to, msg);
   Serial.printf("Processed msg=%s\n", processedmsg.c_str());
@@ -58,7 +58,11 @@ void msgReception(uint32_t to, String const &msg)
       }
     }
     if (hasBroadcast) {
-      mesh.sendBroadcast(processedmsg);
+      for (uint32_t nodeId : mesh.getNodeList()) {
+        if (from != mesh.getNodeId()) {
+          mesh.sendSingle(nodeId, processedmsg);
+        }
+      }
     } else {
       for (JsonVariant value : destId) {
         mesh.sendSingle((uint32_t)((value.as<String>()).toInt()), processedmsg);
@@ -97,7 +101,7 @@ Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 void receivedCallback(uint32_t from, String &msg)
 {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
-  msgReception(mesh.getNodeId(), msg);
+  msgReception(from, mesh.getNodeId(), msg);
 }
 
 void newConnectionCallback(uint32_t nodeId)
@@ -154,6 +158,6 @@ void loop()
     msg = Serial.readStringUntil('\n');
     // Serial.printf("Received from Serial, msg=%s\n", msg.c_str());
 
-    msgReception(mesh.getNodeId(), msg);
+    msgReception(0, mesh.getNodeId(), msg);
   }
 }
