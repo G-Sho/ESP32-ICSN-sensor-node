@@ -21,13 +21,13 @@ void TwoStageLookupFIBRepository::save(const FIBPair &fibPair)
     SaveFIB(contentName, fibPair.getDestinationId().getValue(), m);
 
     // Print cache contents
-    Serial.printf("Saved: Key=%s, Value: {", contentName.c_str());
-    for (const auto &id : fibPair.getDestinationId().getValue())
-    {
-        Serial.printf("%s ", id.c_str());
-    }
-    Serial.printf("}\n");
-    printCache();
+    // Serial.printf("Saved: Key=%s, Value: {", contentName.c_str());
+    // for (const auto &id : fibPair.getDestinationId().getValue())
+    // {
+    //     Serial.printf("%s ", id.c_str());
+    // }
+    // Serial.printf("}\n");
+    // printCache();
 };
 
 // 削除は行うタイミングが未定のため詳細は検討すべき
@@ -72,8 +72,8 @@ void TwoStageLookupFIBRepository::remove(const ContentName &contentName)
     }
 
     // Print cache contents after removal
-    Serial.printf("Removed: Key=%s\n", name.c_str());
-    printCache();
+    // Serial.printf("Removed: Key=%s\n", name.c_str());
+    // printCache();
 };
 
 bool TwoStageLookupFIBRepository::find(const ContentName &contentName)
@@ -104,18 +104,18 @@ DestinationId TwoStageLookupFIBRepository::get(const ContentName &contentName)
     }
 
     // Print cache contents after retrieval
-    Serial.printf("Retrieved: Key=%s, Value: {", name.c_str());
-    if (iter.count(name))
-    {
-        for (const auto &id : iter[name]->second.nodeId)
-        {
-            Serial.printf("%s ", id.c_str());
-        }
-        Serial.printf("}\n");
-        return DestinationId(iter[name]->second.nodeId);
-    }
-    Serial.printf("}\n");
-    printCache();
+    // Serial.printf("Retrieved: Key=%s, Value: {", name.c_str());
+    // if (iter.count(name))
+    // {
+    //     for (const auto &id : iter[name]->second.nodeId)
+    //     {
+    //         Serial.printf("%s ", id.c_str());
+    //     }
+    //     Serial.printf("}\n");
+    //     return DestinationId(iter[name]->second.nodeId);
+    // }
+    // Serial.printf("}\n");
+    // printCache();
 
     return DestinationId::Null();
 };

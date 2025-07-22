@@ -23,8 +23,8 @@ ArduinoController arduinoController;
 
 // SIGNAL
 #define SIGNAL_INTEREST "INTEREST" // Interest
-#define SIGNAL_DATA "DATA"     // Data
-#define SIGNAL_INVALID "INVALID"  // Invalid message
+#define SIGNAL_DATA "DATA"         // Data
+#define SIGNAL_INVALID "INVALID"   // Invalid message
 
 // JSONDoc
 // StaticJsonDocument<200> doc;
@@ -51,20 +51,28 @@ void msgReception(uint32_t from, uint32_t to, String const &msg)
     JsonArray destId = doc["destId"];
 
     bool hasBroadcast = false;
-    for (JsonVariant value : destId) {
-      if (value.as<String>() == DEST_BROADCAST) {
+    for (JsonVariant value : destId)
+    {
+      if (value.as<String>() == DEST_BROADCAST)
+      {
         hasBroadcast = true;
         break;
       }
     }
-    if (hasBroadcast) {
-      for (uint32_t nodeId : mesh.getNodeList()) {
-        if (from != mesh.getNodeId()) {
+    if (hasBroadcast)
+    {
+      for (uint32_t nodeId : mesh.getNodeList())
+      {
+        if (from != mesh.getNodeId())
+        {
           mesh.sendSingle(nodeId, processedmsg);
         }
       }
-    } else {
-      for (JsonVariant value : destId) {
+    }
+    else
+    {
+      for (JsonVariant value : destId)
+      {
         mesh.sendSingle((uint32_t)((value.as<String>()).toInt()), processedmsg);
       }
     }
@@ -94,7 +102,6 @@ void readSensorData()
   arduinoController.reciveSensorData(sensorData);
 }
 Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
-
 
 /*********************< Needed for painless library >**********************/
 
@@ -141,7 +148,7 @@ void setup()
 
   userScheduler.addTask(taskReadSensorData);
   taskReadSensorData.enable();
-  
+
   arduinoController.setMesh(&mesh);
 }
 
@@ -158,6 +165,24 @@ void loop()
     msg = Serial.readStringUntil('\n');
     // Serial.printf("Received from Serial, msg=%s\n", msg.c_str());
 
-    msgReception(0, mesh.getNodeId(), msg);
+    if (msg == "getNodeList")
+    {
+      Serial.println("Node List:");
+      for (uint32_t nodeId : mesh.getNodeList())
+      {
+        Serial.printf("Node ID: %u\n", nodeId);
+      }
+      return;
+    }
+    else if (msg == "subConnectionJson")
+    {
+      String res = mesh.subConnectionJson(true);
+      Serial.printf("Sub Connection JSON: %s\n", res.c_str());
+      return;
+    }
+    else
+    {
+      msgReception(0, mesh.getNodeId(), msg);
+    }
   }
 }
