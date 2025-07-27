@@ -2,10 +2,10 @@
 #include "message/SignalCode.hpp"
 
 // JSON documents
-// static DynamicJsonDocument inputDoc(512);
-// static DynamicJsonDocument outputDoc(512);
-static JsonDocument inputDoc;
-static JsonDocument outputDoc;
+StaticJsonDocument<512> inputDoc;
+StaticJsonDocument<512> outputDoc;
+// static JsonDocument inputDoc;
+// static JsonDocument outputDoc;
 
 // Helper: parse JSON to InputData
 static InputData parseJsonToInputData(JsonDocument &doc, uint32_t to)

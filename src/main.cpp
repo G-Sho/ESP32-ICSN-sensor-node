@@ -27,15 +27,86 @@ ArduinoController arduinoController;
 #define SIGNAL_INVALID "INVALID"   // Invalid message
 
 // JSONDoc
-// StaticJsonDocument<200> doc;
-JsonDocument doc;
+StaticJsonDocument<512> doc;
+// JsonDocument doc;
+
+/*********************< Test >**********************/
+int sendCnt = 0;
+int resCnt = 0;
+#define TASK_DURATION_SEC 60 // 1分
+
+// 送信間隔（ミリ秒）を定数で定義し、変更可能にする
+int sendIntervalMs = 10; // デフォルト10ms
+int sendCountLimit = TASK_DURATION_SEC * 1000 / sendIntervalMs;
+
+// 各タスクのインスタンス生成時にsendIntervalMsを使用
+Task taskTestInterestTemp(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
+Task taskTestInterestHumidity(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
+Task taskTestInterestCo2(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
+Task taskTestInterestLight(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
+
+void testInterestTemp()
+{
+  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/temp\",\"content\":\"N/A\",\"time\":0}";
+  mesh.sendSingle(1553658797, msg);
+  sendCnt++;
+
+  if (sendCnt >= sendCountLimit)
+  {
+    Serial.println("Send Interest Temp Task finished.");
+    taskTestInterestTemp.disable(); // Disable the task after sending the required number of messages
+  }
+}
+// taskTestInterestTemp.setCallback(&testInterestTemp);
+
+void testInterestHumidity()
+{
+  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/humidity\",\"content\":\"N/A\",\"time\":0}";
+  mesh.sendSingle(1553658797, msg);
+  sendCnt++;
+
+  if (sendCnt >= sendCountLimit)
+  {
+    Serial.println("Send Interest Humidity Task finished.");
+    taskTestInterestHumidity.disable(); // Disable the task after sending the required number of messages
+  }
+}
+// taskTestInterestHumidity.setCallback(&testInterestHumidity);
+
+void testInterestCo2()
+{
+  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/CO2\",\"content\":\"N/A\",\"time\":0}";
+  mesh.sendSingle(1553658797, msg);
+  sendCnt++;
+
+  if (sendCnt >= sendCountLimit)
+  {
+    Serial.println("Send Interest Co2 Task finished.");
+    taskTestInterestCo2.disable(); // Disable the task after sending the required number of messages
+  }
+}
+// taskTestInterestCo2.setCallback(&testInterestCo2);
+
+void testInterestLight()
+{
+  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/light\",\"content\":\"N/A\",\"time\":0}";
+  mesh.sendSingle(1553658797, msg);
+  sendCnt++;
+
+  if (sendCnt >= sendCountLimit)
+  {
+    Serial.println("Send Interest Light Task finished.");
+    taskTestInterestLight.disable(); // Disable the task after sending the required number of messages
+  }
+}
+// taskTestInterestLight.setCallback(&testInterestLight);
 
 /*********************< Callback classes and functions >**********************/
 
 void msgReception(uint32_t from, uint32_t to, String const &msg)
 {
   String processedmsg = arduinoController.receiveMessage(to, msg);
-  Serial.printf("Processed msg=%s\n", processedmsg.c_str());
+  // Serial.printf("Processed msg=%s\n", processedmsg.c_str());
 
   DeserializationError error = deserializeJson(doc, processedmsg);
   if (error)
@@ -78,12 +149,12 @@ void msgReception(uint32_t from, uint32_t to, String const &msg)
     }
   }
 
-  Serial.printf("send msg=%s\n", processedmsg.c_str());
+  // Serial.printf("send msg=%s\n", processedmsg.c_str());
   doc.clear();
+  resCnt++;
 }
 
 // Read Sensor Data
-int cnt = 0;
 void readSensorData()
 {
   // sensorObj.read();
@@ -91,12 +162,32 @@ void readSensorData()
   // doc["contentName"] = sensorObj.getContentName();
   // doc["content"] = sensorObj.getData();
 
-  doc["contentName"] = "/Hoge/" + String(cnt);
-  cnt++;
-  doc["content"] = "0325";
+  doc["contentName"] = "/iot/buildingA/room101/temp";
+  doc["content"] = "26.5C";
   doc["time"] = mesh.getNodeTime();
 
   String sensorData;
+  serializeJson(doc, sensorData);
+  doc.clear();
+  arduinoController.reciveSensorData(sensorData);
+
+  doc["contentName"] = "/iot/buildingA/room101/humidity";
+  doc["content"] = "55.2%";
+  doc["time"] = mesh.getNodeTime();
+  serializeJson(doc, sensorData);
+  doc.clear();
+  arduinoController.reciveSensorData(sensorData);
+
+  doc["contentName"] = "/iot/buildingA/room101/CO2";
+  doc["content"] = "438ppm";
+  doc["time"] = mesh.getNodeTime();
+  serializeJson(doc, sensorData);
+  doc.clear();
+  arduinoController.reciveSensorData(sensorData);
+
+  doc["contentName"] = "/iot/buildingA/room101/light";
+  doc["content"] = "123.4lux";
+  doc["time"] = mesh.getNodeTime();
   serializeJson(doc, sensorData);
   doc.clear();
   arduinoController.reciveSensorData(sensorData);
@@ -107,7 +198,7 @@ Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 
 void receivedCallback(uint32_t from, String &msg)
 {
-  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+  // Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
   msgReception(from, mesh.getNodeId(), msg);
 }
 
@@ -147,9 +238,26 @@ void setup()
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
 
   userScheduler.addTask(taskReadSensorData);
+  userScheduler.addTask(taskTestInterestTemp);
+  userScheduler.addTask(taskTestInterestHumidity);
+  userScheduler.addTask(taskTestInterestCo2);
+  userScheduler.addTask(taskTestInterestLight);
+
+  // Set callbacks for tasks
+  taskTestInterestTemp.setCallback(&testInterestTemp);
+  taskTestInterestHumidity.setCallback(&testInterestHumidity);
+  taskTestInterestCo2.setCallback(&testInterestCo2);
+  taskTestInterestLight.setCallback(&testInterestLight);
+
   taskReadSensorData.enable();
 
   arduinoController.setMesh(&mesh);
+
+  // タスクのインターバルを初期値でセット
+  taskTestInterestTemp.setInterval(TASK_MILLISECOND * sendIntervalMs);
+  taskTestInterestHumidity.setInterval(TASK_MILLISECOND * sendIntervalMs);
+  taskTestInterestCo2.setInterval(TASK_MILLISECOND * sendIntervalMs);
+  taskTestInterestLight.setInterval(TASK_MILLISECOND * sendIntervalMs);
 }
 
 void loop()
@@ -178,6 +286,49 @@ void loop()
     {
       String res = mesh.subConnectionJson(true);
       Serial.printf("Sub Connection JSON: %s\n", res.c_str());
+      return;
+    }
+    else if (msg == "StartTestInterestTemp")
+    {
+      taskTestInterestTemp.enable();
+    }
+    else if (msg == "StartTestInterestHumidity")
+    {
+      taskTestInterestHumidity.enable();
+    }
+    else if (msg == "StartTestInterestCo2")
+    {
+      taskTestInterestCo2.enable();
+    }
+    else if (msg == "StartTestInterestLight")
+    {
+      taskTestInterestLight.enable();
+    }
+    else if (msg == "result")
+    {
+      Serial.printf("sendCnt=%d, resCnt=%d\n", sendCnt, resCnt);
+    }
+    else if (msg.startsWith("setInterval="))
+    {
+      // 例: setInterval=50 で50msに変更
+      int newInterval = msg.substring(12).toInt();
+      if (newInterval > 0)
+      {
+        sendIntervalMs = newInterval;
+        sendCountLimit = TASK_DURATION_SEC * 1000 / sendIntervalMs;
+
+        // 各タスクのインターバルを更新
+        taskTestInterestTemp.setInterval(TASK_MILLISECOND * sendIntervalMs);
+        taskTestInterestHumidity.setInterval(TASK_MILLISECOND * sendIntervalMs);
+        taskTestInterestCo2.setInterval(TASK_MILLISECOND * sendIntervalMs);
+        taskTestInterestLight.setInterval(TASK_MILLISECOND * sendIntervalMs);
+
+        Serial.printf("Send interval updated: %d ms\n", sendIntervalMs);
+      }
+      else
+      {
+        Serial.println("Invalid interval value.");
+      }
       return;
     }
     else

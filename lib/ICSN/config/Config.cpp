@@ -10,8 +10,8 @@ bool loadSystemConfig(const char* path) {
   File file = LittleFS.open(path, "r");
   if (!file) return false;
 
-  // StaticJsonDocument<512> doc;
-  JsonDocument doc;
+  StaticJsonDocument<512> doc;
+  // JsonDocument doc;
   if (deserializeJson(doc, file)) return false;
 
   systemConfig.maxPitTableSize  = doc["MAX_PIT_TABLE_SIZE"] | 20;
