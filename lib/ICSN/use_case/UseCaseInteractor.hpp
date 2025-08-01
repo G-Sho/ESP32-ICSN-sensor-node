@@ -18,16 +18,16 @@ private:
 public:
     virtual ~UseCaseInteractor() = default;
 
-    // メッシュの設定
-    void setMesh(painlessMesh *meshPtr)
-    {
-        if (meshPtr == nullptr)
-        {
-            Serial.println("Error: Mesh pointer is null.");
-            return;
-        }
-        csRepository.setMesh(meshPtr);
-    };
+    // // メッシュの設定
+    // void setMesh(painlessMesh *meshPtr)
+    // {
+    //     if (meshPtr == nullptr)
+    //     {
+    //         Serial.println("Error: Mesh pointer is null.");
+    //         return;
+    //     }
+    //     csRepository.setMesh(meshPtr);
+    // };
 
     // Interestパケット受信時の処理
     virtual OutputData handleInterestReceive(const InputData &inputData) override;
