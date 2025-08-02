@@ -5,7 +5,7 @@
 #include "message/HopCount.hpp"
 #include "message/ContentName.hpp"
 #include "message/Content.hpp"
-#include "data_structure/OutputData.hpp"
+#include "config/Config.hpp"
 
 /// @brief Interestパケットを受信したときの処理
 /// @param inputData 入力された Interest データ構造

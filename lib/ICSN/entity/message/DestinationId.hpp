@@ -3,7 +3,7 @@
 #include <string>
 #include <set>
 
-constexpr const char* DEST_BROADCAST = "BROADCAST"; // ブロードキャスト用途
+constexpr const char* DEST_BROADCAST = "FF:FF:FF:FF:FF:FF"; // ブロードキャスト用途
 
 class DestinationId
 {

@@ -27,6 +27,8 @@ struct OutputData
               uint32_t time)
         : senderId(senderId), destId(destId), signalCode(signalCode),
           hopCount(hopCount), contentName(contentName), content(content), time(time) {}
+
+    OutputData() = default;
 };
 
 inline OutputData makeOutput(

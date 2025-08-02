@@ -1,10 +1,8 @@
-#include "pCASTINGCSRepository.hpp"
+#include "LRUCSRepository.hpp"
 #include "config/Config.hpp"
 
-void pCASTINGCSRepository::save(const CSPair &csPair)
+void LRUCSRepository::save(const CSPair &csPair)
 {
-    removeExpiredEntries();
-
     const std::string &name = csPair.getContentName().getValue();
     const std::string &content = csPair.getContent().getValue().first;
     const uint32_t &timeStamp = csPair.getContent().getValue().second;
@@ -40,12 +38,12 @@ void LRUCSRepository::remove(const ContentName &contentName)
     // printCache();
 }
 
-bool pCASTINGCSRepository::find(const ContentName &contentName)
+bool LRUCSRepository::find(const ContentName &contentName)
 {
     return iter.count(contentName.getValue()) != 0;
 }
 
-Content pCASTINGCSRepository::get(const ContentName &contentName)
+Content LRUCSRepository::get(const ContentName &contentName)
 {
     const std::string &name = contentName.getValue();
     if (iter.count(name) == 0)

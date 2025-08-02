@@ -25,19 +25,17 @@ public:
         Serial.printf("=== Content Store ===\n");
         int index = 0;
 
-        uint32_t now = mesh ? mesh->getNodeTime() : 0;
+        uint32_t now = millis();
 
         for (const auto &entry : Q)
         {
             const std::string &key = std::get<0>(entry);
             const std::string &value = std::get<1>(entry);
             uint32_t timestamp = std::get<2>(entry);
-            double FR = 1.0 - ((double)(now - timestamp) / (double)systemConfig.cacheEntryTtlUs);
-            const char *status = (FR <= 0.0) ? "Expired" : "Valid";
-
+            
             // Print cache entry
-            Serial.printf("[%d] Key: %s, Value: %s, Timestamp: %lu, Freshness: %.2f, Status: %s\n",
-                          index++, key.c_str(), value.c_str(), timestamp, FR, status);
+            Serial.printf("[%d] Key: %s, Value: %s, Timestamp: %lu\n",
+                          index++, key.c_str(), value.c_str(), timestamp);
         }
 
         Serial.printf("======================\n\n");

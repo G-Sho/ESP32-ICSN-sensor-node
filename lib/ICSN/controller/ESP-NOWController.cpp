@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <cstring> // for strncpy
 
 // Helper: Convert addresses to std::string for logging
 static std::string addressToString(const uint8_t *address)
@@ -42,81 +43,72 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
 
     Serial.printf("Received message from %s to %s\n", txAddrStr.c_str(), rxAddrStr.c_str());
 
-    SignalCode code = fromString(data.signalCode.c_str());
+    SignalCode code = fromString(data.signalCode);
 
     InputData inputData(
         txAddrStr,
         {rxAddrStr},
-        std::string(data.signalCode.c_str()),
+        std::string(data.signalCode),
         static_cast<int>(data.hopCount),
-        std::string(data.contentName.c_str()),
-        std::string(data.content.c_str()),
+        std::string(data.contentName),
+        std::string(data.content),
         0);
+
+    OutputData outputData;
 
     if (code == SignalCode::INTEREST)
     {
-        OutputData outputData = useCaseInteractor.handleInterestReceive(inputData);
-        ESP_NOWControlData result;
-
-        // 最大20個までコピー
-        int index = 0;
-        for (const auto &addrStr : outputData.destId)
-        {
-            if (index >= 20)
-                break; // 配列の上限
-            result.txAddress[index] = macStringToArray(addrStr);
-            index++;
-        }
-
-        result.signalCode = String(outputData.signalCode.c_str());
-        result.hopCount = outputData.hopCount;
-        result.contentName = String(outputData.contentName.c_str());
-        result.content = String(outputData.content.c_str());
-
-        return result;
+        outputData = useCaseInteractor.handleInterestReceive(inputData);
     }
     else if (code == SignalCode::DATA)
     {
-        OutputData outputData = useCaseInteractor.handleDataReceive(inputData);
-        ESP_NOWControlData result;
-
-        // 最大20個までコピー
-        int index = 0;
-        for (const auto &addrStr : outputData.destId)
-        {
-            if (index >= 20)
-                break; // 配列の上限
-            result.txAddress[index] = macStringToArray(addrStr);
-            index++;
-        }
-
-        result.signalCode = String(outputData.signalCode.c_str());
-        result.hopCount = outputData.hopCount;
-        result.contentName = String(outputData.contentName.c_str());
-        result.content = String(outputData.content.c_str());
-
-        return result;
+        outputData = useCaseInteractor.handleDataReceive(inputData);
     }
     else
     {
         Serial.println("Unknown signal code received");
         return ESP_NOWControlData{};
     }
+
+    ESP_NOWControlData result = {};
+
+    // 最大20個までMACアドレスをコピー
+    int index = 0;
+    for (const auto &addrStr : outputData.destId)
+    {
+        if (index >= 20)
+            break;
+        result.txAddress[index] = macStringToArray(addrStr);
+        index++;
+    }
+
+    // char配列への安全なコピー
+    strncpy(result.signalCode, outputData.signalCode.c_str(), MAX_SIGNAL_CODE_LENGTH - 1);
+    result.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+
+    result.hopCount = outputData.hopCount;
+
+    strncpy(result.contentName, outputData.contentName.c_str(), MAX_CONTENT_NAME_LENGTH - 1);
+    result.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+
+    strncpy(result.content, outputData.content.c_str(), MAX_CONTENT_LENGTH - 1);
+    result.content[MAX_CONTENT_LENGTH - 1] = '\0';
+
+    return result;
 }
 
 void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
 {
-    // Log the received sensor data
-    Serial.printf("Received sensor data: %s\n", data.content.c_str());
+    Serial.printf("Received sensor data: %s\n", data.content);
 
-    // Process the sensor data
     InputData inputData(
-        std::string("0"), // senderId: 仮の "0" という文字列
-        {},               // destId: 空の std::set<std::string>
-        std::string(data.signalCode.c_str()),
-        static_cast<int>(data.hopCount),
-        std::string(data.contentName.c_str()),
-        std::string(data.content.c_str()),
+        std::string("N/A"), // senderId: 仮
+        {},                 // destId: 空
+        std::string(data.signalCode),
+        0, // hopCount: 空
+        std::string(data.contentName),
+        std::string(data.content),
         millis());
+
     useCaseInteractor.handleSensorDataReceive(inputData);
 }

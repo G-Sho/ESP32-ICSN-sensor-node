@@ -3,17 +3,21 @@
 #include "interface/InputBoundary.hpp"
 #include "InputData.hpp"
 #include "OutputData.hpp"
-#include "data_access/TwoStageLookupFIBRepository.hpp"
+// #include "data_access/TwoStageLookupFIBRepository.hpp"
+#include "data_access/LRUFIBRepository.hpp"
 #include "data_access/LRUPITRepository.hpp"
-#include "data_access/pCASTINGCSRepository.hpp"
+#include "data_access/LRUCSRepository.hpp"
+// #include "data_access/pCASTINGCSRepository.hpp"
 
 class UseCaseInteractor : public IInputBoundary
 {
 private:
     // FIB, PIT, CSのリポジトリ
-    TwoStageLookupFIBRepository fibRepository;
+    // TwoStageLookupFIBRepository fibRepository;
+    LRUFIBRepository fibRepository;
     LRUPITRepository pitRepository;
-    pCASTINGCSRepository csRepository;
+    LRUCSRepository csRepository;
+    // pCASTINGCSRepository csRepository;
 
 public:
     virtual ~UseCaseInteractor() = default;
