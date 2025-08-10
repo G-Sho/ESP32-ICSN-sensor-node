@@ -1,12 +1,12 @@
 #pragma once
 
-#include "interface/InputBoundary.hpp"
-#include "InputData.hpp"
-#include "OutputData.hpp"
+#include "../interface/InputBoundary.hpp"
+#include "../data_structure/InputData.hpp"
+#include "../data_structure/OutputData.hpp"
 // #include "data_access/TwoStageLookupFIBRepository.hpp"
-#include "data_access/LRUFIBRepository.hpp"
-#include "data_access/LRUPITRepository.hpp"
-#include "data_access/LRUCSRepository.hpp"
+#include "../infrastructure/data_access/LRUFIBRepository.hpp"
+#include "../infrastructure/data_access/LRUPITRepository.hpp"
+#include "../infrastructure/data_access/LRUCSRepository.hpp"
 // #include "data_access/pCASTINGCSRepository.hpp"
 
 class UseCaseInteractor : public IInputBoundary

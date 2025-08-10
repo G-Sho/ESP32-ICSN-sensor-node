@@ -18,7 +18,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     HopCount hopcount(inputData.hopCount);
     hopcount.increment();
     ContentName contentName(inputData.contentName);
-    Content content({inputData.content, inputData.time});
+    Content content(inputData.content);
 
     // processing when receiving an Interest
     if (hopcount.getValue() >= systemConfig.hopCountThreshold)
@@ -30,8 +30,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
             toString(SignalCode::INVALID),
             hopcount.getValue(),
             VALUE_NA,
-            VALUE_NA,
-            0);
+            VALUE_NA);
     }
 
     if (csRepository.find(contentName))
@@ -44,8 +43,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
             toString(SignalCode::DATA),
             0,
             contentName.getValue(),
-            res.getValue().first,
-            res.getValue().second);
+            res.getValue());
     }
     else
     {
@@ -62,8 +60,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
                 toString(SignalCode::INTEREST),
                 hopcount.getValue(),
                 contentName.getValue(),
-                content.getValue().first,
-                content.getValue().second);
+                content.getValue());
         }
         else
         {
@@ -74,8 +71,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
                 toString(SignalCode::INTEREST),
                 hopcount.getValue(),
                 contentName.getValue(),
-                content.getValue().first,
-                content.getValue().second);
+                content.getValue());
         }
     }
 };
@@ -91,7 +87,7 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
     HopCount hopcount(inputData.hopCount);
     hopcount.increment();
     ContentName contentName(inputData.contentName);
-    Content content({inputData.content, inputData.time});
+    Content content(inputData.content);
 
     // processing when receiving an DATA
     if (pitRepository.find(contentName.getValue()))
@@ -111,8 +107,7 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
             toString(SignalCode::DATA),
             hopcount.getValue(),
             contentName.getValue(),
-            content.getValue().first,
-            content.getValue().second);
+            content.getValue());
     }
     else
     {
@@ -127,8 +122,7 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
             toString(SignalCode::INVALID),
             hopcount.getValue(),
             VALUE_NA,
-            VALUE_NA,
-            0);
+            VALUE_NA);
     }
 };
 
@@ -138,7 +132,7 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
 void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 {
     ContentName contentName(inputData.contentName);
-    Content content({inputData.content, inputData.time});
+    Content content(inputData.content);
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
 

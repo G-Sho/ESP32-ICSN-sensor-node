@@ -1,8 +1,8 @@
 #pragma once
 
-#include "entity/routing_table/CSPair.hpp"
-#include "entity/message/ContentName.hpp"
-#include "entity/message/Content.hpp"
+#include "../entity/routing_table/CSPair.hpp"
+#include "../entity/message/ContentName.hpp"
+#include "../entity/message/Content.hpp"
 
 class ICSRepository
 {

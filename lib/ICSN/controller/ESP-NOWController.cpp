@@ -51,8 +51,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
         std::string(data.signalCode),
         static_cast<int>(data.hopCount),
         std::string(data.contentName),
-        std::string(data.content),
-        0);
+        std::string(data.content));
 
     OutputData outputData;
 
@@ -107,8 +106,7 @@ void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
         std::string(data.signalCode),
         0, // hopCount: 空
         std::string(data.contentName),
-        std::string(data.content),
-        millis());
+        std::string(data.content));
 
     useCaseInteractor.handleSensorDataReceive(inputData);
 }

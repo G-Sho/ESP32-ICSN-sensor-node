@@ -22,7 +22,7 @@ public:
 private:
     String m_data;
     String m_contentName;
-    const int m_maxSiza = 20;    
+    const int m_maxSize = 20;    
     int m_numberOfSensorData = 0;
 };
 

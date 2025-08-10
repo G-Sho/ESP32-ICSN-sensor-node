@@ -1,18 +1,16 @@
 #pragma once
 
-#include "data_access/IFIBRepository.hpp"
-#include <unordered_map>
-#include <list>
+#include "../../interface/data_access/IFIBRepository.hpp"
+#include "FixedSizeLRUCache.hpp"
 #include <set>
 #include <string>
-#include <iostream>
 #include <Arduino.h>
 
 class LRUFIBRepository : public IFIBRepository
 {
 private:
-    std::list<std::pair<std::string, std::set<std::string>>> Q;
-    std::unordered_map<std::string, std::list<std::pair<std::string, std::set<std::string>>>::iterator> iter;
+    static constexpr size_t MAX_FIB_SIZE = 20;
+    FixedSizeLRUCache<std::set<std::string>, MAX_FIB_SIZE> cache;
 
 public:
     void save(const FIBPair &fibPair) override;
@@ -22,22 +20,7 @@ public:
 
     void printCache() const
     {
-        Serial.printf("=== Forwarding InFormation Base ===\n");
-        int index = 0;
-
-        for (const auto &entry : Q)
-        {
-            const std::string &key = entry.first;
-            const std::set<std::string> &value = entry.second;
-
-            Serial.printf("[%d] Key: %s, Value: {", index++, key.c_str());
-            for (const auto &id : value)
-            {
-                Serial.printf("%s ", id.c_str());
-            }
-            Serial.printf("}\n");
-        }
-
-        Serial.printf("======================\n\n");
+        Serial.printf("=== Forwarding Information Base ===\n");
+        cache.printCache();
     }
 };

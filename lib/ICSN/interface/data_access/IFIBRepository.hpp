@@ -1,8 +1,8 @@
 #pragma once
 
-#include "entity/routing_table/FIBPair.hpp"
-#include "entity/message/ContentName.hpp"
-#include "entity/message/DestinationId.hpp"
+#include "../entity/routing_table/FIBPair.hpp"
+#include "../entity/message/ContentName.hpp"
+#include "../entity/message/DestinationId.hpp"
 
 class IFIBRepository
 {

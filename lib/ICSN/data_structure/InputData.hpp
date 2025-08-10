@@ -13,15 +13,13 @@ struct InputData
     int hopCount;
     std::string contentName;
     std::string content;
-    uint32_t time;
 
     InputData(const std::string& senderId,
               const std::set<std::string>& destId,
               const std::string& signalCode,
               int hopCount,
               const std::string& contentName,
-              const std::string& content,
-              uint32_t time)
+              const std::string& content)
         : senderId(senderId), destId(destId), signalCode(signalCode),
-          hopCount(hopCount), contentName(contentName), content(content), time(time) {}
+          hopCount(hopCount), contentName(contentName), content(content) {}
 };
