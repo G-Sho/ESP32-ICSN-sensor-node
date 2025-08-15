@@ -2,14 +2,14 @@
 
 #include "../../interface/data_access/ICSRepository.hpp"
 #include "FixedSizeLRUCache.hpp"
+#include "../../config/Config.hpp"
 #include <string>
 #include <Arduino.h>
 
 class LRUCSRepository : public ICSRepository
 {
 private:
-    static constexpr size_t MAX_CS_SIZE = 20;
-    FixedSizeLRUCache<std::string, MAX_CS_SIZE> cache;
+    FixedSizeLRUCache<std::string, MAX_CS_TABLE_SIZE> cache;
 
 public:
     void save(const CSPair &csPair) override;

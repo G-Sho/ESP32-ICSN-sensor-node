@@ -16,6 +16,9 @@
 #define SIGNAL_INTEREST "INTEREST"
 #define SIGNAL_DATA "DATA"
 
+// ブロードキャスト定数
+constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 // === グローバル ===
 Scheduler userScheduler;
 ESP_NOWController espNowController;
@@ -37,31 +40,33 @@ void printMac(const uint8_t *mac) {
 
 void sendPacketToAddresses(const ESP_NOWControlData &data) {
   CommunicationData packet = {};
-  strncpy(packet.signalCode, data.signalCode, MAX_SIGNAL_CODE_LENGTH);
+  strncpy(packet.signalCode, data.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
+  packet.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
   packet.hopCount = data.hopCount;
-  strncpy(packet.contentName, data.contentName, MAX_CONTENT_NAME_LENGTH);
-  strncpy(packet.content, data.content, MAX_CONTENT_LENGTH);
+  strncpy(packet.contentName, data.contentName, MAX_CONTENT_NAME_LENGTH - 1);
+  packet.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  strncpy(packet.content, data.content, MAX_CONTENT_LENGTH - 1);
+  packet.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
   for (const auto &addr : data.txAddress) {
     if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
-    if (isBroadcastAddress(addr)) {
-      uint8_t broadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-      esp_now_send(broadcastAddress, (uint8_t *)&packet, sizeof(packet));
-    } else {
-      memcpy(peerInfo.peer_addr, addr.data(), 6);
-      peerInfo.ifidx = WIFI_IF_STA;
-      peerInfo.channel = 1;
-      peerInfo.encrypt = false;
+    memcpy(peerInfo.peer_addr, addr.data(), 6);
+    peerInfo.ifidx = WIFI_IF_STA;
+    peerInfo.channel = 1;
+    peerInfo.encrypt = false;
 
-      if (!esp_now_is_peer_exist(peerInfo.peer_addr)) {
-        if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-          Serial.println("Failed to add peer");
-          continue;
-        }
+    if (!esp_now_is_peer_exist(peerInfo.peer_addr)) {
+      if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+        Serial.println("Failed to add peer");
+        continue;
       }
+    }
 
-      esp_now_send(peerInfo.peer_addr, (uint8_t *)&packet, sizeof(packet));
+    esp_now_send(peerInfo.peer_addr, (uint8_t *)&packet, sizeof(packet));
+    
+    // ブロードキャストアドレス以外は送信後に削除
+    if (!isBroadcastAddress(addr)) {
       esp_now_del_peer(peerInfo.peer_addr);
     }
   }
@@ -73,9 +78,12 @@ void readSensorData() {
 
   ESP_NOWControlData sensorData = {};
   sensorData.hopCount = 1;
-  strncpy(sensorData.signalCode, SIGNAL_DATA, MAX_SIGNAL_CODE_LENGTH);
-  strncpy(sensorData.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH);
-  strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH);
+  strncpy(sensorData.signalCode, SIGNAL_DATA, MAX_SIGNAL_CODE_LENGTH - 1);
+  sensorData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+  strncpy(sensorData.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  sensorData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
+  sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
   Serial.printf("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
   espNowController.receiveSensorData(sensorData);
@@ -87,11 +95,14 @@ void sendInterest() {
   Serial.println("Sending INTEREST...");
 
   ESP_NOWControlData interest = {};
-  interest.txAddress[0] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH);
+  std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
+  strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
+  interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
   interest.hopCount = 1;
-  strncpy(interest.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH);
-  strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH);
+  strncpy(interest.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  interest.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH - 1);
+  interest.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
   sendPacketToAddresses(interest);
 }
@@ -110,11 +121,6 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
 
   CommunicationData receivedPacket;
   memcpy(&receivedPacket, data, sizeof(CommunicationData));
-  
-  // Ensure null termination for safety
-  receivedPacket.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  receivedPacket.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  receivedPacket.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
   Serial.print("Received from: ");
   printMac(mac_addr);
@@ -126,39 +132,16 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
 
   // ESP_NOWControlData に変換
   ESP_NOWControlData inputData = {};
-  strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
-  inputData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+  strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH);
   inputData.hopCount = receivedPacket.hopCount;
-  strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH - 1);
-  inputData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH - 1);
-  inputData.content[MAX_CONTENT_LENGTH - 1] = '\0';
-  
-  // 送信者のMACアドレスを最初の要素に設定、他は0で初期化済み
+  strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH);
+  strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH);
   std::copy(mac_addr, mac_addr + 6, inputData.txAddress[0].begin());
 
   ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);
   sendPacketToAddresses(outputData);
 }
 
-// === ブロードキャストピア追加 ===
-void addBroadcastPeer() {
-  esp_now_peer_info_t info = {};
-  memset(info.peer_addr, 0xFF, 6);
-  info.channel = 1;
-  info.ifidx = WIFI_IF_STA;
-  info.encrypt = false;
-
-  if (!esp_now_is_peer_exist(info.peer_addr)) {
-    if (esp_now_add_peer(&info) == ESP_OK) {
-      Serial.println("Broadcast peer added successfully");
-    } else {
-      Serial.println("Failed to add broadcast peer");
-    }
-  } else {
-    Serial.println("Broadcast peer already exists");
-  }
-}
 
 // === setup() ===
 void setup() {
@@ -184,7 +167,6 @@ void setup() {
 
   esp_now_register_send_cb(onDataSent);
   esp_now_register_recv_cb(onDataReceive);
-  addBroadcastPeer();
 
   Serial.println("ESP-NOW initialized successfully");
 

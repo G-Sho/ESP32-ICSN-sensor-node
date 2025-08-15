@@ -5,7 +5,7 @@
 #include "InputData.hpp"
 #include "OutputData.hpp"
 
-/// @brief ESP-NOWController class
+/// @brief ESP-NOWControllerクラス
 class ESP_NOWController
 {
 private:

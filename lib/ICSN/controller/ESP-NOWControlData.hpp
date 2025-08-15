@@ -3,12 +3,12 @@
 #include <Arduino.h>
 #include <array>
 
-#define MAX_TX_ADDRESSES 20 // Maximum number of addresses to send to
-#define MAX_SIGNAL_CODE_LENGTH 10 // Maximum length of signal code
-#define MAX_CONTENT_NAME_LENGTH 100 // Maximum length of content name
-#define MAX_CONTENT_LENGTH 20 // Maximum length of content
+#define MAX_TX_ADDRESSES 20 // 送信先アドレスの最大数
+#define MAX_SIGNAL_CODE_LENGTH 10 // シグナルコードの最大長
+#define MAX_CONTENT_NAME_LENGTH 100 // コンテンツ名の最大長
+#define MAX_CONTENT_LENGTH 20 // コンテンツの最大長
 
-/// @brief Data structure for ICSN Application
+/// @brief ICSNアプリケーション用データ構造体
 struct ESP_NOWControlData {
   std::array<std::array<uint8_t, 6>, 20> txAddress; // 複数送信先対応
   char signalCode[MAX_SIGNAL_CODE_LENGTH];
@@ -18,7 +18,7 @@ struct ESP_NOWControlData {
 };
 
 
-/// @brief Data structure for ESP-NOW communication
+/// @brief ESP-NOW通信用データ構造体
 struct CommunicationData
 {
   char signalCode[MAX_SIGNAL_CODE_LENGTH];

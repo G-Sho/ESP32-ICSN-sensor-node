@@ -16,19 +16,19 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     DestinationId destinationId({inputData.destId});
     SignalCode signalCode = fromString(inputData.signalCode);
     HopCount hopcount(inputData.hopCount);
-    hopcount.increment();
     ContentName contentName(inputData.contentName);
     Content content(inputData.content);
 
-    // processing when receiving an Interest
-    if (hopcount.getValue() >= systemConfig.hopCountThreshold)
+    // INTEREST受信時の処理
+    // ホップカウントチェック（転送時の値で判定）
+    if (hopcount.getValue() + 1 >= systemConfig.hopCountThreshold)
     {
-        // packet discard
+        // パケット破棄
         return makeOutput(
             VALUE_NA,
             {VALUE_NA},
             toString(SignalCode::INVALID),
-            hopcount.getValue(),
+            hopcount.getValue() + 1,
             VALUE_NA,
             VALUE_NA);
     }
@@ -36,7 +36,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     if (csRepository.find(contentName))
     {
         Content res = csRepository.get(contentName);
-        // send data based on CS
+        // CSからデータ送信 (新しいDATAパケットなのでホップ数=0)
         return makeOutput(
             *destinationId.getValue().begin(),
             {senderId.getValue()},
@@ -47,29 +47,29 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     }
     else
     {
-        // save to PIT Table
+        // PITテーブルに保存
         PITPair pitPair(contentName, DestinationId({senderId.getValue()}));
         pitRepository.save(pitPair);
 
         if (fibRepository.find(contentName))
         {
-            // send Interest based on FIB Table
+            // FIBテーブルに基づいてINTEREST送信 (転送なのでホップ数+1)
             return makeOutput(
                 *destinationId.getValue().begin(),
                 fibRepository.get(contentName).getValue(),
                 toString(SignalCode::INTEREST),
-                hopcount.getValue(),
+                hopcount.getValue() + 1,
                 contentName.getValue(),
                 content.getValue());
         }
         else
         {
-            // broadcast Interest
+            // INTERESTブロードキャスト (転送なのでホップ数+1)
             return makeOutput(
                 *destinationId.getValue().begin(),
                 {DEST_BROADCAST},
                 toString(SignalCode::INTEREST),
-                hopcount.getValue(),
+                hopcount.getValue() + 1,
                 contentName.getValue(),
                 content.getValue());
         }
@@ -85,42 +85,41 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
     DestinationId destinationId({inputData.destId});
     SignalCode signalCode = fromString(inputData.signalCode);
     HopCount hopcount(inputData.hopCount);
-    hopcount.increment();
     ContentName contentName(inputData.contentName);
     Content content(inputData.content);
 
-    // processing when receiving an DATA
+    // DATA受信時の処理
     if (pitRepository.find(contentName.getValue()))
     {
-        // cache in CS
+        // CSにキャッシュ
         CSPair csPair(contentName, content);
         csRepository.save(csPair);
 
-        // cache in FIB
+        // FIBにキャッシュ
         FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
         fibRepository.save(fibPair);
 
-        // send data based on PIT
+        // PITに基づいてデータ送信 (転送なのでホップ数+1)
         return makeOutput(
             *destinationId.getValue().begin(),
             pitRepository.get(contentName).getValue(),
             toString(SignalCode::DATA),
-            hopcount.getValue(),
+            hopcount.getValue() + 1,
             contentName.getValue(),
             content.getValue());
     }
     else
     {
-        // save to PIT Table
+        // 将来の使用のためFIBテーブルに保存
         FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
         fibRepository.save(fibPair);
 
-        // packet discard
+        // パケット破棄 (対応するINTERESTがない)
         return makeOutput(
             VALUE_NA,
             {VALUE_NA},
             toString(SignalCode::INVALID),
-            hopcount.getValue(),
+            hopcount.getValue() + 1,
             VALUE_NA,
             VALUE_NA);
     }

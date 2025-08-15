@@ -4,9 +4,9 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-#include <cstring> // for strncpy
+#include <cstring> // strncpy用
 
-// Helper: Convert addresses to std::string for logging
+// ヘルパー: アドレスをログ用のstd::stringに変換
 static std::string addressToString(const uint8_t *address)
 {
     std::ostringstream oss;
