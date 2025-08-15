@@ -143,7 +143,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 void UseCaseInteractor::mockAddToCS(const std::string &name, const std::string &content)
 {
     ContentName contentName(name);
-    Content contentObj({content, millis()});
+    Content contentObj(content);
     CSPair pair(contentName, contentObj);
     csRepository.save(pair);
 }

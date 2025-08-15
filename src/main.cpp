@@ -110,6 +110,11 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
 
   CommunicationData receivedPacket;
   memcpy(&receivedPacket, data, sizeof(CommunicationData));
+  
+  // Ensure null termination for safety
+  receivedPacket.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+  receivedPacket.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  receivedPacket.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
   Serial.print("Received from: ");
   printMac(mac_addr);
@@ -121,10 +126,15 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
 
   // ESP_NOWControlData に変換
   ESP_NOWControlData inputData = {};
-  strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH);
+  strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
+  inputData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
   inputData.hopCount = receivedPacket.hopCount;
-  strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH);
-  strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH);
+  strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH - 1);
+  inputData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH - 1);
+  inputData.content[MAX_CONTENT_LENGTH - 1] = '\0';
+  
+  // 送信者のMACアドレスを最初の要素に設定、他は0で初期化済み
   std::copy(mac_addr, mac_addr + 6, inputData.txAddress[0].begin());
 
   ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);

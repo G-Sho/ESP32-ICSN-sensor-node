@@ -71,11 +71,11 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
 
     ESP_NOWControlData result = {};
 
-    // 最大20個までMACアドレスをコピー
+    // 最大MAX_TX_ADDRESSES個までMACアドレスをコピー
     int index = 0;
     for (const auto &addrStr : outputData.destId)
     {
-        if (index >= 20)
+        if (index >= MAX_TX_ADDRESSES)
             break;
         result.txAddress[index] = macStringToArray(addrStr);
         index++;
