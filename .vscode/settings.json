@@ -51,6 +51,8 @@
         "streambuf": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "queue": "cpp"
-    }
+        "queue": "cpp",
+        "set": "cpp"
+    },
+    "idf.portWin": "COM4"
 }
