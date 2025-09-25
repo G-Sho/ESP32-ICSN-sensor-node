@@ -6,11 +6,15 @@
 #include <WiFi.h>
 #include "esp_wifi.h"
 
+// パフォーマンス測定を有効にする
+#define PERFORMANCE_MEASURE
+
 #include "config/Config.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
 #include "Sensor.h"
 #include <TaskScheduler.h>
+#include "performance/PerformanceStats.hpp"
 
 // === 定数 ===
 #define SIGNAL_INTEREST "INTEREST"
@@ -24,6 +28,9 @@ Scheduler userScheduler;
 ESP_NOWController espNowController;
 uint8_t myMacAddress[6];
 esp_now_peer_info_t peerInfo;
+
+// パフォーマンス統計
+PerformanceStats packetProcessStats;
 
 // === ヘルパー ===
 bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
@@ -110,25 +117,21 @@ Task taskTestInterestsent(TASK_SECOND * 10, TASK_FOREVER, &sendInterest);
 
 // === ESP-NOW コールバック ===
 void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Data sent successfully" : "Data send failed");
+  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Data sent successfully" : "Data send failed");
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
+  // パケット処理時間測定開始
+  MEASURE_START(packet_timer);
+  
   if (len != sizeof(CommunicationData)) {
     Serial.println("Received data size mismatch");
+    MEASURE_END(packet_timer, packetProcessStats);
     return;
   }
 
   CommunicationData receivedPacket;
   memcpy(&receivedPacket, data, sizeof(CommunicationData));
-
-  Serial.print("Received from: ");
-  printMac(mac_addr);
-  Serial.printf("Signal Code: %s, Hop Count: %d, Content Name: %s, Content: %s\n",
-                receivedPacket.signalCode,
-                receivedPacket.hopCount,
-                receivedPacket.contentName,
-                receivedPacket.content);
 
   // ESP_NOWControlData に変換
   ESP_NOWControlData inputData = {};
@@ -140,6 +143,9 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
 
   ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);
   sendPacketToAddresses(outputData);
+  
+  // パケット処理時間測定終了
+  MEASURE_END(packet_timer, packetProcessStats);
 }
 
 
@@ -191,10 +197,19 @@ void loop() {
     } else if (msg == "read_sensor") {
       Serial.println("[CMD] read_sensor received");
       readSensorData();
+    } else if (msg == "perf_stats") {
+      Serial.println("[CMD] perf_stats received");
+      packetProcessStats.printStats("Individual Packet Processing");
+    } else if (msg == "perf_reset") {
+      Serial.println("[CMD] perf_reset received");
+      packetProcessStats.reset();
+      Serial.println("Performance statistics reset.");
     } else if (msg == "help") {
       Serial.println("=== Available Commands ===");
       Serial.println("  send_interest - Send INTEREST via ESP-NOW");
       Serial.println("  read_sensor   - Simulate sensor data send");
+      Serial.println("  perf_stats    - Show performance statistics");
+      Serial.println("  perf_reset    - Reset performance statistics");
       Serial.println("  help          - Show this help");
     } else {
       Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());

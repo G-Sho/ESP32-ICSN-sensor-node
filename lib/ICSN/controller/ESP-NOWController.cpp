@@ -41,7 +41,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
     std::string rxAddrStr = addressToString(rxAddress);
     std::string txAddrStr = addressToString(txAddress);
 
-    Serial.printf("Received message from %s to %s\n", txAddrStr.c_str(), rxAddrStr.c_str());
+    // Serial.printf("Received message from %s to %s\n", txAddrStr.c_str(), rxAddrStr.c_str());
 
     SignalCode code = fromString(data.signalCode);
 
