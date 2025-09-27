@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
 #include <Ticker.h>
 #include <esp_now.h>
 #include <WiFi.h>
