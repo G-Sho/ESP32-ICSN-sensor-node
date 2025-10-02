@@ -19,7 +19,7 @@ struct ESP_NOWControlData {
 
 
 /// @brief ESP-NOW通信用データ構造体
-struct CommunicationData
+struct __attribute__((packed)) CommunicationData
 {
   char signalCode[MAX_SIGNAL_CODE_LENGTH];
   uint8_t hopCount;
