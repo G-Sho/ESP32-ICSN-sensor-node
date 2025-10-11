@@ -198,6 +198,7 @@ void setup()
 
   arduinoController.setMesh(&mesh);
 
+  Serial.println(mesh.getNodeId());
   Serial.println("Setup complete.");
 }
 
