@@ -5,12 +5,17 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "painlessMesh.h"
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
+#include <set>
+#include <cstring>
+#include <cstdlib>
+#include <climits>
 #include <Ticker.h>
 #include "config/Config.hpp"
 #include "controller/ArduinoController.hpp"
 #include "Sensor.h"
 #include "performance/PerformanceStats.hpp"
+#include "entity/message/DestinationId.hpp"
 
 // === 定数 ===
 #define MESH_PREFIX "ICSN"
@@ -25,15 +30,16 @@
 painlessMesh mesh;
 Scheduler userScheduler;
 ArduinoController arduinoController;
-StaticJsonDocument<512> doc;
+constexpr size_t JSON_DOC_SIZE = 512;
 PerformanceStats packetProcessStats;
 
 // === ヘルパー ===
-bool hasBroadcastDestination(const JsonArray &destId)
+bool hasBroadcastDestination(JsonArrayConst destId)
 {
-  for (JsonVariant value : destId)
+  for (JsonVariantConst value : destId)
   {
-    if (value.as<String>() == DEST_BROADCAST)
+    const char *destination = value.as<const char *>();
+    if (destination != nullptr && strcmp(destination, DEST_BROADCAST) == 0)
     {
       return true;
     }
@@ -41,23 +47,72 @@ bool hasBroadcastDestination(const JsonArray &destId)
   return false;
 }
 
-void sendMessage(uint32_t from, const String &msg, const JsonArray &destId)
+bool tryParseNodeId(JsonVariantConst value, uint32_t &nodeId)
 {
+  if (value.is<uint32_t>())
+  {
+    nodeId = value.as<uint32_t>();
+    return true;
+  }
+
+  const char *destination = value.as<const char *>();
+  if (destination == nullptr || destination[0] == '\0')
+  {
+    return false;
+  }
+
+  if (destination[0] == '-')
+  {
+    return false;
+  }
+
+  char *endPtr = nullptr;
+  unsigned long parsedValue = strtoul(destination, &endPtr, 10);
+  if (endPtr != nullptr && *endPtr == '\0' && parsedValue <= UINT32_MAX)
+  {
+    nodeId = static_cast<uint32_t>(parsedValue);
+    return true;
+  }
+
+  return false;
+}
+
+void sendMessage(uint32_t from, const String &msg, JsonArrayConst destId)
+{
+  std::set<uint32_t> dispatchedNodes;
+  auto trySendToNode = [&](uint32_t nodeId) {
+    if (nodeId == from || nodeId == mesh.getNodeId())
+    {
+      return;
+    }
+
+    if (!dispatchedNodes.insert(nodeId).second)
+    {
+      return;
+    }
+
+    mesh.sendSingle(nodeId, msg);
+  };
+
   if (hasBroadcastDestination(destId))
   {
     for (uint32_t nodeId : mesh.getNodeList())
     {
-      if (from != mesh.getNodeId())
-      {
-        mesh.sendSingle(nodeId, msg);
-      }
+      trySendToNode(nodeId);
     }
   }
   else
   {
-    for (JsonVariant value : destId)
+    for (JsonVariantConst value : destId)
     {
-      mesh.sendSingle((uint32_t)((value.as<String>()).toInt()), msg);
+      uint32_t nodeId = 0;
+      if (!tryParseNodeId(value, nodeId))
+      {
+        Serial.println("Skipping message send: invalid destination node ID in destId array.");
+        continue;
+      }
+
+      trySendToNode(nodeId);
     }
   }
 }
@@ -70,6 +125,7 @@ void msgReception(uint32_t from, uint32_t to, String const &msg)
 
   String processedmsg = arduinoController.receiveMessage(to, msg);
 
+  StaticJsonDocument<JSON_DOC_SIZE> doc;
   DeserializationError error = deserializeJson(doc, processedmsg);
   if (error)
   {
@@ -79,14 +135,31 @@ void msgReception(uint32_t from, uint32_t to, String const &msg)
     return;
   }
 
-  String signalCode = doc["signalCode"];
-  if (signalCode == SIGNAL_DATA || signalCode == SIGNAL_INTEREST)
+  JsonVariantConst signalCodeVariant = doc["signalCode"];
+  const char *signalCode = signalCodeVariant.as<const char *>();
+  if (signalCode == nullptr)
   {
-    JsonArray destId = doc["destId"];
-    sendMessage(from, processedmsg, destId);
+    Serial.println("Invalid message: signalCode is missing or not a string.");
+    MEASURE_END(packet_timer, packetProcessStats);
+    return;
   }
 
-  doc.clear();
+  if (strcmp(signalCode, SIGNAL_DATA) == 0 || strcmp(signalCode, SIGNAL_INTEREST) == 0)
+  {
+    JsonArrayConst destId = doc["destId"].as<JsonArrayConst>();
+    if (destId.isNull())
+    {
+      Serial.println("Invalid message: destId is missing or not an array.");
+      MEASURE_END(packet_timer, packetProcessStats);
+      return;
+    }
+
+    sendMessage(from, processedmsg, destId);
+  }
+  else
+  {
+    Serial.println("Received message with unsupported signalCode. No forwarding performed.");
+  }
 
   // パケット処理時間測定終了
   MEASURE_END(packet_timer, packetProcessStats);
@@ -104,6 +177,7 @@ void sendInterest(uint32_t targetNodeId = 0)
     Serial.printf("Sending INTEREST to: %u\n", targetNodeId);
   }
 
+  StaticJsonDocument<JSON_DOC_SIZE> doc;
   doc["senderId"] = String(mesh.getNodeId());
   doc["signalCode"] = SIGNAL_INTEREST;
 
@@ -122,8 +196,11 @@ void sendInterest(uint32_t targetNodeId = 0)
   doc["time"] = mesh.getNodeTime();
 
   String interestMsg;
-  serializeJson(doc, interestMsg);
-  doc.clear();
+  if (serializeJson(doc, interestMsg) == 0)
+  {
+    Serial.println("Failed to serialize INTEREST message.");
+    return;
+  }
 
   if (targetNodeId == 0)
   {
@@ -149,13 +226,17 @@ void readSensorData()
 {
   Serial.println("Reading sensor data...");
 
+  StaticJsonDocument<JSON_DOC_SIZE> doc;
   doc["contentName"] = "/iot/buildingA/room101/temp";
   doc["content"] = "26.5C";
   doc["time"] = mesh.getNodeTime();
 
   String sensorData;
-  serializeJson(doc, sensorData);
-  doc.clear();
+  if (serializeJson(doc, sensorData) == 0)
+  {
+    Serial.println("Failed to serialize sensor data.");
+    return;
+  }
   arduinoController.reciveSensorData(sensorData);
 
   Serial.printf("Sensor: %s = %s\n", "/iot/buildingA/room101/temp", "26.5C");
