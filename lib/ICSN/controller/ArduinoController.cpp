@@ -61,10 +61,21 @@ String ArduinoController::receiveMessage(uint32_t to, String msg)
     std::string signalCode = inputDoc["signalCode"].as<std::string>();
     SignalCode code = fromString(signalCode);
 
-    if (code == SignalCode::INTEREST || code == SignalCode::DATA)
+    if (code == SignalCode::INTEREST)
     {
         InputData inputData = parseJsonToInputData(inputDoc, to);
         OutputData outputData = useCaseInteractor.handleInterestReceive(inputData);
+        inputDoc.clear();
+
+        parseOutputDataToJson(outputData);
+        String returnstr;
+        serializeJson(outputDoc, returnstr);
+        return returnstr;
+    }
+    else if (code == SignalCode::DATA)
+    {
+        InputData inputData = parseJsonToInputData(inputDoc, to);
+        OutputData outputData = useCaseInteractor.handleDataReceive(inputData);
         inputDoc.clear();
 
         parseOutputDataToJson(outputData);
