@@ -9,6 +9,7 @@ void TwoStageLookupFIBRepository::save(const FIBPair &fibPair)
     if (iter.count(contentName) != 0)
     {
         Q.erase(iter[contentName]);
+        iter.erase(contentName);  // イテレータマップからも削除
     }
     else if (Q.size() >= systemConfig.maxFibTableSize)
     {
