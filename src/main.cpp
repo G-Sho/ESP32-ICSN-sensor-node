@@ -22,6 +22,10 @@
 // ブロードキャスト定数
 constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+// テスト用MACアドレス
+constexpr uint8_t TEST_MAC_A[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xC4};
+constexpr uint8_t TEST_MAC_B[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xAC};
+
 // === グローバル ===
 Scheduler userScheduler;
 ESP_NOWController espNowController;
@@ -97,11 +101,20 @@ void readSensorData() {
 Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 
 // === INTEREST送信タスク ===
-void sendInterest() {
-  Serial.println("Sending INTEREST...");
+void sendInterest(const uint8_t* targetMac = nullptr) {
+  if (targetMac == nullptr) {
+    Serial.println("Sending INTEREST (broadcast)...");
+  } else {
+    Serial.print("Sending INTEREST to: ");
+    printMac(targetMac);
+  }
 
   ESP_NOWControlData interest = {};
-  std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
+  if (targetMac == nullptr) {
+    std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
+  } else {
+    std::copy(targetMac, targetMac + 6, interest.txAddress[0].begin());
+  }
   strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
   interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
   interest.hopCount = 1;
@@ -193,6 +206,12 @@ void loop() {
     if (msg == "send_interest") {
       Serial.println("[CMD] send_interest received");
       sendInterest();
+    } else if (msg == "send_interest_a") {
+      Serial.println("[CMD] send_interest_a received");
+      sendInterest(TEST_MAC_A);
+    } else if (msg == "send_interest_b") {
+      Serial.println("[CMD] send_interest_b received");
+      sendInterest(TEST_MAC_B);
     } else if (msg == "read_sensor") {
       Serial.println("[CMD] read_sensor received");
       readSensorData();
@@ -205,11 +224,13 @@ void loop() {
       Serial.println("Performance statistics reset.");
     } else if (msg == "help") {
       Serial.println("=== Available Commands ===");
-      Serial.println("  send_interest - Send INTEREST via ESP-NOW");
-      Serial.println("  read_sensor   - Simulate sensor data send");
-      Serial.println("  perf_stats    - Show performance statistics");
-      Serial.println("  perf_reset    - Reset performance statistics");
-      Serial.println("  help          - Show this help");
+      Serial.println("  send_interest   - Send INTEREST via ESP-NOW (broadcast)");
+      Serial.println("  send_interest_a - Send INTEREST to MAC A");
+      Serial.println("  send_interest_b - Send INTEREST to MAC B");
+      Serial.println("  read_sensor     - Simulate sensor data send");
+      Serial.println("  perf_stats      - Show performance statistics");
+      Serial.println("  perf_reset      - Reset performance statistics");
+      Serial.println("  help            - Show this help");
     } else {
       Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());
       Serial.println("Type 'help' to see available commands.");
