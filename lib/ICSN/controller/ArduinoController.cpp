@@ -1,9 +1,22 @@
+#include <Arduino.h>
 #include "ArduinoController.hpp"
 #include "message/SignalCode.hpp"
 
 // JSON documents
 StaticJsonDocument<512> inputDoc;
 StaticJsonDocument<512> outputDoc;
+
+static constexpr const char *INVALID_RESPONSE_JSON = "{\"signalCode\":\"INVALID\"}";
+
+static bool serializeJsonToString(JsonDocument &doc, String &out)
+{
+    if (serializeJson(doc, out) == 0)
+    {
+        Serial.println("Failed to serialize JSON document.");
+        return false;
+    }
+    return true;
+}
 // static JsonDocument inputDoc;
 // static JsonDocument outputDoc;
 
@@ -55,7 +68,8 @@ String ArduinoController::receiveMessage(uint32_t to, String msg)
     {
         Serial.print("Deserialization failure: ");
         Serial.println(error.c_str());
-        return "{\"signalCode\":\"INVALID\"}";
+        inputDoc.clear();
+        return INVALID_RESPONSE_JSON;
     }
 
     std::string signalCode = inputDoc["signalCode"].as<std::string>();
@@ -69,7 +83,12 @@ String ArduinoController::receiveMessage(uint32_t to, String msg)
 
         parseOutputDataToJson(outputData);
         String returnstr;
-        serializeJson(outputDoc, returnstr);
+        if (!serializeJsonToString(outputDoc, returnstr))
+        {
+            inputDoc.clear();
+            return INVALID_RESPONSE_JSON;
+        }
+        inputDoc.clear();
         return returnstr;
     }
     else if (code == SignalCode::DATA)
@@ -80,7 +99,10 @@ String ArduinoController::receiveMessage(uint32_t to, String msg)
 
         parseOutputDataToJson(outputData);
         String returnstr;
-        serializeJson(outputDoc, returnstr);
+        if (!serializeJsonToString(outputDoc, returnstr))
+        {
+            return INVALID_RESPONSE_JSON;
+        }
         return returnstr;
     }
     else if (code == SignalCode::INVALID)
@@ -88,14 +110,24 @@ String ArduinoController::receiveMessage(uint32_t to, String msg)
         outputDoc.clear();
         outputDoc["signalCode"] = "INVALID";
         String returnstr;
-        serializeJson(outputDoc, returnstr);
+        if (!serializeJsonToString(outputDoc, returnstr))
+        {
+            inputDoc.clear();
+            return INVALID_RESPONSE_JSON;
+        }
+        inputDoc.clear();
         return returnstr;
     }
 
     outputDoc.clear();
     outputDoc["signalCode"] = "UNHANDLED";
     String returnstr;
-    serializeJson(outputDoc, returnstr);
+    if (!serializeJsonToString(outputDoc, returnstr))
+    {
+        inputDoc.clear();
+        return INVALID_RESPONSE_JSON;
+    }
+    inputDoc.clear();
     return returnstr;
 }
 
@@ -106,6 +138,7 @@ void ArduinoController::reciveSensorData(String msg)
     {
         Serial.print("Deserialization failure: ");
         Serial.println(error.c_str());
+        inputDoc.clear();
         return;
     }
 

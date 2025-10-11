@@ -5,9 +5,11 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "painlessMesh.h"
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
+#include <set>
 #include <cstring>
 #include <cstdlib>
+#include <climits>
 #include <Ticker.h>
 #include "config/Config.hpp"
 #include "controller/ArduinoController.hpp"
@@ -59,9 +61,14 @@ bool tryParseNodeId(JsonVariantConst value, uint32_t &nodeId)
     return false;
   }
 
+  if (destination[0] == '-')
+  {
+    return false;
+  }
+
   char *endPtr = nullptr;
   unsigned long parsedValue = strtoul(destination, &endPtr, 10);
-  if (endPtr != nullptr && *endPtr == '\0')
+  if (endPtr != nullptr && *endPtr == '\0' && parsedValue <= UINT32_MAX)
   {
     nodeId = static_cast<uint32_t>(parsedValue);
     return true;
@@ -72,16 +79,26 @@ bool tryParseNodeId(JsonVariantConst value, uint32_t &nodeId)
 
 void sendMessage(uint32_t from, const String &msg, JsonArrayConst destId)
 {
+  std::set<uint32_t> dispatchedNodes;
+  auto trySendToNode = [&](uint32_t nodeId) {
+    if (nodeId == from || nodeId == mesh.getNodeId())
+    {
+      return;
+    }
+
+    if (!dispatchedNodes.insert(nodeId).second)
+    {
+      return;
+    }
+
+    mesh.sendSingle(nodeId, msg);
+  };
+
   if (hasBroadcastDestination(destId))
   {
     for (uint32_t nodeId : mesh.getNodeList())
     {
-      if (nodeId == from)
-      {
-        continue;
-      }
-
-      mesh.sendSingle(nodeId, msg);
+      trySendToNode(nodeId);
     }
   }
   else
@@ -95,7 +112,7 @@ void sendMessage(uint32_t from, const String &msg, JsonArrayConst destId)
         continue;
       }
 
-      mesh.sendSingle(nodeId, msg);
+      trySendToNode(nodeId);
     }
   }
 }
