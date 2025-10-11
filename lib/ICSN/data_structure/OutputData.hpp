@@ -30,7 +30,7 @@ struct OutputData
 };
 
 inline OutputData makeOutput(
-    const std::string& dest,
+    const std::string& senderId,
     const std::set<std::string>& destId,
     const std::string& signal,
     int hopCount,
@@ -38,7 +38,7 @@ inline OutputData makeOutput(
     const std::string& contentValue,
     uint32_t time)
 {
-    return OutputData(dest, destId, signal, hopCount, contentName, contentValue, time);
+    return OutputData(senderId, destId, signal, hopCount, contentName, contentValue, time);
 };
 
 inline OutputData makeOutput()

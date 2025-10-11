@@ -80,8 +80,9 @@ bool tryParseNodeId(JsonVariantConst value, uint32_t &nodeId)
 void sendMessage(uint32_t from, const String &msg, JsonArrayConst destId)
 {
   std::set<uint32_t> dispatchedNodes;
+  bool skipOriginalSender = hasBroadcastDestination(destId);
   auto trySendToNode = [&](uint32_t nodeId) {
-    if (nodeId == from || nodeId == mesh.getNodeId())
+    if ((skipOriginalSender && nodeId == from) || nodeId == mesh.getNodeId())
     {
       return;
     }
@@ -193,7 +194,7 @@ void sendInterest(uint32_t targetNodeId = 0)
 
   doc["contentName"] = "/iot/buildingA/room101/temp";
   doc["content"] = "N/A";
-  doc["time"] = mesh.getNodeTime();
+  doc["hopCount"] = 0;
 
   String interestMsg;
   if (serializeJson(doc, interestMsg) == 0)

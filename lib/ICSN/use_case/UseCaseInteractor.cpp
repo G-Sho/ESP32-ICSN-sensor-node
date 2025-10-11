@@ -7,13 +7,26 @@
 #include "message/Content.hpp"
 #include "data_structure/OutputData.hpp"
 
+namespace
+{
+    std::string extractPrimaryDestination(const DestinationId &destinationId)
+    {
+        const auto &ids = destinationId.getValue();
+        if (ids.empty())
+        {
+            return std::string(VALUE_UNKNOWN);
+        }
+        return *ids.begin();
+    }
+}
+
 /// @brief Interestパケットを受信したときの処理
 /// @param inputData 入力された Interest データ構造
 /// @return 応答パケット（DATA, INTEREST, INVALID）
 OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
 {
     SenderId senderId(inputData.senderId);
-    DestinationId destinationId({inputData.destId});
+    DestinationId destinationId(inputData.destId);
     SignalCode signalCode = fromString(inputData.signalCode);
     HopCount hopcount(inputData.hopCount);
     hopcount.increment();
@@ -23,6 +36,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     // processing when receiving an Interest
     if (hopcount.getValue() >= systemConfig.hopCountThreshold)
     {
+        Serial.println("Hop count threshold exceeded.");
         // packet discard
         return makeOutput(
             VALUE_NA,
@@ -38,8 +52,9 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     {
         Content res = csRepository.get(contentName);
         // send data based on CS
+        const std::string primaryDestination = extractPrimaryDestination(destinationId);
         return makeOutput(
-            *destinationId.getValue().begin(),
+            primaryDestination,
             {senderId.getValue()},
             toString(SignalCode::DATA),
             0,
@@ -49,6 +64,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     }
     else
     {
+        Serial.println("Cache miss in CS.");
         // save to PIT Table
         PITPair pitPair(contentName, DestinationId({senderId.getValue()}));
         pitRepository.save(pitPair);
@@ -56,8 +72,9 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
         if (fibRepository.find(contentName))
         {
             // send Interest based on FIB Table
+            const std::string primaryDestination = extractPrimaryDestination(destinationId);
             return makeOutput(
-                *destinationId.getValue().begin(),
+                primaryDestination,
                 fibRepository.get(contentName).getValue(),
                 toString(SignalCode::INTEREST),
                 hopcount.getValue(),
@@ -68,8 +85,9 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
         else
         {
             // broadcast Interest
+            const std::string primaryDestination = extractPrimaryDestination(destinationId);
             return makeOutput(
-                *destinationId.getValue().begin(),
+                primaryDestination,
                 {DEST_BROADCAST},
                 toString(SignalCode::INTEREST),
                 hopcount.getValue(),
@@ -86,7 +104,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
 OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
 {
     SenderId senderId(inputData.senderId);
-    DestinationId destinationId({inputData.destId});
+    DestinationId destinationId(inputData.destId);
     SignalCode signalCode = fromString(inputData.signalCode);
     HopCount hopcount(inputData.hopCount);
     hopcount.increment();
@@ -105,8 +123,9 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
         fibRepository.save(fibPair);
 
         // send data based on PIT
+        const std::string primaryDestination = extractPrimaryDestination(destinationId);
         return makeOutput(
-            *destinationId.getValue().begin(),
+            primaryDestination,
             pitRepository.get(contentName).getValue(),
             toString(SignalCode::DATA),
             hopcount.getValue(),
@@ -142,7 +161,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
 
-    // csRepository.printCache();
+    csRepository.printCache();
 }
 
 #ifdef UNIT_TEST
