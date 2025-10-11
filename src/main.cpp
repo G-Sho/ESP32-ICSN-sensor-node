@@ -225,8 +225,6 @@ Task taskSendInterest(TASK_SECOND * 30, TASK_FOREVER, &periodicSendInterest);
 // === センサデータ送信 ===
 void readSensorData()
 {
-  Serial.println("Reading sensor data...");
-
   StaticJsonDocument<JSON_DOC_SIZE> doc;
   doc["contentName"] = "/iot/buildingA/room101/temp";
   doc["content"] = "26.5C";
@@ -239,8 +237,6 @@ void readSensorData()
     return;
   }
   arduinoController.reciveSensorData(sensorData);
-
-  Serial.printf("Sensor: %s = %s\n", "/iot/buildingA/room101/temp", "26.5C");
 }
 Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 

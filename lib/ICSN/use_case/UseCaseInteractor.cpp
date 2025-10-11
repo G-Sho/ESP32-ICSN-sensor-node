@@ -51,9 +51,11 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     if (csRepository.find(contentName))
     {
         Content res = csRepository.get(contentName);
+
         // send data based on CS
         const std::string primaryDestination = extractPrimaryDestination(destinationId);
-        return makeOutput(
+
+        OutputData output = makeOutput(
             primaryDestination,
             {senderId.getValue()},
             toString(SignalCode::DATA),
@@ -61,10 +63,11 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
             contentName.getValue(),
             res.getValue().first,
             res.getValue().second);
+
+        return output;
     }
     else
     {
-        Serial.println("Cache miss in CS.");
         // save to PIT Table
         PITPair pitPair(contentName, DestinationId({senderId.getValue()}));
         pitRepository.save(pitPair);
@@ -161,7 +164,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
 
-    csRepository.printCache();
+    // csRepository.printCache();
 }
 
 #ifdef UNIT_TEST
