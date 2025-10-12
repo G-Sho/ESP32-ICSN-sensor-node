@@ -98,7 +98,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
 
 void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
 {
-    Serial.printf("Received sensor data: %s\n", data.content);
+    // Serial.printf("Received sensor data: %s\n", data.content);
 
     InputData inputData(
         std::string("N/A"), // senderId: 仮
