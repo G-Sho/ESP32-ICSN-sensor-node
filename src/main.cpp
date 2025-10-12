@@ -81,7 +81,8 @@ void sendMessage(uint32_t from, const String &msg, JsonArrayConst destId)
 {
   std::set<uint32_t> dispatchedNodes;
   bool skipOriginalSender = hasBroadcastDestination(destId);
-  auto trySendToNode = [&](uint32_t nodeId) {
+  auto trySendToNode = [&](uint32_t nodeId)
+  {
     if ((skipOriginalSender && nodeId == from) || nodeId == mesh.getNodeId())
     {
       return;
@@ -222,6 +223,16 @@ void periodicSendInterest()
 }
 Task taskSendInterest(TASK_SECOND * 10, TASK_FOREVER, &periodicSendInterest);
 
+// === 起動後の自動INTEREST送信 ===
+void autoStartInterest()
+{
+  Serial.println("[AUTO] Starting periodic INTEREST broadcast (10s interval)");
+  interestTargetNode = 1553658821;
+  sendInterest(interestTargetNode);                 // 即座に1回送信
+  taskSendInterest.enableDelayed(TASK_SECOND * 10); // 10秒後から定期送信開始
+}
+Task taskAutoStartInterest(TASK_SECOND * 40, TASK_ONCE, &autoStartInterest);
+
 // === センサデータ送信 ===
 void readSensorData()
 {
@@ -286,6 +297,9 @@ void setup()
 
   userScheduler.addTask(taskSendInterest);
 
+  userScheduler.addTask(taskAutoStartInterest);
+  taskAutoStartInterest.enableDelayed(TASK_SECOND * 40);
+
   arduinoController.setMesh(&mesh);
 
   Serial.println(mesh.getNodeId());
@@ -306,16 +320,16 @@ void loop()
     {
       Serial.println("[CMD] send_interest received - Starting periodic INTEREST broadcast (10s interval)");
       interestTargetNode = 0;
-      sendInterest(interestTargetNode);  // 即座に1回送信
-      taskSendInterest.enableDelayed(TASK_SECOND * 10);  // 10秒後から定期送信開始
+      sendInterest(interestTargetNode);                 // 即座に1回送信
+      taskSendInterest.enableDelayed(TASK_SECOND * 10); // 10秒後から定期送信開始
     }
     else if (msg.startsWith("send_interest "))
     {
       uint32_t targetNode = msg.substring(14).toInt();
       Serial.printf("[CMD] send_interest %u received - Starting periodic INTEREST to node (10s interval)\n", targetNode);
       interestTargetNode = targetNode;
-      sendInterest(interestTargetNode);  // 即座に1回送信
-      taskSendInterest.enableDelayed(TASK_SECOND * 10);  // 10秒後から定期送信開始
+      sendInterest(interestTargetNode);                 // 即座に1回送信
+      taskSendInterest.enableDelayed(TASK_SECOND * 10); // 10秒後から定期送信開始
     }
     else if (msg == "stop_interest")
     {
