@@ -220,7 +220,7 @@ void periodicSendInterest()
 {
   sendInterest(interestTargetNode);
 }
-Task taskSendInterest(TASK_SECOND * 30, TASK_FOREVER, &periodicSendInterest);
+Task taskSendInterest(TASK_SECOND * 10, TASK_FOREVER, &periodicSendInterest);
 
 // === センサデータ送信 ===
 void readSensorData()
@@ -282,14 +282,13 @@ void setup()
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
 
   userScheduler.addTask(taskReadSensorData);
-  // taskReadSensorData.enable();
+  taskReadSensorData.enable();
 
   userScheduler.addTask(taskSendInterest);
 
   arduinoController.setMesh(&mesh);
 
   Serial.println(mesh.getNodeId());
-  readSensorData();
   Serial.println("Setup complete.");
 }
 
@@ -305,18 +304,18 @@ void loop()
 
     if (msg == "send_interest")
     {
-      Serial.println("[CMD] send_interest received - Starting periodic INTEREST broadcast (30s interval)");
+      Serial.println("[CMD] send_interest received - Starting periodic INTEREST broadcast (10s interval)");
       interestTargetNode = 0;
       sendInterest(interestTargetNode);  // 即座に1回送信
-      taskSendInterest.enableDelayed(TASK_SECOND * 30);  // 30秒後から定期送信開始
+      taskSendInterest.enableDelayed(TASK_SECOND * 10);  // 10秒後から定期送信開始
     }
     else if (msg.startsWith("send_interest "))
     {
       uint32_t targetNode = msg.substring(14).toInt();
-      Serial.printf("[CMD] send_interest %u received - Starting periodic INTEREST to node (30s interval)\n", targetNode);
+      Serial.printf("[CMD] send_interest %u received - Starting periodic INTEREST to node (10s interval)\n", targetNode);
       interestTargetNode = targetNode;
       sendInterest(interestTargetNode);  // 即座に1回送信
-      taskSendInterest.enableDelayed(TASK_SECOND * 30);  // 30秒後から定期送信開始
+      taskSendInterest.enableDelayed(TASK_SECOND * 10);  // 10秒後から定期送信開始
     }
     else if (msg == "stop_interest")
     {
@@ -342,8 +341,8 @@ void loop()
     else if (msg == "help")
     {
       Serial.println("=== Available Commands ===");
-      Serial.println("  send_interest        - Start periodic INTEREST broadcast (30s interval)");
-      Serial.println("  send_interest <node> - Start periodic INTEREST to specific node (30s interval)");
+      Serial.println("  send_interest        - Start periodic INTEREST broadcast (10s interval)");
+      Serial.println("  send_interest <node> - Start periodic INTEREST to specific node (10s interval)");
       Serial.println("  stop_interest        - Stop periodic INTEREST sending");
       Serial.println("  read_sensor          - Simulate sensor data read");
       Serial.println("  perf_stats           - Show performance statistics");
