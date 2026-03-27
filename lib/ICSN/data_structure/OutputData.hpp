@@ -16,17 +16,17 @@ struct OutputData
     int hopCount;
     std::string contentName;
     std::string content;
-    uint32_t time;
 
     OutputData(const std::string& senderId,
               const std::set<std::string>& destId,
               const std::string& signalCode,
               int hopCount,
               const std::string& contentName,
-              const std::string& content,
-              uint32_t time)
+              const std::string& content)
         : senderId(senderId), destId(destId), signalCode(signalCode),
-          hopCount(hopCount), contentName(contentName), content(content), time(time) {}
+          hopCount(hopCount), contentName(contentName), content(content) {}
+
+    OutputData() = default;
 };
 
 inline OutputData makeOutput(
@@ -35,10 +35,9 @@ inline OutputData makeOutput(
     const std::string& signal,
     int hopCount,
     const std::string& contentName,
-    const std::string& contentValue,
-    uint32_t time)
+    const std::string& contentValue)
 {
-    return OutputData(dest, destId, signal, hopCount, contentName, contentValue, time);
+    return OutputData(dest, destId, signal, hopCount, contentName, contentValue);
 };
 
 inline OutputData makeOutput()
@@ -49,7 +48,6 @@ inline OutputData makeOutput()
         toString(SignalCode::INVALID),
         0,
         VALUE_NA,
-        VALUE_NA,
-        0
+        VALUE_NA
     );
 };

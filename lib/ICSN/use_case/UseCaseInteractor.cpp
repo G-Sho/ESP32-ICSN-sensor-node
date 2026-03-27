@@ -5,7 +5,7 @@
 #include "message/HopCount.hpp"
 #include "message/ContentName.hpp"
 #include "message/Content.hpp"
-#include "data_structure/OutputData.hpp"
+#include "config/Config.hpp"
 
 /// @brief Interestパケットを受信したときの処理
 /// @param inputData 入力された Interest データ構造
@@ -16,66 +16,62 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
     DestinationId destinationId({inputData.destId});
     SignalCode signalCode = fromString(inputData.signalCode);
     HopCount hopcount(inputData.hopCount);
-    hopcount.increment();
     ContentName contentName(inputData.contentName);
-    Content content({inputData.content, inputData.time});
+    Content content(inputData.content);
 
-    // processing when receiving an Interest
-    if (hopcount.getValue() >= systemConfig.hopCountThreshold)
+    // INTEREST受信時の処理
+    // ホップカウントチェック（転送時の値で判定）
+    if (hopcount.getValue() + 1 >= systemConfig.hopCountThreshold)
     {
-        // packet discard
+        // パケット破棄
         return makeOutput(
             VALUE_NA,
             {VALUE_NA},
             toString(SignalCode::INVALID),
-            hopcount.getValue(),
+            hopcount.getValue() + 1,
             VALUE_NA,
-            VALUE_NA,
-            0);
+            VALUE_NA);
     }
 
     if (csRepository.find(contentName))
     {
         Content res = csRepository.get(contentName);
-        // send data based on CS
+        // CSからデータ送信 (新しいDATAパケットなのでホップ数=0)
         return makeOutput(
             *destinationId.getValue().begin(),
             {senderId.getValue()},
             toString(SignalCode::DATA),
             0,
             contentName.getValue(),
-            res.getValue().first,
-            res.getValue().second);
+            res.getValue());
     }
     else
     {
-        // save to PIT Table
+        // PITテーブルに保存
         PITPair pitPair(contentName, DestinationId({senderId.getValue()}));
         pitRepository.save(pitPair);
 
         if (fibRepository.find(contentName))
         {
-            // send Interest based on FIB Table
+            // FIBテーブルに基づいてINTEREST送信 (転送なのでホップ数+1)
             return makeOutput(
                 *destinationId.getValue().begin(),
                 fibRepository.get(contentName).getValue(),
                 toString(SignalCode::INTEREST),
-                hopcount.getValue(),
+                hopcount.getValue() + 1,
                 contentName.getValue(),
-                content.getValue().first,
-                content.getValue().second);
+                content.getValue());
         }
         else
         {
-            // broadcast Interest
+            // INTERESTブロードキャスト (転送なのでホップ数+1)
             return makeOutput(
                 *destinationId.getValue().begin(),
                 {DEST_BROADCAST},
                 toString(SignalCode::INTEREST),
-                hopcount.getValue(),
+                hopcount.getValue() + 1,
                 contentName.getValue(),
-                content.getValue().first,
-                content.getValue().second);
+                content.getValue());
         }
     }
 };
@@ -89,46 +85,43 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
     DestinationId destinationId({inputData.destId});
     SignalCode signalCode = fromString(inputData.signalCode);
     HopCount hopcount(inputData.hopCount);
-    hopcount.increment();
     ContentName contentName(inputData.contentName);
-    Content content({inputData.content, inputData.time});
+    Content content(inputData.content);
 
-    // processing when receiving an DATA
+    // DATA受信時の処理
     if (pitRepository.find(contentName.getValue()))
     {
-        // cache in CS
+        // CSにキャッシュ
         CSPair csPair(contentName, content);
         csRepository.save(csPair);
 
-        // cache in FIB
+        // FIBにキャッシュ
         FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
         fibRepository.save(fibPair);
 
-        // send data based on PIT
+        // PITに基づいてデータ送信 (転送なのでホップ数+1)
         return makeOutput(
             *destinationId.getValue().begin(),
             pitRepository.get(contentName).getValue(),
             toString(SignalCode::DATA),
-            hopcount.getValue(),
+            hopcount.getValue() + 1,
             contentName.getValue(),
-            content.getValue().first,
-            content.getValue().second);
+            content.getValue());
     }
     else
     {
-        // save to PIT Table
+        // 将来の使用のためFIBテーブルに保存
         FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
         fibRepository.save(fibPair);
 
-        // packet discard
+        // パケット破棄 (対応するINTERESTがない)
         return makeOutput(
             VALUE_NA,
             {VALUE_NA},
             toString(SignalCode::INVALID),
-            hopcount.getValue(),
+            hopcount.getValue() + 1,
             VALUE_NA,
-            VALUE_NA,
-            0);
+            VALUE_NA);
     }
 };
 
@@ -138,7 +131,7 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
 void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 {
     ContentName contentName(inputData.contentName);
-    Content content({inputData.content, inputData.time});
+    Content content(inputData.content);
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
 
@@ -149,7 +142,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 void UseCaseInteractor::mockAddToCS(const std::string &name, const std::string &content)
 {
     ContentName contentName(name);
-    Content contentObj({content, millis()});
+    Content contentObj(content);
     CSPair pair(contentName, contentObj);
     csRepository.save(pair);
 }

@@ -5,10 +5,10 @@
 class Content
 {
 private:
-  std::pair<std::string, uint32_t> value;
+  std::string value;
 
 public:
-  Content(const std::pair<std::string, uint32_t> &v) : value(v) {}
-  static Content Null() { return Content({}); }
-  const std::pair<std::string, uint32_t> &getValue() const { return value; };
+  Content(const std::string &v) : value(v) {}
+  static Content Null() { return Content(""); }
+  const std::string &getValue() const { return value; };
 };

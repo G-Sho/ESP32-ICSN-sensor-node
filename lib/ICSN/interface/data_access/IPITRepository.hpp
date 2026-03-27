@@ -1,8 +1,8 @@
 #pragma once
 
-#include "routing_table/PITPair.hpp"
-#include "message/ContentName.hpp"
-#include "message/DestinationId.hpp"
+#include "../entity/routing_table/PITPair.hpp"
+#include "../entity/message/ContentName.hpp"
+#include "../entity/message/DestinationId.hpp"
 
 class IPITRepository
 {

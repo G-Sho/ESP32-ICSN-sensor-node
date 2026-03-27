@@ -1,339 +1,218 @@
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include "painlessMesh.h"
-#include <ArduinoJSON.h>
 #include <Ticker.h>
+#include <esp_now.h>
+#include <WiFi.h>
+#include "esp_wifi.h"
+
+// パフォーマンス測定を有効にする
+#define PERFORMANCE_MEASURE
+
 #include "config/Config.hpp"
-#include "controller/ArduinoController.hpp"
+#include "ESP-NOWControlData.hpp"
+#include "ESP-NOWController.hpp"
 #include "Sensor.h"
+#include <TaskScheduler.h>
+#include "performance/PerformanceStats.hpp"
 
-// MESH Details
-#define MESH_PREFIX "ICSN"         // name for your MESH
-#define MESH_PASSWORD "MyPassword" // password for your MESH
-#define MESH_PORT 5555             // default port
+// === 定数 ===
+#define SIGNAL_INTEREST "INTEREST"
+#define SIGNAL_DATA "DATA"
 
-// Painless Mesh
-painlessMesh mesh;
-Scheduler userScheduler; // to control your personal task
+// ブロードキャスト定数
+constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-// self-made
-ArduinoController arduinoController;
-// DHTTemperature sensorObj;
+// === グローバル ===
+Scheduler userScheduler;
+ESP_NOWController espNowController;
+uint8_t myMacAddress[6];
+esp_now_peer_info_t peerInfo;
 
-// SIGNAL
-#define SIGNAL_INTEREST "INTEREST" // Interest
-#define SIGNAL_DATA "DATA"         // Data
-#define SIGNAL_INVALID "INVALID"   // Invalid message
+// パフォーマンス統計
+PerformanceStats packetProcessStats;
 
-// JSONDoc
-StaticJsonDocument<512> doc;
-// JsonDocument doc;
-
-/*********************< Test >**********************/
-int sendCnt = 0;
-int resCnt = 0;
-#define TASK_DURATION_SEC 60 // 1分
-
-// 送信間隔（ミリ秒）を定数で定義し、変更可能にする
-int sendIntervalMs = 10; // デフォルト10ms
-int sendCountLimit = TASK_DURATION_SEC * 1000 / sendIntervalMs;
-
-// 各タスクのインスタンス生成時にsendIntervalMsを使用
-Task taskTestInterestTemp(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
-Task taskTestInterestHumidity(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
-Task taskTestInterestCo2(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
-Task taskTestInterestLight(TASK_MILLISECOND * sendIntervalMs, TASK_FOREVER, nullptr);
-
-void testInterestTemp()
-{
-  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/temp\",\"content\":\"N/A\",\"time\":0}";
-  mesh.sendSingle(1553658797, msg);
-  sendCnt++;
-
-  if (sendCnt >= sendCountLimit)
-  {
-    Serial.println("Send Interest Temp Task finished.");
-    taskTestInterestTemp.disable(); // Disable the task after sending the required number of messages
-  }
+// === ヘルパー ===
+bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
+  return std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0xFF; });
 }
-// taskTestInterestTemp.setCallback(&testInterestTemp);
 
-void testInterestHumidity()
-{
-  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/humidity\",\"content\":\"N/A\",\"time\":0}";
-  mesh.sendSingle(1553658797, msg);
-  sendCnt++;
-
-  if (sendCnt >= sendCountLimit)
-  {
-    Serial.println("Send Interest Humidity Task finished.");
-    taskTestInterestHumidity.disable(); // Disable the task after sending the required number of messages
+void printMac(const uint8_t *mac) {
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mac[i]);
+    if (i < 5) Serial.print(":");
   }
+  Serial.println();
 }
-// taskTestInterestHumidity.setCallback(&testInterestHumidity);
 
-void testInterestCo2()
-{
-  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/CO2\",\"content\":\"N/A\",\"time\":0}";
-  mesh.sendSingle(1553658797, msg);
-  sendCnt++;
+void sendPacketToAddresses(const ESP_NOWControlData &data) {
+  CommunicationData packet = {};
+  strncpy(packet.signalCode, data.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
+  packet.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+  packet.hopCount = data.hopCount;
+  strncpy(packet.contentName, data.contentName, MAX_CONTENT_NAME_LENGTH - 1);
+  packet.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  strncpy(packet.content, data.content, MAX_CONTENT_LENGTH - 1);
+  packet.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
-  if (sendCnt >= sendCountLimit)
-  {
-    Serial.println("Send Interest Co2 Task finished.");
-    taskTestInterestCo2.disable(); // Disable the task after sending the required number of messages
-  }
-}
-// taskTestInterestCo2.setCallback(&testInterestCo2);
+  for (const auto &addr : data.txAddress) {
+    if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
-void testInterestLight()
-{
-  String msg = "{\"senderId\":\"533722253\",\"signalCode\":\"INTEREST\",\"destId\":[\"1553658797\"],\"contentName\":\"/iot/buildingA/room101/light\",\"content\":\"N/A\",\"time\":0}";
-  mesh.sendSingle(1553658797, msg);
-  sendCnt++;
+    memcpy(peerInfo.peer_addr, addr.data(), 6);
+    peerInfo.ifidx = WIFI_IF_STA;
+    peerInfo.channel = 1;
+    peerInfo.encrypt = false;
 
-  if (sendCnt >= sendCountLimit)
-  {
-    Serial.println("Send Interest Light Task finished.");
-    taskTestInterestLight.disable(); // Disable the task after sending the required number of messages
-  }
-}
-// taskTestInterestLight.setCallback(&testInterestLight);
-
-/*********************< Callback classes and functions >**********************/
-
-void msgReception(uint32_t from, uint32_t to, String const &msg)
-{
-  String processedmsg = arduinoController.receiveMessage(to, msg);
-  // Serial.printf("Processed msg=%s\n", processedmsg.c_str());
-
-  DeserializationError error = deserializeJson(doc, processedmsg);
-  if (error)
-  {
-    Serial.print("Deserialization failure: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  String signalCode = doc["signalCode"];
-  if (signalCode == SIGNAL_DATA || signalCode == SIGNAL_INTEREST)
-  {
-    JsonArray destId = doc["destId"];
-
-    bool hasBroadcast = false;
-    for (JsonVariant value : destId)
-    {
-      if (value.as<String>() == DEST_BROADCAST)
-      {
-        hasBroadcast = true;
-        break;
+    if (!esp_now_is_peer_exist(peerInfo.peer_addr)) {
+      if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+        Serial.println("Failed to add peer");
+        continue;
       }
     }
-    if (hasBroadcast)
-    {
-      for (uint32_t nodeId : mesh.getNodeList())
-      {
-        if (from != mesh.getNodeId())
-        {
-          mesh.sendSingle(nodeId, processedmsg);
-        }
-      }
-    }
-    else
-    {
-      for (JsonVariant value : destId)
-      {
-        mesh.sendSingle((uint32_t)((value.as<String>()).toInt()), processedmsg);
-      }
+
+    esp_now_send(peerInfo.peer_addr, (uint8_t *)&packet, sizeof(packet));
+    
+    // ブロードキャストアドレス以外は送信後に削除
+    if (!isBroadcastAddress(addr)) {
+      esp_now_del_peer(peerInfo.peer_addr);
     }
   }
-
-  // Serial.printf("send msg=%s\n", processedmsg.c_str());
-  doc.clear();
-  resCnt++;
 }
 
-// Read Sensor Data
-void readSensorData()
-{
-  // sensorObj.read();
+// === センサデータ送信タスク ===
+void readSensorData() {
+  Serial.println("Reading sensor data...");
 
-  // doc["contentName"] = sensorObj.getContentName();
-  // doc["content"] = sensorObj.getData();
+  ESP_NOWControlData sensorData = {};
+  sensorData.hopCount = 1;
+  strncpy(sensorData.signalCode, SIGNAL_DATA, MAX_SIGNAL_CODE_LENGTH - 1);
+  sensorData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+  strncpy(sensorData.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  sensorData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
+  sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
-  doc["contentName"] = "/iot/buildingA/room101/temp";
-  doc["content"] = "26.5C";
-  doc["time"] = mesh.getNodeTime();
-
-  String sensorData;
-  serializeJson(doc, sensorData);
-  doc.clear();
-  arduinoController.reciveSensorData(sensorData);
-
-  doc["contentName"] = "/iot/buildingA/room101/humidity";
-  doc["content"] = "55.2%";
-  doc["time"] = mesh.getNodeTime();
-  serializeJson(doc, sensorData);
-  doc.clear();
-  arduinoController.reciveSensorData(sensorData);
-
-  doc["contentName"] = "/iot/buildingA/room101/CO2";
-  doc["content"] = "438ppm";
-  doc["time"] = mesh.getNodeTime();
-  serializeJson(doc, sensorData);
-  doc.clear();
-  arduinoController.reciveSensorData(sensorData);
-
-  doc["contentName"] = "/iot/buildingA/room101/light";
-  doc["content"] = "123.4lux";
-  doc["time"] = mesh.getNodeTime();
-  serializeJson(doc, sensorData);
-  doc.clear();
-  arduinoController.reciveSensorData(sensorData);
+  Serial.printf("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
+  espNowController.receiveSensorData(sensorData);
 }
 Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 
-/*********************< Needed for painless library >**********************/
+// === INTEREST送信タスク ===
+void sendInterest() {
+  Serial.println("Sending INTEREST...");
 
-void receivedCallback(uint32_t from, String &msg)
-{
-  // Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
-  msgReception(from, mesh.getNodeId(), msg);
+  ESP_NOWControlData interest = {};
+  std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
+  strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
+  interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+  interest.hopCount = 1;
+  strncpy(interest.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  interest.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+  strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH - 1);
+  interest.content[MAX_CONTENT_LENGTH - 1] = '\0';
+
+  sendPacketToAddresses(interest);
+}
+Task taskTestInterestsent(TASK_SECOND * 10, TASK_FOREVER, &sendInterest);
+
+// === ESP-NOW コールバック ===
+void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Data sent successfully" : "Data send failed");
 }
 
-void newConnectionCallback(uint32_t nodeId)
-{
-  // Serial.printf("New Connection, nodeId = %u\n", nodeId);
+void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
+  // パケット処理時間測定開始
+  MEASURE_START(packet_timer);
+  
+  if (len != sizeof(CommunicationData)) {
+    Serial.println("Received data size mismatch");
+    MEASURE_END(packet_timer, packetProcessStats);
+    return;
+  }
+
+  CommunicationData receivedPacket;
+  memcpy(&receivedPacket, data, sizeof(CommunicationData));
+
+  // ESP_NOWControlData に変換
+  ESP_NOWControlData inputData = {};
+  strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH);
+  inputData.hopCount = receivedPacket.hopCount;
+  strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH);
+  strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH);
+  std::copy(mac_addr, mac_addr + 6, inputData.txAddress[0].begin());
+
+  ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);
+  sendPacketToAddresses(outputData);
+  
+  // パケット処理時間測定終了
+  MEASURE_END(packet_timer, packetProcessStats);
 }
 
-void changedConnectionCallback()
-{
-  // Serial.printf("Changed connections\n");
-}
 
-void nodeTimeAdjustedCallback(int32_t offset)
-{
-  // Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
-}
-
-/*********************< setup and loop >**********************/
-
-void setup()
-{
+// === setup() ===
+void setup() {
   Serial.begin(115200);
-  // sensorObj.run();
-  if (!loadSystemConfig("/config.json"))
+  Serial.println("Starting setup...");
+
+  if (!loadSystemConfig("/config.json")) {
     Serial.println("Failed to load system config!");
-  else
-    Serial.println("System config loaded successfully.");
+    return;
+  }
 
-  // mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE); // all types on
-  mesh.setDebugMsgTypes(ERROR | STARTUP); // set before init() so that you can see startup messages
+  WiFi.mode(WIFI_STA);
+  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
 
-  mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT);
-  mesh.onReceive(&receivedCallback);
-  mesh.onNewConnection(&newConnectionCallback);
-  mesh.onChangedConnections(&changedConnectionCallback);
-  mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW initialization failed");
+    return;
+  }
 
-  userScheduler.addTask(taskReadSensorData);
-  userScheduler.addTask(taskTestInterestTemp);
-  userScheduler.addTask(taskTestInterestHumidity);
-  userScheduler.addTask(taskTestInterestCo2);
-  userScheduler.addTask(taskTestInterestLight);
+  esp_wifi_get_mac(WIFI_IF_STA, myMacAddress);
+  Serial.print("My MAC Address: ");
+  printMac(myMacAddress);
 
-  // Set callbacks for tasks
-  taskTestInterestTemp.setCallback(&testInterestTemp);
-  taskTestInterestHumidity.setCallback(&testInterestHumidity);
-  taskTestInterestCo2.setCallback(&testInterestCo2);
-  taskTestInterestLight.setCallback(&testInterestLight);
+  esp_now_register_send_cb(onDataSent);
+  esp_now_register_recv_cb(onDataReceive);
 
-  taskReadSensorData.enable();
+  Serial.println("ESP-NOW initialized successfully");
 
-  arduinoController.setMesh(&mesh);
+  // タスクの有効化（必要に応じて）
+  // userScheduler.addTask(taskReadSensorData); taskReadSensorData.enable();
+  // userScheduler.addTask(taskTestInterestsent); taskTestInterestsent.enable();
 
-  // タスクのインターバルを初期値でセット
-  taskTestInterestTemp.setInterval(TASK_MILLISECOND * sendIntervalMs);
-  taskTestInterestHumidity.setInterval(TASK_MILLISECOND * sendIntervalMs);
-  taskTestInterestCo2.setInterval(TASK_MILLISECOND * sendIntervalMs);
-  taskTestInterestLight.setInterval(TASK_MILLISECOND * sendIntervalMs);
+  Serial.println("Setup complete.");
 }
 
-void loop()
-{
-  // It will run the user scheduler as well
-  mesh.update();
+// === loop() ===
+void loop() {
+  userScheduler.execute();
 
-  //  If a value is entered in the serial
-  if (Serial.available() > 0)
-  {
-    // Read to the end of a line
-    String msg;
-    msg = Serial.readStringUntil('\n');
-    // Serial.printf("Received from Serial, msg=%s\n", msg.c_str());
+  if (Serial.available() > 0) {
+    String msg = Serial.readStringUntil('\n');
+    msg.trim();
 
-    if (msg == "getNodeList")
-    {
-      Serial.println("Node List:");
-      for (uint32_t nodeId : mesh.getNodeList())
-      {
-        Serial.printf("Node ID: %u\n", nodeId);
-      }
-      return;
-    }
-    else if (msg == "subConnectionJson")
-    {
-      String res = mesh.subConnectionJson(true);
-      Serial.printf("Sub Connection JSON: %s\n", res.c_str());
-      return;
-    }
-    else if (msg == "StartTestInterestTemp")
-    {
-      taskTestInterestTemp.enable();
-    }
-    else if (msg == "StartTestInterestHumidity")
-    {
-      taskTestInterestHumidity.enable();
-    }
-    else if (msg == "StartTestInterestCo2")
-    {
-      taskTestInterestCo2.enable();
-    }
-    else if (msg == "StartTestInterestLight")
-    {
-      taskTestInterestLight.enable();
-    }
-    else if (msg == "result")
-    {
-      Serial.printf("sendCnt=%d, resCnt=%d\n", sendCnt, resCnt);
-    }
-    else if (msg.startsWith("setInterval="))
-    {
-      // 例: setInterval=50 で50msに変更
-      int newInterval = msg.substring(12).toInt();
-      if (newInterval > 0)
-      {
-        sendIntervalMs = newInterval;
-        sendCountLimit = TASK_DURATION_SEC * 1000 / sendIntervalMs;
-
-        // 各タスクのインターバルを更新
-        taskTestInterestTemp.setInterval(TASK_MILLISECOND * sendIntervalMs);
-        taskTestInterestHumidity.setInterval(TASK_MILLISECOND * sendIntervalMs);
-        taskTestInterestCo2.setInterval(TASK_MILLISECOND * sendIntervalMs);
-        taskTestInterestLight.setInterval(TASK_MILLISECOND * sendIntervalMs);
-
-        Serial.printf("Send interval updated: %d ms\n", sendIntervalMs);
-      }
-      else
-      {
-        Serial.println("Invalid interval value.");
-      }
-      return;
-    }
-    else
-    {
-      msgReception(0, mesh.getNodeId(), msg);
+    if (msg == "send_interest") {
+      Serial.println("[CMD] send_interest received");
+      sendInterest();
+    } else if (msg == "read_sensor") {
+      Serial.println("[CMD] read_sensor received");
+      readSensorData();
+    } else if (msg == "perf_stats") {
+      Serial.println("[CMD] perf_stats received");
+      packetProcessStats.printStats("Individual Packet Processing");
+    } else if (msg == "perf_reset") {
+      Serial.println("[CMD] perf_reset received");
+      packetProcessStats.reset();
+      Serial.println("Performance statistics reset.");
+    } else if (msg == "help") {
+      Serial.println("=== Available Commands ===");
+      Serial.println("  send_interest - Send INTEREST via ESP-NOW");
+      Serial.println("  read_sensor   - Simulate sensor data send");
+      Serial.println("  perf_stats    - Show performance statistics");
+      Serial.println("  perf_reset    - Reset performance statistics");
+      Serial.println("  help          - Show this help");
+    } else {
+      Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());
+      Serial.println("Type 'help' to see available commands.");
     }
   }
 }

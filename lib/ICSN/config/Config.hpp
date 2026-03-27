@@ -3,11 +3,16 @@
 #include <cstddef>
 #include <cstdint>
 
+// コンパイル時定数の定義
+constexpr size_t MAX_PIT_TABLE_SIZE = 20;
+constexpr size_t MAX_CS_TABLE_SIZE = 20;
+constexpr size_t MAX_FIB_TABLE_SIZE = 20;
+
 struct SystemConfig {
-  size_t maxPitTableSize = 20;
-  size_t maxCsTableSize = 20;
-  uint32_t cacheEntryTtlUs = 100000000; // 100 second
-  size_t maxFibTableSize = 20;
+  size_t maxPitTableSize = MAX_PIT_TABLE_SIZE;
+  size_t maxCsTableSize = MAX_CS_TABLE_SIZE;
+  uint32_t cacheEntryTtlUs = 100000000; // 100秒
+  size_t maxFibTableSize = MAX_FIB_TABLE_SIZE;
   int maxVirtualDepth = 5;
   int hopCountThreshold = 10;
 };

@@ -1,33 +1,37 @@
 #pragma once
 
-#include "interface/InputBoundary.hpp"
-#include "InputData.hpp"
-#include "OutputData.hpp"
-#include "data_access/TwoStageLookupFIBRepository.hpp"
-#include "data_access/LRUPITRepository.hpp"
-#include "data_access/pCASTINGCSRepository.hpp"
+#include "../interface/InputBoundary.hpp"
+#include "../data_structure/InputData.hpp"
+#include "../data_structure/OutputData.hpp"
+// #include "data_access/TwoStageLookupFIBRepository.hpp"
+#include "../infrastructure/data_access/LRUFIBRepository.hpp"
+#include "../infrastructure/data_access/LRUPITRepository.hpp"
+#include "../infrastructure/data_access/LRUCSRepository.hpp"
+// #include "data_access/pCASTINGCSRepository.hpp"
 
 class UseCaseInteractor : public IInputBoundary
 {
 private:
     // FIB, PIT, CSのリポジトリ
-    TwoStageLookupFIBRepository fibRepository;
+    // TwoStageLookupFIBRepository fibRepository;
+    LRUFIBRepository fibRepository;
     LRUPITRepository pitRepository;
-    pCASTINGCSRepository csRepository;
+    LRUCSRepository csRepository;
+    // pCASTINGCSRepository csRepository;
 
 public:
     virtual ~UseCaseInteractor() = default;
 
-    // メッシュの設定
-    void setMesh(painlessMesh *meshPtr)
-    {
-        if (meshPtr == nullptr)
-        {
-            Serial.println("Error: Mesh pointer is null.");
-            return;
-        }
-        csRepository.setMesh(meshPtr);
-    };
+    // // メッシュの設定
+    // void setMesh(painlessMesh *meshPtr)
+    // {
+    //     if (meshPtr == nullptr)
+    //     {
+    //         Serial.println("Error: Mesh pointer is null.");
+    //         return;
+    //     }
+    //     csRepository.setMesh(meshPtr);
+    // };
 
     // Interestパケット受信時の処理
     virtual OutputData handleInterestReceive(const InputData &inputData) override;
