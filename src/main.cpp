@@ -12,7 +12,6 @@
 #include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
 #include "Sensor.h"
-#include <TaskScheduler.h>
 #include "performance/PerformanceStats.hpp"
 
 // === 定数 ===
@@ -22,14 +21,41 @@
 // ブロードキャスト定数
 constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+// テスト用MACアドレス
+constexpr uint8_t TEST_MAC_A[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xC4};
+constexpr uint8_t TEST_MAC_B[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xAC};
+
 // === グローバル ===
-Scheduler userScheduler;
 ESP_NOWController espNowController;
 uint8_t myMacAddress[6];
 esp_now_peer_info_t peerInfo;
 
 // パフォーマンス統計
 PerformanceStats packetProcessStats;
+
+// === タイマー関連 ===
+constexpr float SENSOR_INTERVAL_SEC = 10.0f;
+constexpr float INTEREST_INTERVAL_SEC = 10.0f;
+constexpr float AUTO_INTEREST_DELAY_SEC = 40.0f;
+constexpr bool AUTO_INTEREST_ENABLED = true;
+constexpr uint32_t LOOP_IDLE_DELAY_MS = 5;  // Allow IDLE task scheduling & reduce active time
+
+Ticker sensorTicker;
+Ticker interestTicker;
+Ticker autoInterestTicker;
+
+volatile bool sensorReadRequested = false;
+volatile bool interestSendRequested = false;
+volatile bool autoInterestStartRequested = false;
+
+void IRAM_ATTR onSensorTicker() { sensorReadRequested = true; }
+void IRAM_ATTR onInterestTicker() { interestSendRequested = true; }
+void IRAM_ATTR onAutoInterestTicker() { autoInterestStartRequested = true; }
+
+void cancelAutoInterestStart() {
+  autoInterestTicker.detach();
+  autoInterestStartRequested = false;
+}
 
 // === ヘルパー ===
 bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
@@ -80,7 +106,7 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
 
 // === センサデータ送信タスク ===
 void readSensorData() {
-  Serial.println("Reading sensor data...");
+  // Serial.println("Reading sensor data...");
 
   ESP_NOWControlData sensorData = {};
   sensorData.hopCount = 1;
@@ -91,17 +117,25 @@ void readSensorData() {
   strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
   sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
-  Serial.printf("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
+  // Serial.printf("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
   espNowController.receiveSensorData(sensorData);
 }
-Task taskReadSensorData(TASK_SECOND * 10, TASK_FOREVER, &readSensorData);
 
-// === INTEREST送信タスク ===
-void sendInterest() {
-  Serial.println("Sending INTEREST...");
+// === INTEREST送信 ===
+void sendInterest(const uint8_t* targetMac = nullptr) {
+  if (targetMac == nullptr) {
+    Serial.println("Sending INTEREST (broadcast)...");
+  } else {
+    Serial.print("Sending INTEREST to: ");
+    printMac(targetMac);
+  }
 
   ESP_NOWControlData interest = {};
-  std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
+  if (targetMac == nullptr) {
+    std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
+  } else {
+    std::copy(targetMac, targetMac + 6, interest.txAddress[0].begin());
+  }
   strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
   interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
   interest.hopCount = 1;
@@ -112,7 +146,31 @@ void sendInterest() {
 
   sendPacketToAddresses(interest);
 }
-Task taskTestInterestsent(TASK_SECOND * 10, TASK_FOREVER, &sendInterest);
+
+// === INTEREST定期送信用 ===
+const uint8_t* interestTargetMac = nullptr;
+
+void periodicSendInterest() { sendInterest(interestTargetMac); }
+
+void startInterestTicker() {
+  interestTicker.detach();
+  interestTicker.attach(INTEREST_INTERVAL_SEC, onInterestTicker);
+  interestSendRequested = false;
+}
+
+void stopInterestTicker() {
+  interestTicker.detach();
+  interestSendRequested = false;
+}
+
+// === 起動後の自動INTEREST送信 ===
+void autoStartInterest() {
+  cancelAutoInterestStart();
+  Serial.println("[AUTO] Starting periodic INTEREST broadcast (10s interval)");
+  interestTargetMac = nullptr;
+  sendInterest(interestTargetMac);                    // 即座に1回送信
+  startInterestTicker();                              // 10秒後から定期送信開始
+}
 
 // === ESP-NOW コールバック ===
 void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -120,6 +178,9 @@ void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
+  Serial .print("Received packet from: ");
+  printMac(mac_addr);
+  
   // パケット処理時間測定開始
   MEASURE_START(packet_timer);
   
@@ -175,24 +236,62 @@ void setup() {
 
   Serial.println("ESP-NOW initialized successfully");
 
-  // タスクの有効化（必要に応じて）
-  // userScheduler.addTask(taskReadSensorData); taskReadSensorData.enable();
-  // userScheduler.addTask(taskTestInterestsent); taskTestInterestsent.enable();
+  sensorTicker.attach(SENSOR_INTERVAL_SEC, onSensorTicker);
+  sensorReadRequested = true;  // 起動直後にも1回実行
+
+  if (AUTO_INTEREST_ENABLED) {
+    Serial.println("[AUTO] Scheduling INTEREST broadcast to start in 40s");
+    autoInterestTicker.once(AUTO_INTEREST_DELAY_SEC, onAutoInterestTicker);
+  } else {
+    Serial.println("[AUTO] Auto INTEREST start disabled");
+  }
 
   Serial.println("Setup complete.");
 }
 
 // === loop() ===
 void loop() {
-  userScheduler.execute();
+  if (autoInterestStartRequested) {
+    autoInterestStartRequested = false;
+    autoStartInterest();
+  }
+
+  if (sensorReadRequested) {
+    sensorReadRequested = false;
+    readSensorData();
+  }
+
+  if (interestSendRequested) {
+    interestSendRequested = false;
+    periodicSendInterest();
+  }
 
   if (Serial.available() > 0) {
     String msg = Serial.readStringUntil('\n');
     msg.trim();
 
     if (msg == "send_interest") {
-      Serial.println("[CMD] send_interest received");
-      sendInterest();
+      Serial.println("[CMD] send_interest received - Starting periodic INTEREST broadcast (10s interval)");
+      cancelAutoInterestStart();
+      interestTargetMac = nullptr;
+      sendInterest(interestTargetMac);                    // 即座に1回送信
+      startInterestTicker();                              // 10秒後から定期送信開始
+    } else if (msg == "send_interest_a") {
+      Serial.println("[CMD] send_interest_a received - Starting periodic INTEREST to MAC A (10s interval)");
+      cancelAutoInterestStart();
+      interestTargetMac = TEST_MAC_A;
+      sendInterest(interestTargetMac);                    // 即座に1回送信
+      startInterestTicker();                              // 10秒後から定期送信開始
+    } else if (msg == "send_interest_b") {
+      Serial.println("[CMD] send_interest_b received - Starting periodic INTEREST to MAC B (10s interval)");
+      cancelAutoInterestStart();
+      interestTargetMac = TEST_MAC_B;
+      sendInterest(interestTargetMac);                    // 即座に1回送信
+      startInterestTicker();                              // 10秒後から定期送信開始
+    } else if (msg == "stop_interest") {
+      Serial.println("[CMD] stop_interest received - Stopping periodic INTEREST");
+      stopInterestTicker();
+      cancelAutoInterestStart();
     } else if (msg == "read_sensor") {
       Serial.println("[CMD] read_sensor received");
       readSensorData();
@@ -205,14 +304,20 @@ void loop() {
       Serial.println("Performance statistics reset.");
     } else if (msg == "help") {
       Serial.println("=== Available Commands ===");
-      Serial.println("  send_interest - Send INTEREST via ESP-NOW");
-      Serial.println("  read_sensor   - Simulate sensor data send");
-      Serial.println("  perf_stats    - Show performance statistics");
-      Serial.println("  perf_reset    - Reset performance statistics");
-      Serial.println("  help          - Show this help");
+      Serial.println("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
+      Serial.println("  send_interest_a - Start periodic INTEREST to MAC A (10s interval)");
+      Serial.println("  send_interest_b - Start periodic INTEREST to MAC B (10s interval)");
+      Serial.println("  stop_interest   - Stop periodic INTEREST sending");
+      Serial.println("  read_sensor     - Simulate sensor data send");
+      Serial.println("  perf_stats      - Show performance statistics");
+      Serial.println("  perf_reset      - Reset performance statistics");
+      Serial.println("  help            - Show this help");
     } else {
       Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());
       Serial.println("Type 'help' to see available commands.");
     }
   }
+
+  // Allow other RTOS tasks and the IDLE task to run, while hardware timers keep firing.
+  delay(LOOP_IDLE_DELAY_MS);
 }
