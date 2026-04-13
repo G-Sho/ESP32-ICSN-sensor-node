@@ -51,10 +51,16 @@ public:
 
   /// @brief 送信カウンタをインクリメントし、現在の値を返す
   /// @param mac 送信先MACアドレス
+  /// @param success 成功時true、スロット不足時false
   /// @return インクリメント後のカウンタ値。スロット不足時は0
-  uint32_t incrementTxCounter(const uint8_t mac[6]) {
+  uint32_t incrementTxCounter(const uint8_t mac[6], bool &success) {
     int idx = findOrCreatePeerIndex(mac);
-    if (idx < 0) return 0;
+    if (idx < 0) {
+      Serial.println("[SECURITY] Peer counter slot exhaustion on TX - cannot track counter");
+      success = false;
+      return 0;
+    }
+    success = true;
     peers[idx].tx_counter++;
     return peers[idx].tx_counter;
   }
@@ -62,10 +68,13 @@ public:
   /// @brief ユニキャスト受信時のカウンタ検証
   /// @param mac 送信元MACアドレス
   /// @param received_counter メッセージに含まれるカウンタ値
-  /// @return true: 検証成功, false: リプレイ攻撃検知
+  /// @return true: 検証成功, false: リプレイ攻撃検知またはスロット不足
   bool validateRxCounter(const uint8_t mac[6], uint32_t received_counter) {
     int idx = findOrCreatePeerIndex(mac);
-    if (idx < 0) return false;
+    if (idx < 0) {
+      Serial.println("[SECURITY] Peer counter slot exhaustion on RX - rejecting packet");
+      return false;
+    }
 
     uint32_t expected = peers[idx].rx_counter + 1;
     if (received_counter == expected) {

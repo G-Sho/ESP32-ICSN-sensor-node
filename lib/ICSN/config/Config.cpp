@@ -9,6 +9,7 @@ SystemConfig systemConfig;
 /// @param out 出力先バッファ（16バイト）
 /// @return 成功時true
 static bool hexStringToBytes(const char* hexStr, uint8_t* out, size_t outLen) {
+  if (hexStr == nullptr || out == nullptr) return false;
   size_t strLen = strlen(hexStr);
   if (strLen != outLen * 2) return false;
 

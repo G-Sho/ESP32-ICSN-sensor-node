@@ -60,7 +60,11 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
     if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
     // 送信カウンタをインクリメントしてパケットに設定
-    packet.counter = peerCounterManager.incrementTxCounter(addr.data());
+    bool counterSuccess = false;
+    packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
+    if (!counterSuccess) {
+      continue;
+    }
 
     memcpy(peerInfo.peer_addr, addr.data(), 6);
     peerInfo.ifidx = WIFI_IF_STA;
@@ -145,7 +149,9 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
   memcpy(&receivedPacket, data, sizeof(CommunicationData));
 
   // ブロードキャストかユニキャストかを判定
-  bool isBroadcast = (memcmp(mac_addr, BROADCAST_ADDRESS, 6) == 0);
+  std::array<uint8_t, 6> macArray;
+  std::copy(mac_addr, mac_addr + 6, macArray.begin());
+  bool isBroadcast = isBroadcastAddress(macArray);
 
   // ユニキャストの場合のみカウンタ検証を行う
   if (!isBroadcast) {
