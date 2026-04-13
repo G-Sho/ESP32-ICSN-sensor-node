@@ -11,6 +11,7 @@
 #include "config/Config.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
+#include "PeerCounterManager.hpp"
 #include "Sensor.h"
 #include <TaskScheduler.h>
 #include "performance/PerformanceStats.hpp"
@@ -25,6 +26,7 @@ constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 // === グローバル ===
 Scheduler userScheduler;
 ESP_NOWController espNowController;
+PeerCounterManager peerCounterManager;
 uint8_t myMacAddress[6];
 esp_now_peer_info_t peerInfo;
 
@@ -57,10 +59,20 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
   for (const auto &addr : data.txAddress) {
     if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
+    // 送信カウンタをインクリメントしてパケットに設定
+    packet.counter = peerCounterManager.incrementTxCounter(addr.data());
+
     memcpy(peerInfo.peer_addr, addr.data(), 6);
     peerInfo.ifidx = WIFI_IF_STA;
     peerInfo.channel = 1;
-    peerInfo.encrypt = false;
+
+    // 暗号化設定
+    if (systemConfig.encryptionEnabled && !isBroadcastAddress(addr)) {
+      peerInfo.encrypt = true;
+      memcpy(peerInfo.lmk, systemConfig.lmk, ESP_NOW_LMK_LEN);
+    } else {
+      peerInfo.encrypt = false;
+    }
 
     if (!esp_now_is_peer_exist(peerInfo.peer_addr)) {
       if (esp_now_add_peer(&peerInfo) != ESP_OK) {
@@ -132,6 +144,20 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
   CommunicationData receivedPacket;
   memcpy(&receivedPacket, data, sizeof(CommunicationData));
 
+  // ブロードキャストかユニキャストかを判定
+  bool isBroadcast = (memcmp(mac_addr, BROADCAST_ADDRESS, 6) == 0);
+
+  // ユニキャストの場合のみカウンタ検証を行う
+  if (!isBroadcast) {
+    if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
+      Serial.printf("[SECURITY] Replay attack detected! MAC: ");
+      printMac(mac_addr);
+      Serial.printf("[SECURITY] Expected rx_counter+1, got counter=%u\n", receivedPacket.counter);
+      MEASURE_END(packet_timer, packetProcessStats);
+      return;
+    }
+  }
+
   // ESP_NOWControlData に変換
   ESP_NOWControlData inputData = {};
   strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH);
@@ -164,6 +190,15 @@ void setup() {
   if (esp_now_init() != ESP_OK) {
     Serial.println("ESP-NOW initialization failed");
     return;
+  }
+
+  // PMKの設定（暗号化が有効な場合）
+  if (systemConfig.encryptionEnabled) {
+    if (esp_now_set_pmk(systemConfig.pmk) != ESP_OK) {
+      Serial.println("Failed to set PMK");
+      return;
+    }
+    Serial.println("ESP-NOW encryption enabled (PMK/LMK configured)");
   }
 
   esp_wifi_get_mac(WIFI_IF_STA, myMacAddress);

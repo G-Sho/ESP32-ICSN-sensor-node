@@ -25,4 +25,5 @@ struct __attribute__((packed)) CommunicationData
   uint8_t hopCount;
   char contentName[MAX_CONTENT_NAME_LENGTH];
   char content[MAX_CONTENT_LENGTH];
+  uint32_t counter;  // リプレイ攻撃対策用カウンタ
 };
