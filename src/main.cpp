@@ -39,7 +39,8 @@ PerformanceStats packetProcessStats;
 constexpr float SENSOR_INTERVAL_SEC = 10.0f;
 constexpr float INTEREST_INTERVAL_SEC = 10.0f;
 constexpr float AUTO_INTEREST_DELAY_SEC = 40.0f;
-constexpr bool AUTO_INTEREST_ENABLED = true;
+constexpr bool AUTO_SENSOR_ENABLED = true; // 起動後の自動センサデータ読み取りを有効にするかどうか
+constexpr bool AUTO_INTEREST_ENABLED = false; // 起動後の自動INTEREST送信を有効にするかどうか
 constexpr uint32_t LOOP_IDLE_DELAY_MS = 5;  // Allow IDLE task scheduling & reduce active time
 
 Ticker sensorTicker;
@@ -277,8 +278,12 @@ void setup() {
 
   Serial.println("ESP-NOW initialized successfully");
 
-  sensorTicker.attach(SENSOR_INTERVAL_SEC, onSensorTicker);
-  sensorReadRequested = true;  // 起動直後にも1回実行
+  if (AUTO_SENSOR_ENABLED) {
+    sensorTicker.attach(SENSOR_INTERVAL_SEC, onSensorTicker);
+    sensorReadRequested = true;  // 起動直後にも1回実行
+  } else {
+    Serial.println("[AUTO] Auto sensor read disabled");
+  }
 
   if (AUTO_INTEREST_ENABLED) {
     Serial.println("[AUTO] Scheduling INTEREST broadcast to start in 40s");
