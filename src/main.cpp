@@ -11,6 +11,7 @@
 #include "config/Config.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
+#include "PeerCounterManager.hpp"
 #include "Sensor.h"
 #include "performance/PerformanceStats.hpp"
 
@@ -27,6 +28,7 @@ constexpr uint8_t TEST_MAC_B[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xAC};
 
 // === グローバル ===
 ESP_NOWController espNowController;
+PeerCounterManager peerCounterManager;
 uint8_t myMacAddress[6];
 esp_now_peer_info_t peerInfo;
 
@@ -83,10 +85,24 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
   for (const auto &addr : data.txAddress) {
     if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
+    // 送信カウンタをインクリメントしてパケットに設定
+    bool counterSuccess = false;
+    packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
+    if (!counterSuccess) {
+      continue;
+    }
+
     memcpy(peerInfo.peer_addr, addr.data(), 6);
     peerInfo.ifidx = WIFI_IF_STA;
     peerInfo.channel = 1;
-    peerInfo.encrypt = false;
+
+    // 暗号化設定
+    if (systemConfig.encryptionEnabled && !isBroadcastAddress(addr)) {
+      peerInfo.encrypt = true;
+      memcpy(peerInfo.lmk, systemConfig.lmk, ESP_NOW_LMK_LEN);
+    } else {
+      peerInfo.encrypt = false;
+    }
 
     if (!esp_now_is_peer_exist(peerInfo.peer_addr)) {
       if (esp_now_add_peer(&peerInfo) != ESP_OK) {
@@ -178,7 +194,7 @@ void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
-  Serial .print("Received packet from: ");
+  Serial.print("Received packet from: ");
   printMac(mac_addr);
   
   // パケット処理時間測定開始
@@ -192,6 +208,22 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
 
   CommunicationData receivedPacket;
   memcpy(&receivedPacket, data, sizeof(CommunicationData));
+
+  // ブロードキャストかユニキャストかを判定
+  std::array<uint8_t, 6> macArray;
+  std::copy(mac_addr, mac_addr + 6, macArray.begin());
+  bool isBroadcast = isBroadcastAddress(macArray);
+
+  // ユニキャストの場合のみカウンタ検証を行う
+  if (!isBroadcast) {
+    if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
+      Serial.printf("[SECURITY] Replay attack detected! MAC: ");
+      printMac(mac_addr);
+      Serial.printf("[SECURITY] Expected rx_counter+1, got counter=%u\n", receivedPacket.counter);
+      MEASURE_END(packet_timer, packetProcessStats);
+      return;
+    }
+  }
 
   // ESP_NOWControlData に変換
   ESP_NOWControlData inputData = {};
@@ -225,6 +257,15 @@ void setup() {
   if (esp_now_init() != ESP_OK) {
     Serial.println("ESP-NOW initialization failed");
     return;
+  }
+
+  // PMKの設定（暗号化が有効な場合）
+  if (systemConfig.encryptionEnabled) {
+    if (esp_now_set_pmk(systemConfig.pmk) != ESP_OK) {
+      Serial.println("Failed to set PMK");
+      return;
+    }
+    Serial.println("ESP-NOW encryption enabled (PMK/LMK configured)");
   }
 
   esp_wifi_get_mac(WIFI_IF_STA, myMacAddress);
