@@ -194,7 +194,7 @@ void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
-  Serial .print("Received packet from: ");
+  Serial.print("Received packet from: ");
   printMac(mac_addr);
   
   // パケット処理時間測定開始
