@@ -23,14 +23,28 @@ static bool hexStringToBytes(const char* hexStr, uint8_t* out, size_t outLen) {
   return true;
 }
 
+/// @brief コロン区切りMAC文字列をバイト配列に変換する（例: "CC:7B:5C:9A:F3:C4"）
+/// @param macStr MACアドレス文字列
+/// @param out 出力先バッファ（6バイト）
+/// @return 成功時true
+static bool macStringToBytes(const char* macStr, uint8_t out[6]) {
+  if (macStr == nullptr || out == nullptr) return false;
+  unsigned int b[6];
+  if (sscanf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X",
+             &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) != 6) return false;
+  for (int i = 0; i < 6; i++) {
+    out[i] = static_cast<uint8_t>(b[i]);
+  }
+  return true;
+}
+
 bool loadSystemConfig(const char* path) {
   if (!LittleFS.begin()) return false;
 
   File file = LittleFS.open(path, "r");
   if (!file) return false;
 
-  StaticJsonDocument<512> doc;
-  // JsonDocument doc;
+  StaticJsonDocument<1024> doc;
   if (deserializeJson(doc, file)) return false;
 
   systemConfig.maxPitTableSize  = doc["MAX_PIT_TABLE_SIZE"] | 20;
@@ -48,6 +62,27 @@ bool loadSystemConfig(const char* path) {
     if (hexStringToBytes(pmkStr, systemConfig.pmk, ESP_NOW_PMK_LEN) &&
         hexStringToBytes(lmkStr, systemConfig.lmk, ESP_NOW_LMK_LEN)) {
       systemConfig.encryptionEnabled = true;
+    }
+  }
+
+  // ピア固有LMK設定の読み込み
+  systemConfig.peerLmkCount = 0;
+  memset(systemConfig.peerLmkEntries, 0, sizeof(systemConfig.peerLmkEntries));
+
+  if (doc.containsKey("peers")) {
+    JsonArray peers = doc["peers"].as<JsonArray>();
+    for (JsonObject peer : peers) {
+      if (systemConfig.peerLmkCount >= MAX_PEER_LMK_ENTRIES) break;
+
+      const char* macStr  = peer["mac"]  | "";
+      const char* peerLmk = peer["lmk"]  | "";
+
+      PeerLMKConfig& entry = systemConfig.peerLmkEntries[systemConfig.peerLmkCount];
+      if (macStringToBytes(macStr, entry.mac) &&
+          hexStringToBytes(peerLmk, entry.lmk, ESP_NOW_LMK_LEN)) {
+        entry.valid = true;
+        systemConfig.peerLmkCount++;
+      }
     }
   }
 

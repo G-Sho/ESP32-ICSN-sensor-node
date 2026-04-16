@@ -6,5 +6,15 @@
   "MAX_VIRTUAL_DEPTH": 5,
   "HOP_COUNT_THRESHOLD": 10,
   "PMK": "0123456789abcdef0123456789abcdef",
-  "LMK": "fedcba9876543210fedcba9876543210"
+  "LMK": "fedcba9876543210fedcba9876543210",
+  "peers": [
+    {
+      "mac": "CC:7B:5C:9A:F3:C4",
+      "lmk": "aabbccddeeff00112233445566778899"
+    },
+    {
+      "mac": "CC:7B:5C:9A:F3:AC",
+      "lmk": "99887766554433221100ffeeddccbbaa"
+    }
+  ]
 }
