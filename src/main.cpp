@@ -72,6 +72,27 @@ void printMac(const uint8_t *mac) {
   Serial.println();
 }
 
+/// MACアドレスを改行なしで出力する
+void printMacInline(const uint8_t *mac) {
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mac[i]);
+    if (i < 5) Serial.print(":");
+  }
+}
+
+/// パケット内容・カウンタ・HMACを出力する
+void printPacket(const CommunicationData &pkt, bool isBcast) {
+  Serial.printf("  signal=%-9s hop=%u  name=%s\n",
+                pkt.signalCode, pkt.hopCount, pkt.contentName);
+  Serial.printf("  content=%-10s counter=%lu\n",
+                pkt.content, (unsigned long)pkt.counter);
+  if (!isBcast) {
+    Serial.print("  hmac=");
+    for (int i = 0; i < 8; i++) Serial.printf("%02X", pkt.hmac[i]);
+    Serial.println("... (first 8B)");
+  }
+}
+
 /// @brief MAC がピアリスト未登録なら登録する
 /// ユニキャスト送受信どちらにも必要。channel=0 で現在の WiFi チャンネルを使用。
 void registerPeerIfNeeded(const uint8_t *mac) {
@@ -100,17 +121,45 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
   for (const auto &addr : data.txAddress) {
     if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
-    // 送信カウンタをインクリメントしてパケットに設定
-    bool counterSuccess = false;
-    packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
-    if (!counterSuccess) {
-      continue;
+    // ブロードキャスト宛の場合はカウンタ・HMAC処理をスキップ
+    bool isBcast = isBroadcastAddress(addr);
+
+    if (!isBcast) {
+      // 送信カウンタをインクリメントしてパケットに設定
+      bool counterSuccess = false;
+      packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
+      if (!counterSuccess) {
+        continue;
+      }
+
+      // HMAC-SHA256(LMK, パケットデータ（hmacフィールド除く）) を計算してパケットに付与
+      memset(packet.hmac, 0, sizeof(packet.hmac));
+      bool hmacOk = peerCounterManager.computeHMAC(
+          addr.data(),
+          reinterpret_cast<const uint8_t*>(&packet),
+          COMM_DATA_HMAC_DATA_LEN,
+          packet.hmac);
+      if (!hmacOk) {
+        Serial.print("[SECURITY] HMAC computation failed for: ");
+        printMac(addr.data());
+        continue;
+      }
+    } else {
+      // ブロードキャスト：カウンタはインクリメントしない、HMACも付与しない
+      packet.counter = 0;
+      memset(packet.hmac, 0, sizeof(packet.hmac));
     }
 
     // ピアを登録（未登録なら追加）してから送信
     // ※ esp_now_send 直後に del_peer すると WiFi タスクが送信前に peer 情報が消えて FAIL になる
     //   → ピアは削除せず残す（onDataSent でも削除しない）
     registerPeerIfNeeded(addr.data());
+
+    // --- TX ログ ---
+    Serial.print("[TX] --> ");
+    printMacInline(addr.data());
+    Serial.printf("  (%s)\n", isBcast ? "broadcast" : "unicast");
+    printPacket(packet, isBcast);
 
     esp_err_t err = esp_now_send(addr.data(), (uint8_t *)&packet, sizeof(packet));
     if (err != ESP_OK) {
@@ -197,7 +246,7 @@ void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
-  // 送信元をピアリストに登録（未登録だとユニキャストの callback が呼ばれない）
+// 送信元をピアリストに登録（未登録だとユニキャストの callback が呼ばれない）
   registerPeerIfNeeded(mac_addr);
 
   Serial.print("Received packet from: ");
@@ -220,15 +269,38 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
   std::copy(mac_addr, mac_addr + 6, macArray.begin());
   bool isBroadcast = isBroadcastAddress(macArray);
 
-  // ユニキャストの場合のみカウンタ検証を行う
+  // --- RX ログ（パケット内容） ---
+  Serial.printf("[RX] <-- (%s)\n", isBroadcast ? "broadcast" : "unicast");
+  printPacket(receivedPacket, isBroadcast);
+
+  // ユニキャストの場合のみHMAC検証・カウンタ検証を行う
   if (!isBroadcast) {
-    if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
-      Serial.printf("[SECURITY] Replay attack detected! MAC: ");
+    // HMAC検証: hmacフィールド以外のパケット全体（counter含む）を対象とする。
+    // hmacフィールドはパケット末尾32バイトなので COMM_DATA_HMAC_DATA_LEN の範囲には含まれない。
+    bool hmacValid = peerCounterManager.verifyHMAC(
+        mac_addr,
+        reinterpret_cast<const uint8_t*>(&receivedPacket),
+        COMM_DATA_HMAC_DATA_LEN,
+        receivedPacket.hmac);
+
+    if (!hmacValid) {
+      Serial.print("[SECURITY] HMAC verification FAILED from: ");
       printMac(mac_addr);
-      Serial.printf("[SECURITY] Expected rx_counter+1, got counter=%u\n", receivedPacket.counter);
       MEASURE_END(packet_timer, packetProcessStats);
       return;
     }
+    Serial.println("[SECURITY] HMAC: OK");
+
+    if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
+      Serial.printf("[SECURITY] Replay attack detected! MAC: ");
+      printMac(mac_addr);
+      Serial.printf("[SECURITY] Expected rx_counter+1, got counter=%lu\n",
+                    (unsigned long)receivedPacket.counter);
+      MEASURE_END(packet_timer, packetProcessStats);
+      return;
+    }
+    Serial.printf("[SECURITY] Counter: OK (accepted counter=%lu)\n",
+                  (unsigned long)receivedPacket.counter);
   }
 
   // ESP_NOWControlData に変換
@@ -255,6 +327,22 @@ void setup() {
   if (!loadSystemConfig("/config.json")) {
     Serial.println("Failed to load system config!");
     return;
+  }
+
+  // LMK設定をPeerCounterManagerに反映する
+  // グローバルLMK（encryptionEnabled 時のみ有効）
+  if (systemConfig.encryptionEnabled) {
+    peerCounterManager.setGlobalLMK(systemConfig.lmk);
+    Serial.println("[SECURITY] Global LMK configured for HMAC");
+  }
+  // ピア固有LMKを設定
+  for (size_t i = 0; i < systemConfig.peerLmkCount; i++) {
+    const PeerLMKConfig& entry = systemConfig.peerLmkEntries[i];
+    if (entry.valid) {
+      peerCounterManager.setPeerLMK(entry.mac, entry.lmk);
+      Serial.print("[SECURITY] Peer LMK configured for: ");
+      printMac(entry.mac);
+    }
   }
 
   WiFi.mode(WIFI_STA);
@@ -359,6 +447,9 @@ void loop() {
       Serial.println("[CMD] perf_reset received");
       packetProcessStats.reset();
       Serial.println("Performance statistics reset.");
+    } else if (msg == "show_counters") {
+      Serial.println("[CMD] show_counters received");
+      peerCounterManager.printCounters();
     } else if (msg == "help") {
       Serial.println("=== Available Commands ===");
       Serial.println("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
@@ -366,6 +457,7 @@ void loop() {
       Serial.println("  send_interest_b - Start periodic INTEREST to MAC B (10s interval)");
       Serial.println("  stop_interest   - Stop periodic INTEREST sending");
       Serial.println("  read_sensor     - Simulate sensor data send");
+      Serial.println("  show_counters   - Show tx/rx counter state for all peers");
       Serial.println("  perf_stats      - Show performance statistics");
       Serial.println("  perf_reset      - Reset performance statistics");
       Serial.println("  help            - Show this help");
