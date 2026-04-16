@@ -25,5 +25,10 @@ struct __attribute__((packed)) CommunicationData
   uint8_t hopCount;
   char contentName[MAX_CONTENT_NAME_LENGTH];
   char content[MAX_CONTENT_LENGTH];
-  uint32_t counter;  // リプレイ攻撃対策用カウンタ
+  uint32_t counter;        // リプレイ攻撃対策用カウンタ
+  uint8_t hmac[32];        // HMAC-SHA256認証値。signalCode〜counterまでの全フィールドに対して
+                           // HMAC-SHA256(LMK, packet_without_hmac) で計算する。
 };
+
+/// @brief HMACの対象データ長（hmacフィールドを除くCommunicationDataのサイズ）
+constexpr size_t COMM_DATA_HMAC_DATA_LEN = sizeof(CommunicationData) - 32;

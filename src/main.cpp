@@ -100,11 +100,33 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
   for (const auto &addr : data.txAddress) {
     if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
-    // 送信カウンタをインクリメントしてパケットに設定
-    bool counterSuccess = false;
-    packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
-    if (!counterSuccess) {
-      continue;
+    // ブロードキャスト宛の場合はカウンタ・HMAC処理をスキップ
+    bool isBcast = isBroadcastAddress(addr);
+
+    if (!isBcast) {
+      // 送信カウンタをインクリメントしてパケットに設定
+      bool counterSuccess = false;
+      packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
+      if (!counterSuccess) {
+        continue;
+      }
+
+      // HMAC-SHA256(LMK, パケットデータ（hmacフィールド除く）) を計算してパケットに付与
+      memset(packet.hmac, 0, sizeof(packet.hmac));
+      bool hmacOk = peerCounterManager.computeHMAC(
+          addr.data(),
+          reinterpret_cast<const uint8_t*>(&packet),
+          COMM_DATA_HMAC_DATA_LEN,
+          packet.hmac);
+      if (!hmacOk) {
+        Serial.print("[SECURITY] HMAC computation failed for: ");
+        printMac(addr.data());
+        continue;
+      }
+    } else {
+      // ブロードキャスト：カウンタはインクリメントしない、HMACも付与しない
+      packet.counter = 0;
+      memset(packet.hmac, 0, sizeof(packet.hmac));
     }
 
     // ピアを登録（未登録なら追加）してから送信
@@ -220,8 +242,23 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
   std::copy(mac_addr, mac_addr + 6, macArray.begin());
   bool isBroadcast = isBroadcastAddress(macArray);
 
-  // ユニキャストの場合のみカウンタ検証を行う
+  // ユニキャストの場合のみHMAC検証・カウンタ検証を行う
   if (!isBroadcast) {
+    // HMAC検証: hmacフィールド以外のパケット全体（counter含む）を対象とする。
+    // hmacフィールドはパケット末尾32バイトなので COMM_DATA_HMAC_DATA_LEN の範囲には含まれない。
+    bool hmacValid = peerCounterManager.verifyHMAC(
+        mac_addr,
+        reinterpret_cast<const uint8_t*>(&receivedPacket),
+        COMM_DATA_HMAC_DATA_LEN,
+        receivedPacket.hmac);
+
+    if (!hmacValid) {
+      Serial.print("[SECURITY] HMAC verification failed from: ");
+      printMac(mac_addr);
+      MEASURE_END(packet_timer, packetProcessStats);
+      return;
+    }
+
     if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
       Serial.printf("[SECURITY] Replay attack detected! MAC: ");
       printMac(mac_addr);
@@ -255,6 +292,22 @@ void setup() {
   if (!loadSystemConfig("/config.json")) {
     Serial.println("Failed to load system config!");
     return;
+  }
+
+  // LMK設定をPeerCounterManagerに反映する
+  // グローバルLMK（encryptionEnabled 時のみ有効）
+  if (systemConfig.encryptionEnabled) {
+    peerCounterManager.setGlobalLMK(systemConfig.lmk);
+    Serial.println("[SECURITY] Global LMK configured for HMAC");
+  }
+  // ピア固有LMKを設定
+  for (size_t i = 0; i < systemConfig.peerLmkCount; i++) {
+    const PeerLMKConfig& entry = systemConfig.peerLmkEntries[i];
+    if (entry.valid) {
+      peerCounterManager.setPeerLMK(entry.mac, entry.lmk);
+      Serial.print("[SECURITY] Peer LMK configured for: ");
+      printMac(entry.mac);
+    }
   }
 
   WiFi.mode(WIFI_STA);
