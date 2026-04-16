@@ -198,4 +198,25 @@ public:
     }
     return diff == 0;
   }
+
+  /// @brief 全ピアのカウンタ状態を出力する
+  void printCounters() const {
+    Serial.println("[COUNTERS] === Peer Counter State ===");
+    bool any = false;
+    for (size_t i = 0; i < MAX_PEERS; i++) {
+      if (!peers[i].active) continue;
+      any = true;
+      Serial.printf("[COUNTERS]  Peer %02d: %02X:%02X:%02X:%02X:%02X:%02X"
+                    "  tx=%lu  rx=%lu  lmk=%s\n",
+                    (int)i,
+                    peers[i].peer_mac[0], peers[i].peer_mac[1],
+                    peers[i].peer_mac[2], peers[i].peer_mac[3],
+                    peers[i].peer_mac[4], peers[i].peer_mac[5],
+                    (unsigned long)peers[i].tx_counter,
+                    (unsigned long)peers[i].rx_counter,
+                    peers[i].lmk_set ? "peer" : (globalLmkSet ? "global" : "NONE"));
+    }
+    if (!any) Serial.println("[COUNTERS]  (no active peers)");
+    Serial.println("[COUNTERS] ============================");
+  }
 };
