@@ -30,7 +30,6 @@ constexpr uint8_t TEST_MAC_B[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xAC};
 ESP_NOWController espNowController;
 PeerCounterManager peerCounterManager;
 uint8_t myMacAddress[6];
-esp_now_peer_info_t peerInfo;
 
 // パフォーマンス統計
 PerformanceStats packetProcessStats;
@@ -73,6 +72,21 @@ void printMac(const uint8_t *mac) {
   Serial.println();
 }
 
+/// @brief MAC がピアリスト未登録なら登録する
+/// ユニキャスト送受信どちらにも必要。channel=0 で現在の WiFi チャンネルを使用。
+void registerPeerIfNeeded(const uint8_t *mac) {
+  if (esp_now_is_peer_exist(mac)) return;
+  esp_now_peer_info_t p = {};
+  memcpy(p.peer_addr, mac, 6);
+  p.channel = 0;  // 0 = 現在の WiFi チャンネルを使用（固定指定より確実）
+  p.ifidx = WIFI_IF_STA;
+  p.encrypt = false;
+  if (esp_now_add_peer(&p) != ESP_OK) {
+    Serial.print("[PEER] Failed to register peer: ");
+    printMac(mac);
+  }
+}
+
 void sendPacketToAddresses(const ESP_NOWControlData &data) {
   CommunicationData packet = {};
   strncpy(packet.signalCode, data.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
@@ -93,30 +107,15 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
       continue;
     }
 
-    memcpy(peerInfo.peer_addr, addr.data(), 6);
-    peerInfo.ifidx = WIFI_IF_STA;
-    peerInfo.channel = 1;
+    // ピアを登録（未登録なら追加）してから送信
+    // ※ esp_now_send 直後に del_peer すると WiFi タスクが送信前に peer 情報が消えて FAIL になる
+    //   → ピアは削除せず残す（onDataSent でも削除しない）
+    registerPeerIfNeeded(addr.data());
 
-    // 暗号化設定
-    if (systemConfig.encryptionEnabled && !isBroadcastAddress(addr)) {
-      peerInfo.encrypt = true;
-      memcpy(peerInfo.lmk, systemConfig.lmk, ESP_NOW_LMK_LEN);
-    } else {
-      peerInfo.encrypt = false;
-    }
-
-    if (!esp_now_is_peer_exist(peerInfo.peer_addr)) {
-      if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("Failed to add peer");
-        continue;
-      }
-    }
-
-    esp_now_send(peerInfo.peer_addr, (uint8_t *)&packet, sizeof(packet));
-    
-    // ブロードキャストアドレス以外は送信後に削除
-    if (!isBroadcastAddress(addr)) {
-      esp_now_del_peer(peerInfo.peer_addr);
+    esp_err_t err = esp_now_send(addr.data(), (uint8_t *)&packet, sizeof(packet));
+    if (err != ESP_OK) {
+      Serial.printf("[TX] esp_now_send error: %d, to: ", err);
+      printMac(addr.data());
     }
   }
 }
@@ -191,10 +190,16 @@ void autoStartInterest() {
 
 // === ESP-NOW コールバック ===
 void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Data sent successfully" : "Data send failed");
+  if (status != ESP_NOW_SEND_SUCCESS) {
+    Serial.print("[TX] FAIL to: ");
+    printMac(mac_addr);
+  }
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
+  // 送信元をピアリストに登録（未登録だとユニキャストの callback が呼ばれない）
+  registerPeerIfNeeded(mac_addr);
+
   Serial.print("Received packet from: ");
   printMac(mac_addr);
   
@@ -275,6 +280,12 @@ void setup() {
 
   esp_now_register_send_cb(onDataSent);
   esp_now_register_recv_cb(onDataReceive);
+
+  // 既知ノードを事前登録（自分自身は除く）
+  // ユニキャスト受信には送信元がピアリストに登録されている必要があるため
+  if (memcmp(myMacAddress, TEST_MAC_A, 6) != 0) registerPeerIfNeeded(TEST_MAC_A);
+  if (memcmp(myMacAddress, TEST_MAC_B, 6) != 0) registerPeerIfNeeded(TEST_MAC_B);
+  registerPeerIfNeeded(BROADCAST_ADDRESS);
 
   Serial.println("ESP-NOW initialized successfully");
 
