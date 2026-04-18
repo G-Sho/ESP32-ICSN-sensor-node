@@ -14,4 +14,10 @@ private:
 public:
     ESP_NOWControlData receiveMessage(const uint8_t rxAddress[6], const uint8_t txAddress[6], const ESP_NOWControlData &data);
     void receiveSensorData(const ESP_NOWControlData &data);
+
+    // FIB初期エントリを投入する（起動時にテスト用ルーティングを設定するために使用）
+    void initFIBEntry(const std::string& contentName, const std::string& nextHopMac);
+
+    // FIBの内容をシリアルに出力する
+    void printFIB() const;
 };

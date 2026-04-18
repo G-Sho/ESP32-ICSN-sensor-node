@@ -44,7 +44,8 @@ bool loadSystemConfig(const char* path) {
   File file = LittleFS.open(path, "r");
   if (!file) return false;
 
-  StaticJsonDocument<1024> doc;
+  // 2048バイトに拡張: fib_init配列（最大10エントリ）の追加によりメモリが増加
+  StaticJsonDocument<2048> doc;
   if (deserializeJson(doc, file)) return false;
 
   systemConfig.maxPitTableSize  = doc["MAX_PIT_TABLE_SIZE"] | 20;
@@ -82,6 +83,30 @@ bool loadSystemConfig(const char* path) {
           hexStringToBytes(peerLmk, entry.lmk, ESP_NOW_LMK_LEN)) {
         entry.valid = true;
         systemConfig.peerLmkCount++;
+      }
+    }
+  }
+
+  // FIB初期エントリの読み込み
+  systemConfig.fibInitCount = 0;
+  memset(systemConfig.fibInitEntries, 0, sizeof(systemConfig.fibInitEntries));
+
+  if (doc.containsKey("fib_init")) {
+    JsonArray fibArray = doc["fib_init"].as<JsonArray>();
+    for (JsonObject fibEntry : fibArray) {
+      if (systemConfig.fibInitCount >= MAX_FIB_INIT_ENTRIES) break;
+
+      const char* content = fibEntry["content"] | "";
+      const char* nextHop = fibEntry["next_hop"] | "";
+
+      if (strlen(content) > 0 && strlen(nextHop) > 0) {
+        FibInitEntry& entry = systemConfig.fibInitEntries[systemConfig.fibInitCount];
+        strncpy(entry.contentName, content, sizeof(entry.contentName) - 1);
+        entry.contentName[sizeof(entry.contentName) - 1] = '\0';
+        strncpy(entry.nextHopMac, nextHop, sizeof(entry.nextHopMac) - 1);
+        entry.nextHopMac[sizeof(entry.nextHopMac) - 1] = '\0';
+        entry.valid = true;
+        systemConfig.fibInitCount++;
       }
     }
   }

@@ -138,6 +138,22 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
     // csRepository.printCache();
 }
 
+/// @brief FIBに初期エントリを投入する
+/// @param contentName コンテンツ名プレフィックス
+/// @param nextHopMac 次ホップのMACアドレス文字列（小文字コロン区切り）
+void UseCaseInteractor::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
+{
+    ContentName name(contentName);
+    FIBPair fibPair(name, DestinationId({nextHopMac}));
+    fibRepository.save(fibPair);
+}
+
+/// @brief FIBの内容をシリアルに出力する
+void UseCaseInteractor::printFIB() const
+{
+    fibRepository.printCache();
+}
+
 #ifdef UNIT_TEST
 void UseCaseInteractor::mockAddToCS(const std::string &name, const std::string &content)
 {
