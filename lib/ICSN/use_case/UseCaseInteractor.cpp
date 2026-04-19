@@ -154,6 +154,20 @@ void UseCaseInteractor::printFIB() const
     fibRepository.printCache();
 }
 
+/// @brief Content Store をクリアする
+void UseCaseInteractor::clearCSCache()
+{
+    csRepository.clear();
+    Serial.println("[CACHE] Content Store cleared");
+}
+
+/// @brief Pending Interest Table をクリアする
+void UseCaseInteractor::clearPITCache()
+{
+    pitRepository.clear();
+    Serial.println("[CACHE] PIT cleared");
+}
+
 #ifdef UNIT_TEST
 void UseCaseInteractor::mockAddToCS(const std::string &name, const std::string &content)
 {

@@ -20,4 +20,14 @@ public:
 
     // FIBの内容をシリアルに出力する
     void printFIB() const;
+
+    // Content Store をクリアする
+    void clearCSCache() {
+        useCaseInteractor.clearCSCache();
+    }
+
+    // Pending Interest Table をクリアする
+    void clearPITCache() {
+        useCaseInteractor.clearPITCache();
+    }
 };

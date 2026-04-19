@@ -482,6 +482,11 @@ void loop() {
     } else if (msg == "show_fib") {
       Serial.println("[CMD] show_fib received");
       espNowController.printFIB();
+    } else if (msg == "clear_cache") {
+      Serial.println("[CMD] clear_cache received");
+      espNowController.clearCSCache();
+      espNowController.clearPITCache();
+      Serial.println("Cache cleared successfully.");
     } else if (msg == "help") {
       Serial.println("=== Available Commands ===");
       Serial.println("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
@@ -493,6 +498,7 @@ void loop() {
       Serial.println("  show_fib        - Show Forwarding Information Base (FIB)");
       Serial.println("  perf_stats      - Show performance statistics");
       Serial.println("  perf_reset      - Reset performance statistics");
+      Serial.println("  clear_cache     - Clear Content Store and PIT");
       Serial.println("  help            - Show this help");
     } else {
       Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());
