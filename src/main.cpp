@@ -41,7 +41,7 @@ PerformanceStats packetProcessStats;
 constexpr float SENSOR_INTERVAL_SEC = 10.0f;
 constexpr float INTEREST_INTERVAL_SEC = 10.0f;
 constexpr float AUTO_INTEREST_DELAY_SEC = 40.0f;
-constexpr bool AUTO_SENSOR_ENABLED = true; // 起動後の自動センサデータ読み取りを有効にするかどうか
+constexpr bool AUTO_SENSOR_ENABLED = false; // 起動後の自動センサデータ読み取りを有効にするかどうか
 constexpr bool AUTO_INTEREST_ENABLED = false; // 起動後の自動INTEREST送信を有効にするかどうか
 constexpr uint32_t LOOP_IDLE_DELAY_MS = 5;  // Allow IDLE task scheduling & reduce active time
 
@@ -237,8 +237,8 @@ void autoStartInterest() {
 // === ESP-NOW コールバック ===
 void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   if (status != ESP_NOW_SEND_SUCCESS) {
-    // Serial.print("[TX] FAIL to: ");
-    // printMac(mac_addr);
+    Serial.print("[TX] FAIL to: ");
+    printMac(mac_addr);
   }
 }
 
@@ -314,7 +314,7 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
   strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH);
   strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH);
   std::copy(mac_addr, mac_addr + 6, inputData.txAddress[0].begin());
-
+  
   ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);
 
   // 計測ポイント: FIB検索完了（Interestの場合）
@@ -533,24 +533,24 @@ void loop() {
       espNowController.clearPITCache();
       Serial.println("Cache cleared successfully.");
     } else if (msg == "help") {
-      // Serial.println("=== Available Commands ===");
-      // Serial.println("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
-      // Serial.println("  send_interest_a - Start periodic INTEREST to MAC A (10s interval)");
-      // Serial.println("  send_interest_b - Start periodic INTEREST to MAC B (10s interval)");
-      // Serial.println("  stop_interest   - Stop periodic INTEREST sending");
-      // Serial.println("  read_sensor     - Simulate sensor data send");
-      // Serial.println("  show_counters   - Show tx/rx counter state for all peers");
-      // Serial.println("  show_fib        - Show Forwarding Information Base (FIB)");
-      // Serial.println("  clear_cache     - Clear Content Store and PIT");
-      // Serial.println("  perf_stats      - Show performance statistics");
-      // Serial.println("  perf_reset      - Reset performance statistics");
-      // Serial.println("  dump_perf       - Dump sensor measurement buffer as JSON");
-      // Serial.println("  reset_perf      - Reset sensor measurement buffer");
-      // Serial.println("  perf_count      - Show current sample count in measurement buffer");
-      // Serial.println("  help            - Show this help");
+      Serial.println("=== Available Commands ===");
+      Serial.println("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
+      Serial.println("  send_interest_a - Start periodic INTEREST to MAC A (10s interval)");
+      Serial.println("  send_interest_b - Start periodic INTEREST to MAC B (10s interval)");
+      Serial.println("  stop_interest   - Stop periodic INTEREST sending");
+      Serial.println("  read_sensor     - Simulate sensor data send");
+      Serial.println("  show_counters   - Show tx/rx counter state for all peers");
+      Serial.println("  show_fib        - Show Forwarding Information Base (FIB)");
+      Serial.println("  clear_cache     - Clear Content Store and PIT");
+      Serial.println("  perf_stats      - Show performance statistics");
+      Serial.println("  perf_reset      - Reset performance statistics");
+      Serial.println("  dump_perf       - Dump sensor measurement buffer as JSON");
+      Serial.println("  reset_perf      - Reset sensor measurement buffer");
+      Serial.println("  perf_count      - Show current sample count in measurement buffer");
+      Serial.println("  help            - Show this help");
     } else {
-      // Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());
-      // Serial.println("Type 'help' to see available commands.");
+      Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());
+      Serial.println("Type 'help' to see available commands.");
     }
   }
 
