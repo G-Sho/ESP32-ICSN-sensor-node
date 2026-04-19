@@ -19,7 +19,7 @@
   ],
   "fib_init": [
     {
-      "content": "/iot/buildingA/room101/temp",
+      "content": "/iot/buildingA/room101",
       "next_hop": "9c:9c:1f:cf:f4:8c"
     }
   ]

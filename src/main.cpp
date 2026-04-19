@@ -179,7 +179,7 @@ void readSensorData() {
   sensorData.hopCount = 1;
   strncpy(sensorData.signalCode, SIGNAL_DATA, MAX_SIGNAL_CODE_LENGTH - 1);
   sensorData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  strncpy(sensorData.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  strncpy(sensorData.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
   sensorData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
   strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
   sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
@@ -206,7 +206,7 @@ void sendInterest(const uint8_t* targetMac = nullptr) {
   strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
   interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
   interest.hopCount = 1;
-  strncpy(interest.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  strncpy(interest.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
   interest.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
   strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH - 1);
   interest.content[MAX_CONTENT_LENGTH - 1] = '\0';

@@ -24,7 +24,7 @@ constexpr size_t MAX_PEER_LMK_ENTRIES = 20;
 
 /// @brief FIB初期エントリ（起動時にFIBへ投入するルーティング設定）
 struct FibInitEntry {
-  char contentName[64];  ///< コンテンツ名プレフィックス（例: "/iot/buildingA/room101/temp"）
+  char contentName[64];  ///< コンテンツ名プレフィックス（例: "/iot/buildingA/room101"）
   char nextHopMac[18];   ///< 次ホップMACアドレス（小文字コロン区切り、例: "cc:7b:5c:9a:f3:ac"）
   bool valid;            ///< エントリが有効かどうか
 };
