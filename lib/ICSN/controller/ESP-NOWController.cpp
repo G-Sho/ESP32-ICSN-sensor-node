@@ -110,3 +110,13 @@ void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
 
     useCaseInteractor.handleSensorDataReceive(inputData);
 }
+
+void ESP_NOWController::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
+{
+    useCaseInteractor.initFIBEntry(contentName, nextHopMac);
+}
+
+void ESP_NOWController::printFIB() const
+{
+    useCaseInteractor.printFIB();
+}

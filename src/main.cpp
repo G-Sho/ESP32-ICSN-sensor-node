@@ -25,6 +25,8 @@ constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 // テスト用MACアドレス
 constexpr uint8_t TEST_MAC_A[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xC4};
 constexpr uint8_t TEST_MAC_B[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xAC};
+constexpr uint8_t TEST_MAC_C[6] = {0x9C, 0x9C, 0x1F, 0xCF, 0xF4, 0x8C};
+constexpr uint8_t BRIDGE_MAC[6] = {0x08, 0xD1, 0xF9, 0x37, 0x39, 0xC0};
 
 // === グローバル ===
 ESP_NOWController espNowController;
@@ -177,7 +179,7 @@ void readSensorData() {
   sensorData.hopCount = 1;
   strncpy(sensorData.signalCode, SIGNAL_DATA, MAX_SIGNAL_CODE_LENGTH - 1);
   sensorData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  strncpy(sensorData.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  strncpy(sensorData.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
   sensorData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
   strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
   sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
@@ -204,7 +206,7 @@ void sendInterest(const uint8_t* targetMac = nullptr) {
   strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
   interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
   interest.hopCount = 1;
-  strncpy(interest.contentName, "/iot/buildingA/room101/temp", MAX_CONTENT_NAME_LENGTH - 1);
+  strncpy(interest.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
   interest.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
   strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH - 1);
   interest.content[MAX_CONTENT_LENGTH - 1] = '\0';
@@ -324,7 +326,21 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Starting setup...");
 
-  if (!loadSystemConfig("/config.json")) {
+  // ノードロールに応じた設定ファイルパスを選択
+#if defined(TEST_NODE_ROLE) && TEST_NODE_ROLE == 1
+  const char* configPath = "/config_a.json";
+  Serial.println("[ROLE] Sensor A");
+#elif defined(TEST_NODE_ROLE) && TEST_NODE_ROLE == 2
+  const char* configPath = "/config_b.json";
+  Serial.println("[ROLE] Sensor B");
+#elif defined(TEST_NODE_ROLE) && TEST_NODE_ROLE == 3
+  const char* configPath = "/config_c.json";
+  Serial.println("[ROLE] Sensor C (data source)");
+#else
+  const char* configPath = "/config.json";
+#endif
+
+  if (!loadSystemConfig(configPath)) {
     Serial.println("Failed to load system config!");
     return;
   }
@@ -373,7 +389,20 @@ void setup() {
   // ユニキャスト受信には送信元がピアリストに登録されている必要があるため
   if (memcmp(myMacAddress, TEST_MAC_A, 6) != 0) registerPeerIfNeeded(TEST_MAC_A);
   if (memcmp(myMacAddress, TEST_MAC_B, 6) != 0) registerPeerIfNeeded(TEST_MAC_B);
+  if (memcmp(myMacAddress, TEST_MAC_C, 6) != 0) registerPeerIfNeeded(TEST_MAC_C);
+  if (memcmp(myMacAddress, BRIDGE_MAC, 6) != 0) registerPeerIfNeeded(BRIDGE_MAC);
   registerPeerIfNeeded(BROADCAST_ADDRESS);
+
+  // FIB初期エントリの投入（config.jsonの "fib_init" セクションで定義された経路）
+  for (size_t i = 0; i < systemConfig.fibInitCount; i++) {
+    const FibInitEntry& entry = systemConfig.fibInitEntries[i];
+    if (entry.valid) {
+      espNowController.initFIBEntry(std::string(entry.contentName),
+                                    std::string(entry.nextHopMac));
+      Serial.printf("[FIB] Initial entry: %s -> %s\n",
+                    entry.contentName, entry.nextHopMac);
+    }
+  }
 
   Serial.println("ESP-NOW initialized successfully");
 
@@ -450,6 +479,9 @@ void loop() {
     } else if (msg == "show_counters") {
       Serial.println("[CMD] show_counters received");
       peerCounterManager.printCounters();
+    } else if (msg == "show_fib") {
+      Serial.println("[CMD] show_fib received");
+      espNowController.printFIB();
     } else if (msg == "help") {
       Serial.println("=== Available Commands ===");
       Serial.println("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
@@ -458,6 +490,7 @@ void loop() {
       Serial.println("  stop_interest   - Stop periodic INTEREST sending");
       Serial.println("  read_sensor     - Simulate sensor data send");
       Serial.println("  show_counters   - Show tx/rx counter state for all peers");
+      Serial.println("  show_fib        - Show Forwarding Information Base (FIB)");
       Serial.println("  perf_stats      - Show performance statistics");
       Serial.println("  perf_reset      - Reset performance statistics");
       Serial.println("  help            - Show this help");

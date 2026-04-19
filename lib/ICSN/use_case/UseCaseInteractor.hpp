@@ -42,6 +42,12 @@ public:
     // センサーデータ受信時の処理
     virtual void handleSensorDataReceive(const InputData &inputData) override;
 
+    // FIB初期エントリを投入する（起動時にテスト用ルーティングを設定するために使用）
+    void initFIBEntry(const std::string& contentName, const std::string& nextHopMac);
+
+    // FIBの内容をシリアルに出力する
+    void printFIB() const;
+
 #ifdef UNIT_TEST
     void mockAddToCS(const std::string &name, const std::string &content);
     void mockAddToFIB(const std::string &name, uint32_t nextHop);

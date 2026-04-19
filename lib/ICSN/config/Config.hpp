@@ -22,6 +22,16 @@ struct PeerLMKConfig {
 /// @brief ピア固有LMKの最大登録数
 constexpr size_t MAX_PEER_LMK_ENTRIES = 20;
 
+/// @brief FIB初期エントリ（起動時にFIBへ投入するルーティング設定）
+struct FibInitEntry {
+  char contentName[64];  ///< コンテンツ名プレフィックス（例: "/iot/buildingA/room101"）
+  char nextHopMac[18];   ///< 次ホップMACアドレス（小文字コロン区切り、例: "cc:7b:5c:9a:f3:ac"）
+  bool valid;            ///< エントリが有効かどうか
+};
+
+/// @brief FIB初期エントリの最大数
+constexpr size_t MAX_FIB_INIT_ENTRIES = 10;
+
 struct SystemConfig {
   size_t maxPitTableSize = MAX_PIT_TABLE_SIZE;
   size_t maxCsTableSize = MAX_CS_TABLE_SIZE;
@@ -38,6 +48,10 @@ struct SystemConfig {
   // ピア固有LMK設定
   PeerLMKConfig peerLmkEntries[MAX_PEER_LMK_ENTRIES];
   size_t peerLmkCount = 0;
+
+  // FIB初期エントリ（テスト用ブランチで多段経路を事前設定するために使用）
+  FibInitEntry fibInitEntries[MAX_FIB_INIT_ENTRIES];
+  size_t fibInitCount = 0;
 };
 
 extern SystemConfig systemConfig;
