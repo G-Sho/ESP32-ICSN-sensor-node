@@ -17,6 +17,11 @@ public:
     bool find(const ContentName &contentName) override;
     Content get(const ContentName &contentName) override;
 
+    void clear()
+    {
+        cache.clear();
+    }
+
     void printCache() const
     {
         Serial.printf("=== Content Store ===\n");

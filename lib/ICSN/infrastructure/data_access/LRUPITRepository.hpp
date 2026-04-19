@@ -18,6 +18,11 @@ public:
     bool find(const ContentName &contentName) override;
     DestinationId get(const ContentName &contentName) override;
 
+    void clear()
+    {
+        cache.clear();
+    }
+
     void printCache() const
     {
         Serial.printf("=== Pending Interest Table ===\n");
