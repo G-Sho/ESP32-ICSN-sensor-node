@@ -14,6 +14,7 @@
 #include "PeerCounterManager.hpp"
 #include "Sensor.h"
 #include "performance/PerformanceStats.hpp"
+#include "performance.h"
 
 // === 定数 ===
 #define SIGNAL_INTEREST "INTEREST"
@@ -157,12 +158,6 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
     //   → ピアは削除せず残す（onDataSent でも削除しない）
     registerPeerIfNeeded(addr.data());
 
-    // --- TX ログ ---
-    Serial.print("[TX] --> ");
-    printMacInline(addr.data());
-    Serial.printf("  (%s)\n", isBcast ? "broadcast" : "unicast");
-    printPacket(packet, isBcast);
-
     esp_err_t err = esp_now_send(addr.data(), (uint8_t *)&packet, sizeof(packet));
     if (err != ESP_OK) {
       Serial.printf("[TX] esp_now_send error: %d, to: ", err);
@@ -251,14 +246,10 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
 // 送信元をピアリストに登録（未登録だとユニキャストの callback が呼ばれない）
   registerPeerIfNeeded(mac_addr);
 
-  Serial.print("Received packet from: ");
-  printMac(mac_addr);
-  
   // パケット処理時間測定開始
   MEASURE_START(packet_timer);
-  
+
   if (len != sizeof(CommunicationData)) {
-    Serial.println("Received data size mismatch");
     MEASURE_END(packet_timer, packetProcessStats);
     return;
   }
@@ -271,14 +262,25 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
   std::copy(mac_addr, mac_addr + 6, macArray.begin());
   bool isBroadcast = isBroadcastAddress(macArray);
 
-  // --- RX ログ（パケット内容） ---
-  Serial.printf("[RX] <-- (%s)\n", isBroadcast ? "broadcast" : "unicast");
-  printPacket(receivedPacket, isBroadcast);
+  // シグナルコードを判定
+  bool isInterest = (strncmp(receivedPacket.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH) == 0);
+  bool isData    = (strncmp(receivedPacket.signalCode, SIGNAL_DATA,     MAX_SIGNAL_CODE_LENGTH) == 0);
+
+  // 計測ポイント: Interest/Data 受信時刻
+  if (isInterest) {
+    g_sensor_perf.recordInterestRx();
+  } else if (isData) {
+    g_sensor_perf.recordDataRx();
+  }
 
   // ユニキャストの場合のみHMAC検証・カウンタ検証を行う
   if (!isBroadcast) {
     // HMAC検証: hmacフィールド以外のパケット全体（counter含む）を対象とする。
     // hmacフィールドはパケット末尾32バイトなので COMM_DATA_HMAC_DATA_LEN の範囲には含まれない。
+
+    // 計測ポイント: OTA（HMAC）検証開始
+    if (isInterest) g_sensor_perf.recordOtaStart();
+
     bool hmacValid = peerCounterManager.verifyHMAC(
         mac_addr,
         reinterpret_cast<const uint8_t*>(&receivedPacket),
@@ -291,7 +293,6 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
       MEASURE_END(packet_timer, packetProcessStats);
       return;
     }
-    Serial.println("[SECURITY] HMAC: OK");
 
     if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
       Serial.printf("[SECURITY] Replay attack detected! MAC: ");
@@ -301,8 +302,9 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
       MEASURE_END(packet_timer, packetProcessStats);
       return;
     }
-    Serial.printf("[SECURITY] Counter: OK (accepted counter=%lu)\n",
-                  (unsigned long)receivedPacket.counter);
+
+    // 計測ポイント: OTA（HMAC）検証終了
+    if (isInterest) g_sensor_perf.recordOtaEnd();
   }
 
   // ESP_NOWControlData に変換
@@ -314,14 +316,50 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
   std::copy(mac_addr, mac_addr + 6, inputData.txAddress[0].begin());
 
   ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);
+
+  // 計測ポイント: FIB検索完了（Interestの場合）
+  if (isInterest) g_sensor_perf.recordFibLookup();
+
   sendPacketToAddresses(outputData);
-  
+
+  // 計測ポイント: 次ホップ送信完了（Interestの場合）
+  if (isInterest) g_sensor_perf.recordSensorTx();
+
   // パケット処理時間測定終了
   MEASURE_END(packet_timer, packetProcessStats);
 }
 
 
-// === setup() ===
+// === パフォーマンスデータJSON出力 ===
+void dumpPerformanceData() {
+  uint16_t cnt = g_sensor_perf.getCount();
+  Serial.println("{");
+#if defined(TEST_NODE_ROLE)
+  Serial.printf("  \"sensor_role\": %d,\n", TEST_NODE_ROLE);
+#else
+  Serial.println("  \"sensor_role\": 0,");
+#endif
+  Serial.println("  \"measurements\": [");
+  for (uint16_t i = 0; i < cnt; i++) {
+    const SensorMeasurement& m = g_sensor_perf.getEntry(i);
+    uint32_t ota_us   = m.ota_end_us - m.ota_start_us;
+    uint32_t fib_us   = (m.ota_end_us > 0)
+                          ? m.fib_lookup_us - m.ota_end_us
+                          : m.fib_lookup_us - m.interest_rx_us;
+    uint32_t total_us = m.sensor_tx_us - m.interest_rx_us;
+    Serial.printf("    {\"i\": %u, \"ota_us\": %lu, \"fib_us\": %lu, \"total_us\": %lu}",
+                  (unsigned)i,
+                  (unsigned long)ota_us,
+                  (unsigned long)fib_us,
+                  (unsigned long)total_us);
+    if (i < cnt - 1) Serial.print(",");
+    Serial.println();
+  }
+  Serial.println("  ]");
+  Serial.println("}");
+}
+
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting setup...");
@@ -476,6 +514,13 @@ void loop() {
       Serial.println("[CMD] perf_reset received");
       packetProcessStats.reset();
       Serial.println("Performance statistics reset.");
+    } else if (msg == "dump_perf") {
+      dumpPerformanceData();
+    } else if (msg == "reset_perf") {
+      g_sensor_perf.reset();
+      Serial.println("{\"status\": \"perf_reset\"}");
+    } else if (msg == "perf_count") {
+      Serial.printf("{\"count\": %u}\n", (unsigned)g_sensor_perf.getCount());
     } else if (msg == "show_counters") {
       Serial.println("[CMD] show_counters received");
       peerCounterManager.printCounters();
@@ -493,6 +538,9 @@ void loop() {
       Serial.println("  show_fib        - Show Forwarding Information Base (FIB)");
       Serial.println("  perf_stats      - Show performance statistics");
       Serial.println("  perf_reset      - Reset performance statistics");
+      Serial.println("  dump_perf       - Dump sensor measurement buffer as JSON");
+      Serial.println("  reset_perf      - Reset sensor measurement buffer");
+      Serial.println("  perf_count      - Show current sample count in measurement buffer");
       Serial.println("  help            - Show this help");
     } else {
       Serial.printf("[WARN] Unknown command: %s\n", msg.c_str());
