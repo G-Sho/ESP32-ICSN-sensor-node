@@ -48,6 +48,12 @@ public:
     // FIBの内容をシリアルに出力する
     void printFIB() const;
 
+    // Content Store をクリアする
+    void clearCSCache();
+
+    // PIT をクリアする
+    void clearPITCache();
+
 #ifdef UNIT_TEST
     void mockAddToCS(const std::string &name, const std::string &content);
     void mockAddToFIB(const std::string &name, uint32_t nextHop);
