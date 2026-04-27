@@ -33,7 +33,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
             VALUE_NA);
     }
 
-    if (csRepository.find(contentName))
+    if (systemConfig.maxCsTableSize > 0 && csRepository.find(contentName))
     {
         Content res = csRepository.get(contentName);
         // CSからデータ送信 (新しいDATAパケットなのでホップ数=0)
@@ -92,8 +92,10 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
     if (pitRepository.find(contentName.getValue()))
     {
         // CSにキャッシュ
-        CSPair csPair(contentName, content);
-        csRepository.save(csPair);
+        if (systemConfig.maxCsTableSize > 0) {
+            CSPair csPair(contentName, content);
+            csRepository.save(csPair);
+        }
 
         // FIBにキャッシュ
         FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
@@ -132,8 +134,10 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 {
     ContentName contentName(inputData.contentName);
     Content content(inputData.content);
-    CSPair csPair(contentName, content);
-    csRepository.save(csPair);
+    if (systemConfig.maxCsTableSize > 0) {
+        CSPair csPair(contentName, content);
+        csRepository.save(csPair);
+    }
 
     // csRepository.printCache();
 }
@@ -152,6 +156,20 @@ void UseCaseInteractor::initFIBEntry(const std::string& contentName, const std::
 void UseCaseInteractor::printFIB() const
 {
     fibRepository.printCache();
+}
+
+/// @brief Content Store をクリアする
+void UseCaseInteractor::clearCSCache()
+{
+    csRepository.clear();
+    Serial.println("[CACHE] Content Store cleared");
+}
+
+/// @brief PIT をクリアする
+void UseCaseInteractor::clearPITCache()
+{
+    pitRepository.clear();
+    Serial.println("[CACHE] PIT cleared");
 }
 
 #ifdef UNIT_TEST
