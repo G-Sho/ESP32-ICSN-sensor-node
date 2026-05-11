@@ -350,6 +350,7 @@ void dumpPerformanceData() {
   CLI_PRINTLN("  \"measurements\": [");
   for (uint16_t i = 0; i < cnt; i++) {
     const SensorMeasurement& m = g_sensor_perf.getEntry(i);
+    const char* separator = (i < cnt - 1) ? "," : "";
     uint32_t ota_us   = m.ota_end_us - m.ota_start_us;
     uint32_t fib_us   = (m.ota_end_us > 0)
                           ? m.fib_lookup_us - m.ota_end_us
@@ -360,7 +361,7 @@ void dumpPerformanceData() {
                   (unsigned long)ota_us,
                   (unsigned long)fib_us,
                   (unsigned long)total_us,
-                  (i < cnt - 1) ? "," : "");
+                  separator);
   }
   CLI_PRINTLN("  ]");
   CLI_PRINTLN("}");

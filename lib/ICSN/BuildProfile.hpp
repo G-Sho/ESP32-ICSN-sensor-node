@@ -26,6 +26,9 @@
 #define ICSN_PERF_ENABLED 0
 #endif
 
+// LOG_*: profile-controlled diagnostics (normal: DEBUG/INFO/WARN, perf/release: WARN only)
+// LOG_*F: printf-style formatted output
+// LOG_* : line-oriented output via println
 #if ICSN_LOG_LEVEL >= 3
 #define LOG_DEBUGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
 #define LOG_DEBUG(msg) Serial.println(msg)
