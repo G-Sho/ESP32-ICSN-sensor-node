@@ -1,4 +1,5 @@
 #include "ESP-NOWController.hpp"
+#include "BuildProfile.hpp"
 #include "message/SignalCode.hpp"
 
 #include <string>
@@ -65,7 +66,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
     }
     else
     {
-        Serial.println("Unknown signal code received");
+        LOG_WARNF("Unknown signal code received\n");
         return ESP_NOWControlData{};
     }
 

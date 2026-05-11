@@ -1,4 +1,5 @@
 #include "PerformanceStats.hpp"
+#include "BuildProfile.hpp"
 
 PerformanceStats::PerformanceStats() {
     reset();
@@ -19,19 +20,19 @@ void PerformanceStats::addMeasurement(int64_t elapsed_us) {
 
 void PerformanceStats::printStats(const char* name) const {
     if (count == 0) {
-        Serial.printf("[PERF] %s: No measurements\n", name);
+        CLI_PRINTF("[PERF] %s: No measurements\n", name);
         return;
     }
     
     double avg_us = static_cast<double>(total_time) / count;
     
-    Serial.printf("[PERF] %s Stats:\n", name);
-    Serial.printf("  Count: %u\n", count);
-    Serial.printf("  Avg:   %.2f μs\n", avg_us);
-    Serial.printf("  Min:   %lld μs\n", min_time);
-    Serial.printf("  Max:   %lld μs\n", max_time);
-    Serial.printf("  Total: %lld μs\n", total_time);
-    Serial.println("---");
+    CLI_PRINTF("[PERF] %s Stats:\n", name);
+    CLI_PRINTF("  Count: %u\n", count);
+    CLI_PRINTF("  Avg:   %.2f μs\n", avg_us);
+    CLI_PRINTF("  Min:   %lld μs\n", min_time);
+    CLI_PRINTF("  Max:   %lld μs\n", max_time);
+    CLI_PRINTF("  Total: %lld μs\n", total_time);
+    CLI_PRINTLN("---");
 }
 
 void PerformanceStats::reset() {

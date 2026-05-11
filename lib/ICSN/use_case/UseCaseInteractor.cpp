@@ -6,6 +6,7 @@
 #include "message/ContentName.hpp"
 #include "message/Content.hpp"
 #include "config/Config.hpp"
+#include "BuildProfile.hpp"
 
 /// @brief Interestパケットを受信したときの処理
 /// @param inputData 入力された Interest データ構造
@@ -162,14 +163,14 @@ void UseCaseInteractor::printFIB() const
 void UseCaseInteractor::clearCSCache()
 {
     csRepository.clear();
-    Serial.println("[CACHE] Content Store cleared");
+    CLI_PRINTLN("[CACHE] Content Store cleared");
 }
 
 /// @brief PIT をクリアする
 void UseCaseInteractor::clearPITCache()
 {
     pitRepository.clear();
-    Serial.println("[CACHE] PIT cleared");
+    CLI_PRINTLN("[CACHE] PIT cleared");
 }
 
 #ifdef UNIT_TEST
