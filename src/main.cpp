@@ -360,7 +360,7 @@ void dumpPerformanceData() {
                   (unsigned long)fib_us,
                   (unsigned long)total_us);
     if (i < cnt - 1) CLI_PRINTF(",");
-    CLI_PRINTLN("");
+    CLI_PRINTLN();
   }
   CLI_PRINTLN("  ]");
   CLI_PRINTLN("}");

@@ -28,20 +28,26 @@
 
 #if ICSN_LOG_LEVEL >= 3
 #define LOG_DEBUGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
+#define LOG_DEBUG(msg) Serial.println(msg)
 #else
 #define LOG_DEBUGF(fmt, ...) ((void)0)
+#define LOG_DEBUG(msg) ((void)0)
 #endif
 
 #if ICSN_LOG_LEVEL >= 2
 #define LOG_INFOF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
+#define LOG_INFO(msg) Serial.println(msg)
 #else
 #define LOG_INFOF(fmt, ...) ((void)0)
+#define LOG_INFO(msg) ((void)0)
 #endif
 
 #if ICSN_LOG_LEVEL >= 1
 #define LOG_WARNF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
+#define LOG_WARN(msg) Serial.println(msg)
 #else
 #define LOG_WARNF(fmt, ...) ((void)0)
+#define LOG_WARN(msg) ((void)0)
 #endif
 
 #define CLI_PRINTF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
