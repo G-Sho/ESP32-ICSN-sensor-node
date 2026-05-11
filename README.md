@@ -88,8 +88,6 @@ pio run -e release -t upload
 | コマンド | 説明 |
 |---------|-----|
 | `send_interest` | INTEREST をブロードキャスト送信開始 |
-| `send_interest_a` | INTEREST を Sensor A 宛に送信開始 |
-| `send_interest_b` | INTEREST を Sensor B 宛に送信開始 |
 | `stop_interest` | 定期 INTEREST 送信を停止 |
 | `read_sensor` | センサデータを手動送信 |
 | `show_counters` | 全ピアの TX/RX カウンタ表示 |

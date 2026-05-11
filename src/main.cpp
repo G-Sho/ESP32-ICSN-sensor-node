@@ -21,12 +21,6 @@
 // ブロードキャスト定数
 constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-// テスト用MACアドレス
-constexpr uint8_t TEST_MAC_A[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xC4};
-constexpr uint8_t TEST_MAC_B[6] = {0xCC, 0x7B, 0x5C, 0x9A, 0xF3, 0xAC};
-constexpr uint8_t TEST_MAC_C[6] = {0x9C, 0x9C, 0x1F, 0xCF, 0xF4, 0x8C};
-constexpr uint8_t BRIDGE_MAC[6] = {0x08, 0xD1, 0xF9, 0x37, 0x39, 0xC0};
-
 // === グローバル ===
 ESP_NOWController espNowController;
 PeerCounterManager peerCounterManager;
@@ -420,12 +414,7 @@ void setup() {
   esp_now_register_send_cb(onDataSent);
   esp_now_register_recv_cb(onDataReceive);
 
-  // 既知ノードを事前登録（自分自身は除く）
-  // ユニキャスト受信には送信元がピアリストに登録されている必要があるため
-  if (memcmp(myMacAddress, TEST_MAC_A, 6) != 0) registerPeerIfNeeded(TEST_MAC_A);
-  if (memcmp(myMacAddress, TEST_MAC_B, 6) != 0) registerPeerIfNeeded(TEST_MAC_B);
-  if (memcmp(myMacAddress, TEST_MAC_C, 6) != 0) registerPeerIfNeeded(TEST_MAC_C);
-  if (memcmp(myMacAddress, BRIDGE_MAC, 6) != 0) registerPeerIfNeeded(BRIDGE_MAC);
+  // ブロードキャストアドレスを事前登録
   registerPeerIfNeeded(BROADCAST_ADDRESS);
 
   // FIB初期エントリの投入（config.jsonの "fib_init" セクションで定義された経路）
@@ -485,18 +474,6 @@ void loop() {
       interestTargetMac = nullptr;
       sendInterest(interestTargetMac);                    // 即座に1回送信
       startInterestTicker();                              // 10秒後から定期送信開始
-    } else if (msg == "send_interest_a") {
-      // Serial.println("[CMD] send_interest_a received - Starting periodic INTEREST to MAC A (10s interval)");
-      cancelAutoInterestStart();
-      interestTargetMac = TEST_MAC_A;
-      sendInterest(interestTargetMac);                    // 即座に1回送信
-      startInterestTicker();                              // 10秒後から定期送信開始
-    } else if (msg == "send_interest_b") {
-      // Serial.println("[CMD] send_interest_b received - Starting periodic INTEREST to MAC B (10s interval)");
-      cancelAutoInterestStart();
-      interestTargetMac = TEST_MAC_B;
-      sendInterest(interestTargetMac);                    // 即座に1回送信
-      startInterestTicker();                              // 10秒後から定期送信開始
     } else if (msg == "stop_interest") {
       // Serial.println("[CMD] stop_interest received - Stopping periodic INTEREST");
       stopInterestTicker();
@@ -545,8 +522,6 @@ void loop() {
     } else if (msg == "help") {
       CLI_PRINTLN("=== Available Commands ===");
       CLI_PRINTLN("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
-      CLI_PRINTLN("  send_interest_a - Start periodic INTEREST to MAC A (10s interval)");
-      CLI_PRINTLN("  send_interest_b - Start periodic INTEREST to MAC B (10s interval)");
       CLI_PRINTLN("  stop_interest   - Stop periodic INTEREST sending");
       CLI_PRINTLN("  read_sensor     - Simulate sensor data send");
       CLI_PRINTLN("  show_counters   - Show tx/rx counter state for all peers");
