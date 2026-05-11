@@ -233,10 +233,9 @@ void autoStartInterest() {
 }
 
 // === ESP-NOW コールバック ===
-void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+void onDataSent(const uint8_t * /*mac_addr*/, esp_now_send_status_t status) {
   // This callback keeps warning output compact by design in perf/release-oriented profiles.
   // CLI commands remain available for deeper diagnostics when needed.
-  (void)mac_addr;
   if (status != ESP_NOW_SEND_SUCCESS) {
     LOG_WARNF("[TX] FAIL to peer\n");
   }
