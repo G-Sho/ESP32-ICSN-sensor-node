@@ -50,5 +50,7 @@
 #define LOG_WARN(msg) ((void)0)
 #endif
 
+// CLI_* are for explicit command/interactive output and are always visible.
+// Use LOG_* for profile-controlled diagnostic logging.
 #define CLI_PRINTF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
 #define CLI_PRINTLN(...) Serial.println(__VA_ARGS__)
