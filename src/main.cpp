@@ -354,13 +354,12 @@ void dumpPerformanceData() {
                           ? m.fib_lookup_us - m.ota_end_us
                           : m.fib_lookup_us - m.interest_rx_us;
     uint32_t total_us = m.sensor_tx_us - m.interest_rx_us;
-    CLI_PRINTF("    {\"i\": %u, \"ota_us\": %lu, \"fib_us\": %lu, \"total_us\": %lu}",
+    CLI_PRINTF("    {\"i\": %u, \"ota_us\": %lu, \"fib_us\": %lu, \"total_us\": %lu}%s\n",
                   (unsigned)i,
                   (unsigned long)ota_us,
                   (unsigned long)fib_us,
-                  (unsigned long)total_us);
-    if (i < cnt - 1) CLI_PRINTF(",");
-    CLI_PRINTLN();
+                  (unsigned long)total_us,
+                  (i < cnt - 1) ? "," : "");
   }
   CLI_PRINTLN("  ]");
   CLI_PRINTLN("}");
@@ -558,7 +557,7 @@ void loop() {
       CLI_PRINTLN("  perf_count      - Show current sample count in measurement buffer (perf build only)");
       CLI_PRINTLN("  help            - Show this help");
     } else {
-      LOG_WARNF("[WARN] Unknown command: %s\n", msg.c_str());
+      LOG_WARNF("Unknown command: %s\n", msg.c_str());
       CLI_PRINTLN("Type 'help' to see available commands.");
     }
   }
