@@ -59,6 +59,8 @@ bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
   return std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0xFF; });
 }
 
+/// MACアドレスを "XX:XX:XX:XX:XX:XX" 形式に整形する
+/// outLen は最低18（終端文字を含む）必要
 void formatMac(const uint8_t *mac, char *out, size_t outLen) {
   if (outLen < 18) {
     if (outLen > 0) out[0] = '\0';
@@ -72,13 +74,6 @@ void printMac(const uint8_t *mac) {
   char macStr[18];
   formatMac(mac, macStr, sizeof(macStr));
   LOG_DEBUG(macStr);
-}
-
-/// MACアドレスを改行なしで出力する
-void printMacInline(const uint8_t *mac) {
-  char macStr[18];
-  formatMac(mac, macStr, sizeof(macStr));
-  LOG_DEBUGF("%s", macStr);
 }
 
 /// パケット内容・カウンタ・HMACを出力する
