@@ -60,32 +60,32 @@ bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
 }
 
 void printMac(const uint8_t *mac) {
-  // for (int i = 0; i < 6; i++) {
-  //   Serial.printf("%02X", mac[i]);
-  //   if (i < 5) Serial.print(":");
-  // }
-  // Serial.println();
+  for (int i = 0; i < 6; i++) {
+    LOG_DEBUGF("%02X", mac[i]);
+    if (i < 5) LOG_DEBUGF(":");
+  }
+  LOG_DEBUG("");
 }
 
 /// MACアドレスを改行なしで出力する
 void printMacInline(const uint8_t *mac) {
-  // for (int i = 0; i < 6; i++) {
-  //   Serial.printf("%02X", mac[i]);
-  //   if (i < 5) Serial.print(":");
-  // }
+  for (int i = 0; i < 6; i++) {
+    LOG_DEBUGF("%02X", mac[i]);
+    if (i < 5) LOG_DEBUGF(":");
+  }
 }
 
 /// パケット内容・カウンタ・HMACを出力する
 void printPacket(const CommunicationData &pkt, bool isBcast) {
-  // Serial.printf("  signal=%-9s hop=%u  name=%s\n",
-  //               pkt.signalCode, pkt.hopCount, pkt.contentName);
-  // Serial.printf("  content=%-10s counter=%lu\n",
-  //               pkt.content, (unsigned long)pkt.counter);
-  // if (!isBcast) {
-  //   Serial.print("  hmac=");
-  //   for (int i = 0; i < 8; i++) Serial.printf("%02X", pkt.hmac[i]);
-  //   Serial.println("... (first 8B)");
-  // }
+  LOG_DEBUGF("  signal=%-9s hop=%u  name=%s\n",
+             pkt.signalCode, pkt.hopCount, pkt.contentName);
+  LOG_DEBUGF("  content=%-10s counter=%lu\n",
+             pkt.content, (unsigned long)pkt.counter);
+  if (!isBcast) {
+    LOG_DEBUGF("  hmac=");
+    for (int i = 0; i < 8; i++) LOG_DEBUGF("%02X", pkt.hmac[i]);
+    LOG_DEBUG("... (first 8B)");
+  }
 }
 
 /// @brief MAC がピアリスト未登録なら登録する
@@ -98,8 +98,7 @@ void registerPeerIfNeeded(const uint8_t *mac) {
   p.ifidx = WIFI_IF_STA;
   p.encrypt = false;
   if (esp_now_add_peer(&p) != ESP_OK) {
-    // Serial.print("[PEER] Failed to register peer: ");
-    // printMac(mac);
+    LOG_WARN("[PEER] Failed to register peer");
   }
 }
 
@@ -135,8 +134,7 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
           COMM_DATA_HMAC_DATA_LEN,
           packet.hmac);
       if (!hmacOk) {
-        // Serial.print("[SECURITY] HMAC computation failed for: ");
-        // printMac(addr.data());
+        LOG_WARN("[SECURITY] HMAC computation failed");
         continue;
       }
     } else {
@@ -152,15 +150,14 @@ void sendPacketToAddresses(const ESP_NOWControlData &data) {
 
     esp_err_t err = esp_now_send(addr.data(), (uint8_t *)&packet, sizeof(packet));
     if (err != ESP_OK) {
-      // Serial.printf("[TX] esp_now_send error: %d, to: ", err);
-      // printMac(addr.data());
+      LOG_WARNF("[TX] esp_now_send error: %d\n", err);
     }
   }
 }
 
 // === センサデータ送信タスク ===
 void readSensorData() {
-  // Serial.println("Reading sensor data...");
+  LOG_DEBUG("Reading sensor data...");
 
   ESP_NOWControlData sensorData = {};
   sensorData.hopCount = 1;
@@ -171,18 +168,18 @@ void readSensorData() {
   strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
   sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
 
-  // Serial.printf("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
+  LOG_INFOF("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
   espNowController.receiveSensorData(sensorData);
 }
 
 // === INTEREST送信 ===
 void sendInterest(const uint8_t* targetMac = nullptr) {
-  // if (targetMac == nullptr) {
-  //   Serial.println("Sending INTEREST (broadcast)...");
-  // } else {
-  //   Serial.print("Sending INTEREST to: ");
-  //   printMac(targetMac);
-  // }
+  if (targetMac == nullptr) {
+    LOG_DEBUG("Sending INTEREST (broadcast)...");
+  } else {
+    LOG_DEBUG("Sending INTEREST to:");
+    printMac(targetMac);
+  }
 
   ESP_NOWControlData interest = {};
   if (targetMac == nullptr) {
@@ -220,7 +217,7 @@ void stopInterestTicker() {
 // === 起動後の自動INTEREST送信 ===
 void autoStartInterest() {
   cancelAutoInterestStart();
-  // Serial.println("[AUTO] Starting periodic INTEREST broadcast (10s interval)");
+  LOG_INFO("[AUTO] Starting periodic INTEREST broadcast (10s interval)");
   interestTargetMac = nullptr;
   sendInterest(interestTargetMac);                    // 即座に1回送信
   startInterestTicker();                              // 10秒後から定期送信開始
@@ -285,17 +282,14 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
         receivedPacket.hmac);
 
     if (!hmacValid) {
-      // Serial.print("[SECURITY] HMAC verification FAILED from: ");
-      // printMac(mac_addr);
+      LOG_WARN("[SECURITY] HMAC verification FAILED");
       MEASURE_END(packet_timer, packetProcessStats);
       return;
     }
 
     if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
-      // Serial.printf("[SECURITY] Replay attack detected! MAC: ");
-      // printMac(mac_addr);
-      // Serial.printf("[SECURITY] Expected rx_counter+1, got counter=%lu\n",
-      //               (unsigned long)receivedPacket.counter);
+      LOG_WARNF("[SECURITY] Replay attack detected! counter=%lu\n",
+                (unsigned long)receivedPacket.counter);
       MEASURE_END(packet_timer, packetProcessStats);
       return;
     }
@@ -365,12 +359,12 @@ void dumpPerformanceData() {
 
 void setup() {
   Serial.begin(115200);
-  // Serial.println("Starting setup...");
+  LOG_INFO("Starting setup...");
 
   const char* configPath = "/config.json";
 
   if (!loadSystemConfig(configPath)) {
-    // Serial.println("Failed to load system config!");
+    LOG_WARN("Failed to load system config!");
     return;
   }
 
@@ -378,15 +372,15 @@ void setup() {
   // グローバルLMK（encryptionEnabled 時のみ有効）
   if (systemConfig.encryptionEnabled) {
     peerCounterManager.setGlobalLMK(systemConfig.lmk);
-    // Serial.println("[SECURITY] Global LMK configured for HMAC");
+    LOG_INFO("[SECURITY] Global LMK configured for HMAC");
   }
   // ピア固有LMKを設定
   for (size_t i = 0; i < systemConfig.peerLmkCount; i++) {
     const PeerLMKConfig& entry = systemConfig.peerLmkEntries[i];
     if (entry.valid) {
       peerCounterManager.setPeerLMK(entry.mac, entry.lmk);
-      // Serial.print("[SECURITY] Peer LMK configured for: ");
-      // printMac(entry.mac);
+      LOG_DEBUG("[SECURITY] Peer LMK configured for:");
+      printMac(entry.mac);
     }
   }
 
@@ -394,22 +388,22 @@ void setup() {
   esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
 
   if (esp_now_init() != ESP_OK) {
-    // Serial.println("ESP-NOW initialization failed");
+    LOG_WARN("ESP-NOW initialization failed");
     return;
   }
 
   // PMKの設定（暗号化が有効な場合）
   if (systemConfig.encryptionEnabled) {
     if (esp_now_set_pmk(systemConfig.pmk) != ESP_OK) {
-      // Serial.println("Failed to set PMK");
+      LOG_WARN("Failed to set PMK");
       return;
     }
-    // Serial.println("ESP-NOW encryption enabled (PMK/LMK configured)");
+    LOG_INFO("ESP-NOW encryption enabled (PMK/LMK configured)");
   }
 
   esp_wifi_get_mac(WIFI_IF_STA, myMacAddress);
-  // Serial.print("My MAC Address: ");
-  // printMac(myMacAddress);
+  LOG_INFO("My MAC Address:");
+  printMac(myMacAddress);
 
   esp_now_register_send_cb(onDataSent);
   esp_now_register_recv_cb(onDataReceive);
@@ -423,28 +417,28 @@ void setup() {
     if (entry.valid) {
       espNowController.initFIBEntry(std::string(entry.contentName),
                                     std::string(entry.nextHopMac));
-      // Serial.printf("[FIB] Initial entry: %s -> %s\n",
-      //               entry.contentName, entry.nextHopMac);
+      LOG_INFOF("[FIB] Initial entry: %s -> %s\n",
+                entry.contentName, entry.nextHopMac);
     }
   }
 
-  // Serial.println("ESP-NOW initialized successfully");
+  LOG_INFO("ESP-NOW initialized successfully");
 
   if (AUTO_SENSOR_ENABLED) {
     sensorTicker.attach(SENSOR_INTERVAL_SEC, onSensorTicker);
     sensorReadRequested = true;  // 起動直後にも1回実行
   } else {
-    // Serial.println("[AUTO] Auto sensor read disabled");
+    LOG_DEBUG("[AUTO] Auto sensor read disabled");
   }
 
   if (AUTO_INTEREST_ENABLED) {
-    // Serial.println("[AUTO] Scheduling INTEREST broadcast to start in 40s");
+    LOG_INFO("[AUTO] Scheduling INTEREST broadcast to start in 40s");
     autoInterestTicker.once(AUTO_INTEREST_DELAY_SEC, onAutoInterestTicker);
   } else {
-    // Serial.println("[AUTO] Auto INTEREST start disabled");
+    LOG_DEBUG("[AUTO] Auto INTEREST start disabled");
   }
 
-  // Serial.println("Setup complete.");
+  LOG_INFO("Setup complete.");
 }
 
 // === loop() ===
@@ -469,17 +463,17 @@ void loop() {
     msg.trim();
 
     if (msg == "send_interest") {
-      // Serial.println("[CMD] send_interest received - Starting periodic INTEREST broadcast (10s interval)");
+      LOG_INFO("[CMD] send_interest received - Starting periodic INTEREST broadcast (10s interval)");
       cancelAutoInterestStart();
       interestTargetMac = nullptr;
       sendInterest(interestTargetMac);                    // 即座に1回送信
       startInterestTicker();                              // 10秒後から定期送信開始
     } else if (msg == "stop_interest") {
-      // Serial.println("[CMD] stop_interest received - Stopping periodic INTEREST");
+      LOG_INFO("[CMD] stop_interest received - Stopping periodic INTEREST");
       stopInterestTicker();
       cancelAutoInterestStart();
     } else if (msg == "read_sensor") {
-      // Serial.println("[CMD] read_sensor received");
+      LOG_INFO("[CMD] read_sensor received");
       readSensorData();
     } else if (msg == "perf_stats") {
       #if ICSN_PERF_ENABLED
@@ -509,13 +503,13 @@ void loop() {
         CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
       #endif
     } else if (msg == "show_counters") {
-      // Serial.println("[CMD] show_counters received");
+      LOG_INFO("[CMD] show_counters received");
       peerCounterManager.printCounters();
     } else if (msg == "show_fib") {
-      // Serial.println("[CMD] show_fib received");
+      LOG_INFO("[CMD] show_fib received");
       espNowController.printFIB();
     } else if (msg == "clear_cache") {
-      // Serial.println("[CMD] clear_cache received");
+      LOG_INFO("[CMD] clear_cache received");
       espNowController.clearCSCache();
       espNowController.clearPITCache();
       CLI_PRINTLN("Cache cleared successfully.");
