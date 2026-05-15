@@ -59,20 +59,26 @@ bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
   return std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0xFF; });
 }
 
-void printMac(const uint8_t *mac) {
-  for (int i = 0; i < 6; i++) {
-    LOG_DEBUGF("%02X", mac[i]);
-    if (i < 5) LOG_DEBUGF(":");
+void formatMac(const uint8_t *mac, char *out, size_t outLen) {
+  if (outLen < 18) {
+    if (outLen > 0) out[0] = '\0';
+    return;
   }
-  LOG_DEBUG("");
+  snprintf(out, outLen, "%02X:%02X:%02X:%02X:%02X:%02X",
+           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+void printMac(const uint8_t *mac) {
+  char macStr[18];
+  formatMac(mac, macStr, sizeof(macStr));
+  LOG_DEBUG(macStr);
 }
 
 /// MACアドレスを改行なしで出力する
 void printMacInline(const uint8_t *mac) {
-  for (int i = 0; i < 6; i++) {
-    LOG_DEBUGF("%02X", mac[i]);
-    if (i < 5) LOG_DEBUGF(":");
-  }
+  char macStr[18];
+  formatMac(mac, macStr, sizeof(macStr));
+  LOG_DEBUGF("%s", macStr);
 }
 
 /// パケット内容・カウンタ・HMACを出力する
@@ -82,9 +88,12 @@ void printPacket(const CommunicationData &pkt, bool isBcast) {
   LOG_DEBUGF("  content=%-10s counter=%lu\n",
              pkt.content, (unsigned long)pkt.counter);
   if (!isBcast) {
-    LOG_DEBUGF("  hmac=");
-    for (int i = 0; i < 8; i++) LOG_DEBUGF("%02X", pkt.hmac[i]);
-    LOG_DEBUG("... (first 8B)");
+    char hmacPreview[17];
+    for (int i = 0; i < 8; i++) {
+      snprintf(&hmacPreview[i * 2], 3, "%02X", pkt.hmac[i]);
+    }
+    hmacPreview[16] = '\0';
+    LOG_DEBUGF("  hmac=%s... (first 8B)\n", hmacPreview);
   }
 }
 
