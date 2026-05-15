@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <mbedtls/md.h>
+#include "BuildProfile.hpp"
 
 /// @brief HMAC-SHA256の出力長（バイト）
 constexpr size_t HMAC_SHA256_LEN = 32;
@@ -89,7 +90,7 @@ public:
   bool setPeerLMK(const uint8_t mac[6], const uint8_t lmk[PEER_LMK_LEN]) {
     int idx = findOrCreatePeerIndex(mac);
     if (idx < 0) {
-      Serial.println("[SECURITY] Peer slot exhaustion - cannot set LMK");
+      LOG_WARNF("[SECURITY] Peer slot exhaustion - cannot set LMK\n");
       return false;
     }
     memcpy(peers[idx].lmk, lmk, PEER_LMK_LEN);
@@ -104,7 +105,7 @@ public:
   uint32_t incrementTxCounter(const uint8_t mac[6], bool &success) {
     int idx = findOrCreatePeerIndex(mac);
     if (idx < 0) {
-      Serial.println("[SECURITY] Peer counter slot exhaustion on TX - cannot track counter");
+      LOG_WARNF("[SECURITY] Peer counter slot exhaustion on TX - cannot track counter\n");
       success = false;
       return 0;
     }
@@ -120,7 +121,7 @@ public:
   bool validateRxCounter(const uint8_t mac[6], uint32_t received_counter) {
     int idx = findOrCreatePeerIndex(mac);
     if (idx < 0) {
-      Serial.println("[SECURITY] Peer counter slot exhaustion on RX - rejecting packet");
+      LOG_WARNF("[SECURITY] Peer counter slot exhaustion on RX - rejecting packet\n");
       return false;
     }
 
@@ -144,12 +145,12 @@ public:
                    uint8_t outHmac[HMAC_SHA256_LEN]) {
     int idx = findOrCreatePeerIndex(mac);
     if (idx < 0) {
-      Serial.println("[SECURITY] Peer slot exhaustion on HMAC compute");
+      LOG_WARNF("[SECURITY] Peer slot exhaustion on HMAC compute\n");
       return false;
     }
     const uint8_t* lmk = resolveLmk(idx);
     if (lmk == nullptr) {
-      Serial.println("[SECURITY] LMK not set - cannot compute HMAC");
+      LOG_WARNF("[SECURITY] LMK not set - cannot compute HMAC\n");
       return false;
     }
 
@@ -158,22 +159,22 @@ public:
     const mbedtls_md_info_t* info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
     if (mbedtls_md_setup(&ctx, info, 1) != 0) {
       mbedtls_md_free(&ctx);
-      Serial.println("[SECURITY] mbedtls md_setup failed");
+      LOG_WARNF("[SECURITY] mbedtls md_setup failed\n");
       return false;
     }
     if (mbedtls_md_hmac_starts(&ctx, lmk, PEER_LMK_LEN) != 0) {
       mbedtls_md_free(&ctx);
-      Serial.println("[SECURITY] mbedtls hmac_starts failed");
+      LOG_WARNF("[SECURITY] mbedtls hmac_starts failed\n");
       return false;
     }
     if (mbedtls_md_hmac_update(&ctx, data, dataLen) != 0) {
       mbedtls_md_free(&ctx);
-      Serial.println("[SECURITY] mbedtls hmac_update failed");
+      LOG_WARNF("[SECURITY] mbedtls hmac_update failed\n");
       return false;
     }
     if (mbedtls_md_hmac_finish(&ctx, outHmac) != 0) {
       mbedtls_md_free(&ctx);
-      Serial.println("[SECURITY] mbedtls hmac_finish failed");
+      LOG_WARNF("[SECURITY] mbedtls hmac_finish failed\n");
       return false;
     }
     mbedtls_md_free(&ctx);

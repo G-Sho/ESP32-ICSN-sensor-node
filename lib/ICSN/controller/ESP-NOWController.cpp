@@ -1,4 +1,5 @@
 #include "ESP-NOWController.hpp"
+#include "BuildProfile.hpp"
 #include "message/SignalCode.hpp"
 
 #include <string>
@@ -41,7 +42,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
     std::string rxAddrStr = addressToString(rxAddress);
     std::string txAddrStr = addressToString(txAddress);
 
-    // Serial.printf("Received message from %s to %s\n", txAddrStr.c_str(), rxAddrStr.c_str());
+    LOG_DEBUGF("Received message from %s to %s\n", txAddrStr.c_str(), rxAddrStr.c_str());
 
     SignalCode code = fromString(data.signalCode);
 
@@ -65,7 +66,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
     }
     else
     {
-        Serial.println("Unknown signal code received");
+        LOG_WARNF("Unknown signal code received\n");
         return ESP_NOWControlData{};
     }
 
@@ -98,7 +99,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
 
 void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
 {
-    // Serial.printf("Received sensor data: %s\n", data.content);
+    LOG_INFOF("Received sensor data: %s\n", data.content);
 
     InputData inputData(
         std::string("N/A"), // senderId: 仮

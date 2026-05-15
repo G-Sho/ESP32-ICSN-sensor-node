@@ -1,5 +1,6 @@
 #include "Sensor.h"
 #include <DHT.h>
+#include "BuildProfile.hpp"
 
 constexpr uint8_t dhtPin = 14;     // DHTセンサーが刺さっているピン
 constexpr uint8_t dhtType = DHT11; // 今回使うのはDHT11
@@ -18,7 +19,7 @@ void DHTHumidity::read()
   // 読み取り失敗
   if (isnan(h))
   {
-    Serial.println("Failed to read from DHT sensor");
+    LOG_WARNF("Failed to read from DHT sensor\n");
     return;
   }
 
