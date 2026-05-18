@@ -200,18 +200,38 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6],
     out.isInterest = (strncmp(receivedPacket.signalCode, "INTEREST", MAX_SIGNAL_CODE_LENGTH) == 0);
     out.isData = (strncmp(receivedPacket.signalCode, "DATA", MAX_SIGNAL_CODE_LENGTH) == 0);
 
+#if ICSN_PERF_ENABLED
+    if (out.isInterest)
+    {
+        interestTiming.recordInterestRx();
+    }
+#endif
+
     std::array<uint8_t, 6> macArray = {};
     std::copy(senderMac, senderMac + 6, macArray.begin());
     bool isBroadcast = isBroadcastAddress(macArray);
 
-    out.otaRequired = !isBroadcast;
-    if (out.otaRequired)
+    out.securityCheckRequired = !isBroadcast;
+    if (out.securityCheckRequired)
     {
-        out.otaVerified = verifyIncomingPacket(senderMac, receivedPacket);
-        if (!out.otaVerified)
+#if ICSN_PERF_ENABLED
+        if (out.isInterest)
+        {
+            interestTiming.recordSecurityCheckStart();
+        }
+#endif
+        out.securityCheckVerified = verifyIncomingPacket(senderMac, receivedPacket);
+        if (!out.securityCheckVerified)
         {
             return false;
         }
+
+#if ICSN_PERF_ENABLED
+        if (out.isInterest)
+        {
+            interestTiming.recordSecurityCheckEnd();
+        }
+#endif
     }
 
     ESP_NOWControlData inputData = {};
@@ -225,7 +245,22 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6],
     std::copy(senderMac, senderMac + 6, inputData.txAddress[0].begin());
 
     ESP_NOWControlData outputData = receiveMessage(myMac, senderMac, inputData);
+
+#if ICSN_PERF_ENABLED
+    if (out.isInterest)
+    {
+        interestTiming.recordFibLookup();
+    }
+#endif
+
     out.forwarded = sendPacketToAddresses(outputData);
+
+#if ICSN_PERF_ENABLED
+    if (out.isInterest && out.forwarded)
+    {
+        interestTiming.recordForwardTx();
+    }
+#endif
 
     return true;
 }
@@ -421,4 +456,53 @@ void ESP_NOWController::initFIBEntry(const std::string& contentName, const std::
 void ESP_NOWController::printFIB() const
 {
     useCaseInteractor.printFIB();
+}
+
+void ESP_NOWController::dumpPerformanceData() const
+{
+#if !ICSN_PERF_ENABLED
+    CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
+    return;
+#else
+    uint16_t cnt = interestTiming.getCount();
+    CLI_PRINTLN("{");
+    CLI_PRINTLN("  \"measurements\": [");
+    for (uint16_t i = 0; i < cnt; i++)
+    {
+        const InterestPacketTimingEntry &m = interestTiming.getEntry(i);
+        const char *separator = (i < cnt - 1) ? "," : "";
+        uint32_t security_check_us = m.security_check_end_us - m.security_check_start_us;
+        uint32_t fib_us = (m.security_check_end_us > 0)
+                      ? m.fib_lookup_us - m.security_check_end_us
+                              : m.fib_lookup_us - m.interest_rx_us;
+        uint32_t total_us = m.forward_tx_us - m.interest_rx_us;
+        CLI_PRINTF("    {\"i\": %u, \"security_check_us\": %lu, \"fib_us\": %lu, \"total_us\": %lu}%s\n",
+                   static_cast<unsigned>(i),
+               static_cast<unsigned long>(security_check_us),
+                   static_cast<unsigned long>(fib_us),
+                   static_cast<unsigned long>(total_us),
+                   separator);
+    }
+    CLI_PRINTLN("  ]");
+    CLI_PRINTLN("}");
+#endif
+}
+
+void ESP_NOWController::resetPerformanceData()
+{
+#if !ICSN_PERF_ENABLED
+    CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
+#else
+    interestTiming.reset();
+    CLI_PRINTLN("{\"status\": \"perf_reset\"}");
+#endif
+}
+
+void ESP_NOWController::printPerformanceCount() const
+{
+#if !ICSN_PERF_ENABLED
+    CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
+#else
+    CLI_PRINTF("{\"count\": %u}\n", static_cast<unsigned>(interestTiming.getCount()));
+#endif
 }

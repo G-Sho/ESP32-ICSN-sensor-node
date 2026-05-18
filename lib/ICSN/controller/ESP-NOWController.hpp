@@ -5,6 +5,7 @@
 #include "PeerCounterManager.hpp"
 #include "InputData.hpp"
 #include "OutputData.hpp"
+#include "performance/InterestPacketTimingBuffer.hpp"
 
 #include <cstddef>
 #include <array>
@@ -17,6 +18,7 @@ private:
 
     UseCaseInteractor useCaseInteractor;
     PeerCounterManager peerCounterManager;
+    InterestPacketTimingBuffer interestTiming;
     bool encryptionEnabled = false;
     uint8_t pmk[PMK_LENGTH] = {0};
 
@@ -36,8 +38,8 @@ public:
         bool validPacket = false;
         bool isInterest = false;
         bool isData = false;
-        bool otaRequired = false;
-        bool otaVerified = false;
+        bool securityCheckRequired = false;
+        bool securityCheckVerified = false;
         bool forwarded = false;
     };
 
@@ -66,6 +68,11 @@ public:
 
     // FIBの内容をシリアルに出力する
     void printFIB() const;
+
+    // stage-based performance results (controller-owned)
+    void dumpPerformanceData() const;
+    void resetPerformanceData();
+    void printPerformanceCount() const;
 
     // Content Store をクリアする
     void clearCSCache() {

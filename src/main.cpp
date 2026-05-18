@@ -8,15 +8,10 @@
 #include "BuildProfile.hpp"
 #include "ESP-NOWController.hpp"
 #include "Sensor.h"
-#include "performance/PerformanceStats.hpp"
-#include "performance.h"
 
 // === グローバル ===
 ESP_NOWController espNowController;
 uint8_t myMacAddress[6];
-
-// パフォーマンス統計
-PerformanceStats packetProcessStats;
 
 // === タイマー関連 ===
 constexpr float SENSOR_INTERVAL_SEC = 10.0f;
@@ -121,77 +116,7 @@ void onDataSent(const uint8_t * /*mac_addr*/, esp_now_send_status_t status) {
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
-  // パケット処理時間測定開始
-  MEASURE_START(packet_timer);
-
-  ESP_NOWController::ReceiveProcessResult result;
-  bool processed = espNowController.processReceivedPacket(myMacAddress, mac_addr, data, len, &result);
-
-  // 計測ポイント: Interest/Data 受信時刻
-  #if ICSN_PERF_ENABLED
-    if (result.isInterest) {
-      g_sensor_perf.recordInterestRx();
-    } else if (result.isData) {
-      g_sensor_perf.recordDataRx();
-    }
-  #endif
-
-  #if ICSN_PERF_ENABLED
-    if (result.otaRequired && result.isInterest) {
-      g_sensor_perf.recordOtaStart();
-      if (result.otaVerified) {
-        g_sensor_perf.recordOtaEnd();
-      }
-    }
-  #endif
-
-  if (!processed) {
-    MEASURE_END(packet_timer, packetProcessStats);
-    return;
-  }
-
-  // 計測ポイント: FIB検索完了（Interestの場合）
-  #if ICSN_PERF_ENABLED
-    if (result.isInterest) g_sensor_perf.recordFibLookup();
-  #endif
-
-  // 計測ポイント: 次ホップ送信完了（Interestの場合）
-  #if ICSN_PERF_ENABLED
-    if (result.isInterest && result.forwarded) g_sensor_perf.recordSensorTx();
-  #endif
-
-  // パケット処理時間測定終了
-  MEASURE_END(packet_timer, packetProcessStats);
-}
-
-
-// === パフォーマンスデータJSON出力 ===
-void dumpPerformanceData() {
-#if !ICSN_PERF_ENABLED
-  CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-  return;
-#else
-  uint16_t cnt = g_sensor_perf.getCount();
-  CLI_PRINTLN("{");
-  CLI_PRINTLN("  \"measurements\": [");
-  for (uint16_t i = 0; i < cnt; i++) {
-    const SensorMeasurement& m = g_sensor_perf.getEntry(i);
-    const char* separator = (i < cnt - 1) ? "," : "";
-    uint32_t ota_us   = m.ota_end_us - m.ota_start_us;
-    uint32_t fib_us   = (m.ota_end_us > 0)
-                          ? m.fib_lookup_us - m.ota_end_us
-                          : m.fib_lookup_us - m.interest_rx_us;
-    uint32_t total_us = m.sensor_tx_us - m.interest_rx_us;
-    CLI_PRINTF("    {\"i\": %u, \"ota_us\": %lu, \"fib_us\": %lu, \"total_us\": %lu}%s\n",
-                  (unsigned)i,
-                  (unsigned long)ota_us,
-                  (unsigned long)fib_us,
-                  (unsigned long)total_us,
-                  separator);
-  }
-  CLI_PRINTLN("  ]");
-  CLI_PRINTLN("}");
-#endif
+  espNowController.processReceivedPacket(myMacAddress, mac_addr, data, len);
 }
 
 
@@ -287,33 +212,12 @@ void loop() {
     } else if (msg == "read_sensor") {
       LOG_INFO("[CMD] read_sensor received");
       readSensorData();
-    } else if (msg == "perf_stats") {
-      #if ICSN_PERF_ENABLED
-        packetProcessStats.printStats("Individual Packet Processing");
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
-    } else if (msg == "perf_reset") {
-      #if ICSN_PERF_ENABLED
-        packetProcessStats.reset();
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
     } else if (msg == "dump_perf") {
-      dumpPerformanceData();
+      espNowController.dumpPerformanceData();
     } else if (msg == "reset_perf") {
-      #if ICSN_PERF_ENABLED
-        g_sensor_perf.reset();
-        CLI_PRINTLN("{\"status\": \"perf_reset\"}");
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
+      espNowController.resetPerformanceData();
     } else if (msg == "perf_count") {
-      #if ICSN_PERF_ENABLED
-        CLI_PRINTF("{\"count\": %u}\n", (unsigned)g_sensor_perf.getCount());
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
+      espNowController.printPerformanceCount();
     } else if (msg == "show_counters") {
       LOG_INFO("[CMD] show_counters received");
       espNowController.printCounters();
@@ -333,10 +237,8 @@ void loop() {
       CLI_PRINTLN("  show_counters   - Show tx/rx counter state for all peers");
       CLI_PRINTLN("  show_fib        - Show Forwarding Information Base (FIB)");
       CLI_PRINTLN("  clear_cache     - Clear Content Store and PIT");
-      CLI_PRINTLN("  perf_stats      - Show performance statistics (perf build only)");
-      CLI_PRINTLN("  perf_reset      - Reset performance statistics (perf build only)");
-      CLI_PRINTLN("  dump_perf       - Dump sensor measurement buffer as JSON (perf build only)");
-      CLI_PRINTLN("  reset_perf      - Reset sensor measurement buffer (perf build only)");
+      CLI_PRINTLN("  dump_perf       - Dump INTEREST packet timing buffer as JSON (perf build only)");
+      CLI_PRINTLN("  reset_perf      - Reset INTEREST packet timing buffer (perf build only)");
       CLI_PRINTLN("  perf_count      - Show current sample count in measurement buffer (perf build only)");
       CLI_PRINTLN("  help            - Show this help");
     } else {
