@@ -2,7 +2,7 @@
 
 #include <string>
 #include <cstring>
-#include <Arduino.h>
+#include "../../BuildProfile.hpp"
 
 template<typename ValueType, size_t MaxSize>
 class FixedSizeLRUCache {
@@ -223,16 +223,16 @@ public:
     }
     
     void printCache() const {
-        Serial.printf("=== LRU Cache (Size: %u/%u) ===\n", currentSize, MaxSize);
+        CLI_PRINTF("=== LRU Cache (Size: %u/%u) ===\n", currentSize, MaxSize);
         int current = head;
         int index = 0;
         
         while (current != -1 && index < MaxSize) {
             if (entries[current].valid) {
-                Serial.printf("[%d] Key: %s\n", index++, entries[current].key.c_str());
+                CLI_PRINTF("[%d] Key: %s\n", index++, entries[current].key.c_str());
             }
             current = entries[current].next;
         }
-        Serial.printf("======================\n\n");
+        CLI_PRINTF("======================\n\n");
     }
 };
