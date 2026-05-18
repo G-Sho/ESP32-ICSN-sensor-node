@@ -13,6 +13,20 @@ ESP32を使用したICSN（Interest-Centric Sensor Network）の実装です。
 - パフォーマンス測定機能
 - クリーンアーキテクチャによる階層設計（Entity、Use Case、Interface、Infrastructure）
 
+## 依存方向のルール
+
+このプロジェクトの依存方向は以下を基本とします。
+
+- Controller -> Interface (`InputBoundary`)
+- Use Case Interactor -> Entity
+- Use Case Interactor -> Interface (`I*Repository`)
+- Infrastructure(Data Access) -> Interface (`I*Repository` 実装)
+
+補足:
+
+- Controller は `UseCaseInteractor` 具象へ直接依存せず、`InputBoundary` 経由で連携する。
+- Entity は外側レイヤー（controller/infrastructure/Arduino固有API）に依存しない。
+
 ## 設定ファイル `data/config.json`
 
 ```json
