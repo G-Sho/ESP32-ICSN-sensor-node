@@ -3,10 +3,10 @@
 #include "../../interface/data_access/IFIBRepository.hpp"
 #include "FixedSizeLRUCache.hpp"
 #include "../../config/Config.hpp"
+#include "../../BuildProfile.hpp"
 #include <set>
 #include <string>
 #include <algorithm>
-#include <Arduino.h>
 
 class LRUFIBRepository : public IFIBRepository
 {
@@ -45,8 +45,8 @@ public:
 
     void printCache() const
     {
-        Serial.printf("=== Forwarding Information Base (TwoStage + LRU) ===\n");
+        CLI_PRINTLN("=== Forwarding Information Base (TwoStage + LRU) ===");
         cache.printCache();
-        Serial.printf("======================\n");
+        CLI_PRINTLN("======================");
     }
 };
