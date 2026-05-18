@@ -3,10 +3,18 @@
 #include "config/Config.hpp"
 #include "message/SignalCode.hpp"
 
+#include <esp_now.h>
+#include <esp_wifi.h>
+
 #include <string>
 #include <sstream>
 #include <iomanip>
 #include <cstring> // strncpy用
+#include <algorithm>
+
+namespace {
+constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+}
 
 bool ESP_NOWController::loadAndApplyConfig(const char *configPath)
 {
@@ -55,6 +63,170 @@ bool ESP_NOWController::copyPMK(uint8_t *outPmk, size_t outLen) const
     }
 
     memcpy(outPmk, pmk, sizeof(pmk));
+    return true;
+}
+
+bool ESP_NOWController::isBroadcastAddress(const std::array<uint8_t, 6> &addr)
+{
+    return std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0xFF; });
+}
+
+void ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6])
+{
+    if (mac == nullptr || esp_now_is_peer_exist(mac))
+    {
+        return;
+    }
+
+    esp_now_peer_info_t peer = {};
+    memcpy(peer.peer_addr, mac, 6);
+    peer.channel = 0;
+    peer.ifidx = WIFI_IF_STA;
+    peer.encrypt = false;
+
+    if (esp_now_add_peer(&peer) != ESP_OK)
+    {
+        LOG_WARN("[PEER] Failed to register peer");
+    }
+}
+
+void ESP_NOWController::registerBroadcastPeer()
+{
+    registerPeerIfNeeded(BROADCAST_ADDRESS);
+}
+
+bool ESP_NOWController::sendPacketToAddresses(const ESP_NOWControlData &data)
+{
+    bool sentAny = false;
+
+    for (const auto &addr : data.txAddress)
+    {
+        if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; }))
+        {
+            continue;
+        }
+
+        bool isBcast = isBroadcastAddress(addr);
+        CommunicationData packet = {};
+        if (!buildPacketForAddress(addr.data(), data, !isBcast, packet))
+        {
+            continue;
+        }
+
+        registerPeerIfNeeded(addr.data());
+
+        esp_err_t err = esp_now_send(addr.data(), reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
+        if (err != ESP_OK)
+        {
+            LOG_WARNF("[TX] esp_now_send error: %d\n", err);
+            continue;
+        }
+
+        sentAny = true;
+    }
+
+    return sentAny;
+}
+
+bool ESP_NOWController::sendSensorData(const char *contentName, const char *content, uint8_t hopCount)
+{
+    if (contentName == nullptr || content == nullptr)
+    {
+        return false;
+    }
+
+    ESP_NOWControlData sensorData = {};
+    sensorData.hopCount = hopCount;
+    strncpy(sensorData.signalCode, "DATA", MAX_SIGNAL_CODE_LENGTH - 1);
+    sensorData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+    strncpy(sensorData.contentName, contentName, MAX_CONTENT_NAME_LENGTH - 1);
+    sensorData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+    strncpy(sensorData.content, content, MAX_CONTENT_LENGTH - 1);
+    sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
+
+    receiveSensorData(sensorData);
+    return true;
+}
+
+bool ESP_NOWController::sendInterest(const char *contentName, const uint8_t *targetMac, uint8_t hopCount)
+{
+    if (contentName == nullptr)
+    {
+        return false;
+    }
+
+    ESP_NOWControlData interest = {};
+    if (targetMac == nullptr)
+    {
+        std::copy(BROADCAST_ADDRESS, BROADCAST_ADDRESS + 6, interest.txAddress[0].begin());
+    }
+    else
+    {
+        std::copy(targetMac, targetMac + 6, interest.txAddress[0].begin());
+    }
+
+    strncpy(interest.signalCode, "INTEREST", MAX_SIGNAL_CODE_LENGTH - 1);
+    interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+    interest.hopCount = hopCount;
+    strncpy(interest.contentName, contentName, MAX_CONTENT_NAME_LENGTH - 1);
+    interest.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+    strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH - 1);
+    interest.content[MAX_CONTENT_LENGTH - 1] = '\0';
+
+    return sendPacketToAddresses(interest);
+}
+
+bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6],
+                                              const uint8_t senderMac[6],
+                                              const uint8_t *data,
+                                              int len,
+                                              ReceiveProcessResult *result)
+{
+    ReceiveProcessResult localResult;
+    ReceiveProcessResult &out = (result == nullptr) ? localResult : *result;
+    out = {};
+
+    if (myMac == nullptr || senderMac == nullptr || data == nullptr || len != static_cast<int>(sizeof(CommunicationData)))
+    {
+        return false;
+    }
+
+    registerPeerIfNeeded(senderMac);
+
+    CommunicationData receivedPacket = {};
+    memcpy(&receivedPacket, data, sizeof(receivedPacket));
+    out.validPacket = true;
+
+    out.isInterest = (strncmp(receivedPacket.signalCode, "INTEREST", MAX_SIGNAL_CODE_LENGTH) == 0);
+    out.isData = (strncmp(receivedPacket.signalCode, "DATA", MAX_SIGNAL_CODE_LENGTH) == 0);
+
+    std::array<uint8_t, 6> macArray = {};
+    std::copy(senderMac, senderMac + 6, macArray.begin());
+    bool isBroadcast = isBroadcastAddress(macArray);
+
+    out.otaRequired = !isBroadcast;
+    if (out.otaRequired)
+    {
+        out.otaVerified = verifyIncomingPacket(senderMac, receivedPacket);
+        if (!out.otaVerified)
+        {
+            return false;
+        }
+    }
+
+    ESP_NOWControlData inputData = {};
+    strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
+    inputData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+    inputData.hopCount = receivedPacket.hopCount;
+    strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH - 1);
+    inputData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+    strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH - 1);
+    inputData.content[MAX_CONTENT_LENGTH - 1] = '\0';
+    std::copy(senderMac, senderMac + 6, inputData.txAddress[0].begin());
+
+    ESP_NOWControlData outputData = receiveMessage(myMac, senderMac, inputData);
+    out.forwarded = sendPacketToAddresses(outputData);
+
     return true;
 }
 

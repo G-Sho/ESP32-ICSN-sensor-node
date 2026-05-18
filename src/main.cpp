@@ -6,18 +6,10 @@
 #include "esp_wifi.h"
 
 #include "BuildProfile.hpp"
-#include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
 #include "Sensor.h"
 #include "performance/PerformanceStats.hpp"
 #include "performance.h"
-
-// === 定数 ===
-#define SIGNAL_INTEREST "INTEREST"
-#define SIGNAL_DATA "DATA"
-
-// ブロードキャスト定数
-constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 // === グローバル ===
 ESP_NOWController espNowController;
@@ -51,11 +43,6 @@ void cancelAutoInterestStart() {
   autoInterestStartRequested = false;
 }
 
-// === ヘルパー ===
-bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
-  return std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0xFF; });
-}
-
 /// MACアドレスを "XX:XX:XX:XX:XX:XX" 形式に整形する
 /// outLen は最低18（終端文字を含む）必要
 void formatMac(const uint8_t *mac, char *out, size_t outLen) {
@@ -73,75 +60,16 @@ void printMac(const uint8_t *mac) {
   LOG_DEBUG(macStr);
 }
 
-/// パケット内容・カウンタ・HMACを出力する
-void printPacket(const CommunicationData &pkt, bool isBcast) {
-  LOG_DEBUGF("  signal=%-9s hop=%u  name=%s\n",
-             pkt.signalCode, pkt.hopCount, pkt.contentName);
-  LOG_DEBUGF("  content=%-10s counter=%lu\n",
-             pkt.content, (unsigned long)pkt.counter);
-  if (!isBcast) {
-    char hmacPreview[17];
-    for (int i = 0; i < 8; i++) {
-      snprintf(&hmacPreview[i * 2], 3, "%02X", pkt.hmac[i]);
-    }
-    hmacPreview[16] = '\0';
-    LOG_DEBUGF("  hmac=%s... (first 8B)\n", hmacPreview);
-  }
-}
-
-/// @brief MAC がピアリスト未登録なら登録する
-/// ユニキャスト送受信どちらにも必要。channel=0 で現在の WiFi チャンネルを使用。
-void registerPeerIfNeeded(const uint8_t *mac) {
-  if (esp_now_is_peer_exist(mac)) return;
-  esp_now_peer_info_t p = {};
-  memcpy(p.peer_addr, mac, 6);
-  p.channel = 0;  // 0 = 現在の WiFi チャンネルを使用（固定指定より確実）
-  p.ifidx = WIFI_IF_STA;
-  p.encrypt = false;
-  if (esp_now_add_peer(&p) != ESP_OK) {
-    LOG_WARN("[PEER] Failed to register peer");
-  }
-}
-
-void sendPacketToAddresses(const ESP_NOWControlData &data) {
-  for (const auto &addr : data.txAddress) {
-    if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
-
-    // ブロードキャスト宛の場合はカウンタ・HMAC処理をスキップ
-    bool isBcast = isBroadcastAddress(addr);
-    CommunicationData packet = {};
-
-    if (!espNowController.buildPacketForAddress(addr.data(), data, !isBcast, packet)) {
-      continue;
-    }
-
-    // ピアを登録（未登録なら追加）してから送信
-    // ※ esp_now_send 直後に del_peer すると WiFi タスクが送信前に peer 情報が消えて FAIL になる
-    //   → ピアは削除せず残す（onDataSent でも削除しない）
-    registerPeerIfNeeded(addr.data());
-
-    esp_err_t err = esp_now_send(addr.data(), (uint8_t *)&packet, sizeof(packet));
-    if (err != ESP_OK) {
-      LOG_WARNF("[TX] esp_now_send error: %d\n", err);
-    }
-  }
-}
-
 // === センサデータ送信タスク ===
 void readSensorData() {
   LOG_DEBUG("Reading sensor data...");
 
-  ESP_NOWControlData sensorData = {};
-  sensorData.hopCount = 1;
-  strncpy(sensorData.signalCode, SIGNAL_DATA, MAX_SIGNAL_CODE_LENGTH - 1);
-  sensorData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  strncpy(sensorData.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
-  sensorData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
-  sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
-
-  LOG_INFOF("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
-  espNowController.receiveSensorData(sensorData);
+  const char* contentName = "/iot/buildingA/room101";
+  const char* content = "26.5C";
+  LOG_INFOF("Sensor: %s = %s\n", contentName, content);
+  if (!espNowController.sendSensorData(contentName, content, 1)) {
+    LOG_WARN("Failed to process sensor data");
+  }
 }
 
 // === INTEREST送信 ===
@@ -153,21 +81,9 @@ void sendInterest(const uint8_t* targetMac = nullptr) {
     printMac(targetMac);
   }
 
-  ESP_NOWControlData interest = {};
-  if (targetMac == nullptr) {
-    std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
-  } else {
-    std::copy(targetMac, targetMac + 6, interest.txAddress[0].begin());
+  if (!espNowController.sendInterest("/iot/buildingA/room101", targetMac, 1)) {
+    LOG_WARN("Failed to send INTEREST");
   }
-  strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
-  interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  interest.hopCount = 1;
-  strncpy(interest.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
-  interest.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH - 1);
-  interest.content[MAX_CONTENT_LENGTH - 1] = '\0';
-
-  sendPacketToAddresses(interest);
 }
 
 // === INTEREST定期送信用 ===
@@ -205,79 +121,43 @@ void onDataSent(const uint8_t * /*mac_addr*/, esp_now_send_status_t status) {
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
-// 送信元をピアリストに登録（未登録だとユニキャストの callback が呼ばれない）
-  registerPeerIfNeeded(mac_addr);
-
   // パケット処理時間測定開始
   MEASURE_START(packet_timer);
 
-  if (len != sizeof(CommunicationData)) {
-    MEASURE_END(packet_timer, packetProcessStats);
-    return;
-  }
-
-  CommunicationData receivedPacket;
-  memcpy(&receivedPacket, data, sizeof(CommunicationData));
-
-  // ブロードキャストかユニキャストかを判定
-  std::array<uint8_t, 6> macArray;
-  std::copy(mac_addr, mac_addr + 6, macArray.begin());
-  bool isBroadcast = isBroadcastAddress(macArray);
-
-  // シグナルコードを判定
-  bool isInterest = (strncmp(receivedPacket.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH) == 0);
-  bool isData    = (strncmp(receivedPacket.signalCode, SIGNAL_DATA,     MAX_SIGNAL_CODE_LENGTH) == 0);
+  ESP_NOWController::ReceiveProcessResult result;
+  bool processed = espNowController.processReceivedPacket(myMacAddress, mac_addr, data, len, &result);
 
   // 計測ポイント: Interest/Data 受信時刻
   #if ICSN_PERF_ENABLED
-    if (isInterest) {
+    if (result.isInterest) {
       g_sensor_perf.recordInterestRx();
-    } else if (isData) {
+    } else if (result.isData) {
       g_sensor_perf.recordDataRx();
     }
   #endif
 
-  // ユニキャストの場合のみHMAC検証・カウンタ検証を行う
-  if (!isBroadcast) {
-    // HMAC検証: hmacフィールド以外のパケット全体（counter含む）を対象とする。
-    // hmacフィールドはパケット末尾32バイトなので COMM_DATA_HMAC_DATA_LEN の範囲には含まれない。
-
-    // 計測ポイント: OTA（HMAC）検証開始
-    #if ICSN_PERF_ENABLED
-      if (isInterest) g_sensor_perf.recordOtaStart();
-    #endif
-
-    if (!espNowController.verifyIncomingPacket(mac_addr, receivedPacket)) {
-      MEASURE_END(packet_timer, packetProcessStats);
-      return;
+  #if ICSN_PERF_ENABLED
+    if (result.otaRequired && result.isInterest) {
+      g_sensor_perf.recordOtaStart();
+      if (result.otaVerified) {
+        g_sensor_perf.recordOtaEnd();
+      }
     }
+  #endif
 
-    // 計測ポイント: OTA（HMAC）検証終了
-    #if ICSN_PERF_ENABLED
-      if (isInterest) g_sensor_perf.recordOtaEnd();
-    #endif
+  if (!processed) {
+    MEASURE_END(packet_timer, packetProcessStats);
+    return;
   }
-
-  // ESP_NOWControlData に変換
-  ESP_NOWControlData inputData = {};
-  strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH);
-  inputData.hopCount = receivedPacket.hopCount;
-  strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH);
-  strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH);
-  std::copy(mac_addr, mac_addr + 6, inputData.txAddress[0].begin());
-  
-  ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);
 
   // 計測ポイント: FIB検索完了（Interestの場合）
   #if ICSN_PERF_ENABLED
-    if (isInterest) g_sensor_perf.recordFibLookup();
+    if (result.isInterest) g_sensor_perf.recordFibLookup();
   #endif
-
-  sendPacketToAddresses(outputData);
 
   // 計測ポイント: 次ホップ送信完了（Interestの場合）
   #if ICSN_PERF_ENABLED
-    if (isInterest) g_sensor_perf.recordSensorTx();
+    if (result.isInterest && result.forwarded) g_sensor_perf.recordSensorTx();
   #endif
 
   // パケット処理時間測定終了
@@ -352,7 +232,7 @@ void setup() {
   esp_now_register_recv_cb(onDataReceive);
 
   // ブロードキャストアドレスを事前登録
-  registerPeerIfNeeded(BROADCAST_ADDRESS);
+  espNowController.registerBroadcastPeer();
 
   LOG_INFO("ESP-NOW initialized successfully");
 
