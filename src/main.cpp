@@ -6,28 +6,12 @@
 #include "esp_wifi.h"
 
 #include "BuildProfile.hpp"
-#include "config/Config.hpp"
-#include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
-#include "PeerCounterManager.hpp"
 #include "Sensor.h"
-#include "performance/PerformanceStats.hpp"
-#include "performance.h"
-
-// === 定数 ===
-#define SIGNAL_INTEREST "INTEREST"
-#define SIGNAL_DATA "DATA"
-
-// ブロードキャスト定数
-constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 // === グローバル ===
 ESP_NOWController espNowController;
-PeerCounterManager peerCounterManager;
 uint8_t myMacAddress[6];
-
-// パフォーマンス統計
-PerformanceStats packetProcessStats;
 
 // === タイマー関連 ===
 constexpr float SENSOR_INTERVAL_SEC = 10.0f;
@@ -54,11 +38,6 @@ void cancelAutoInterestStart() {
   autoInterestStartRequested = false;
 }
 
-// === ヘルパー ===
-bool isBroadcastAddress(const std::array<uint8_t, 6> &addr) {
-  return std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0xFF; });
-}
-
 /// MACアドレスを "XX:XX:XX:XX:XX:XX" 形式に整形する
 /// outLen は最低18（終端文字を含む）必要
 void formatMac(const uint8_t *mac, char *out, size_t outLen) {
@@ -76,104 +55,16 @@ void printMac(const uint8_t *mac) {
   LOG_DEBUG(macStr);
 }
 
-/// パケット内容・カウンタ・HMACを出力する
-void printPacket(const CommunicationData &pkt, bool isBcast) {
-  LOG_DEBUGF("  signal=%-9s hop=%u  name=%s\n",
-             pkt.signalCode, pkt.hopCount, pkt.contentName);
-  LOG_DEBUGF("  content=%-10s counter=%lu\n",
-             pkt.content, (unsigned long)pkt.counter);
-  if (!isBcast) {
-    char hmacPreview[17];
-    for (int i = 0; i < 8; i++) {
-      snprintf(&hmacPreview[i * 2], 3, "%02X", pkt.hmac[i]);
-    }
-    hmacPreview[16] = '\0';
-    LOG_DEBUGF("  hmac=%s... (first 8B)\n", hmacPreview);
-  }
-}
-
-/// @brief MAC がピアリスト未登録なら登録する
-/// ユニキャスト送受信どちらにも必要。channel=0 で現在の WiFi チャンネルを使用。
-void registerPeerIfNeeded(const uint8_t *mac) {
-  if (esp_now_is_peer_exist(mac)) return;
-  esp_now_peer_info_t p = {};
-  memcpy(p.peer_addr, mac, 6);
-  p.channel = 0;  // 0 = 現在の WiFi チャンネルを使用（固定指定より確実）
-  p.ifidx = WIFI_IF_STA;
-  p.encrypt = false;
-  if (esp_now_add_peer(&p) != ESP_OK) {
-    LOG_WARN("[PEER] Failed to register peer");
-  }
-}
-
-void sendPacketToAddresses(const ESP_NOWControlData &data) {
-  CommunicationData packet = {};
-  strncpy(packet.signalCode, data.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
-  packet.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  packet.hopCount = data.hopCount;
-  strncpy(packet.contentName, data.contentName, MAX_CONTENT_NAME_LENGTH - 1);
-  packet.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  strncpy(packet.content, data.content, MAX_CONTENT_LENGTH - 1);
-  packet.content[MAX_CONTENT_LENGTH - 1] = '\0';
-
-  for (const auto &addr : data.txAddress) {
-    if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
-
-    // ブロードキャスト宛の場合はカウンタ・HMAC処理をスキップ
-    bool isBcast = isBroadcastAddress(addr);
-
-    if (!isBcast) {
-      // 送信カウンタをインクリメントしてパケットに設定
-      bool counterSuccess = false;
-      packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
-      if (!counterSuccess) {
-        continue;
-      }
-
-      // HMAC-SHA256(LMK, パケットデータ（hmacフィールド除く）) を計算してパケットに付与
-      memset(packet.hmac, 0, sizeof(packet.hmac));
-      bool hmacOk = peerCounterManager.computeHMAC(
-          addr.data(),
-          reinterpret_cast<const uint8_t*>(&packet),
-          COMM_DATA_HMAC_DATA_LEN,
-          packet.hmac);
-      if (!hmacOk) {
-        LOG_WARN("[SECURITY] HMAC computation failed");
-        continue;
-      }
-    } else {
-      // ブロードキャスト：カウンタはインクリメントしない、HMACも付与しない
-      packet.counter = 0;
-      memset(packet.hmac, 0, sizeof(packet.hmac));
-    }
-
-    // ピアを登録（未登録なら追加）してから送信
-    // ※ esp_now_send 直後に del_peer すると WiFi タスクが送信前に peer 情報が消えて FAIL になる
-    //   → ピアは削除せず残す（onDataSent でも削除しない）
-    registerPeerIfNeeded(addr.data());
-
-    esp_err_t err = esp_now_send(addr.data(), (uint8_t *)&packet, sizeof(packet));
-    if (err != ESP_OK) {
-      LOG_WARNF("[TX] esp_now_send error: %d\n", err);
-    }
-  }
-}
-
 // === センサデータ送信タスク ===
 void readSensorData() {
   LOG_DEBUG("Reading sensor data...");
 
-  ESP_NOWControlData sensorData = {};
-  sensorData.hopCount = 1;
-  strncpy(sensorData.signalCode, SIGNAL_DATA, MAX_SIGNAL_CODE_LENGTH - 1);
-  sensorData.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  strncpy(sensorData.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
-  sensorData.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  strncpy(sensorData.content, "26.5C", MAX_CONTENT_LENGTH - 1);
-  sensorData.content[MAX_CONTENT_LENGTH - 1] = '\0';
-
-  LOG_INFOF("Sensor: %s = %s\n", sensorData.contentName, sensorData.content);
-  espNowController.receiveSensorData(sensorData);
+  const char* contentName = "/iot/buildingA/room101";
+  const char* content = "26.5C";
+  LOG_INFOF("Sensor: %s = %s\n", contentName, content);
+  if (!espNowController.sendSensorData(contentName, content, 1)) {
+    LOG_WARN("Failed to process sensor data");
+  }
 }
 
 // === INTEREST送信 ===
@@ -185,21 +76,9 @@ void sendInterest(const uint8_t* targetMac = nullptr) {
     printMac(targetMac);
   }
 
-  ESP_NOWControlData interest = {};
-  if (targetMac == nullptr) {
-    std::copy(std::begin(BROADCAST_ADDRESS), std::end(BROADCAST_ADDRESS), interest.txAddress[0].begin());
-  } else {
-    std::copy(targetMac, targetMac + 6, interest.txAddress[0].begin());
+  if (!espNowController.sendInterest("/iot/buildingA/room101", targetMac, 1)) {
+    LOG_WARN("Failed to send INTEREST");
   }
-  strncpy(interest.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH - 1);
-  interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  interest.hopCount = 1;
-  strncpy(interest.contentName, "/iot/buildingA/room101", MAX_CONTENT_NAME_LENGTH - 1);
-  interest.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  strncpy(interest.content, "N/A", MAX_CONTENT_LENGTH - 1);
-  interest.content[MAX_CONTENT_LENGTH - 1] = '\0';
-
-  sendPacketToAddresses(interest);
 }
 
 // === INTEREST定期送信用 ===
@@ -237,127 +116,7 @@ void onDataSent(const uint8_t * /*mac_addr*/, esp_now_send_status_t status) {
 }
 
 void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
-// 送信元をピアリストに登録（未登録だとユニキャストの callback が呼ばれない）
-  registerPeerIfNeeded(mac_addr);
-
-  // パケット処理時間測定開始
-  MEASURE_START(packet_timer);
-
-  if (len != sizeof(CommunicationData)) {
-    MEASURE_END(packet_timer, packetProcessStats);
-    return;
-  }
-
-  CommunicationData receivedPacket;
-  memcpy(&receivedPacket, data, sizeof(CommunicationData));
-
-  // ブロードキャストかユニキャストかを判定
-  std::array<uint8_t, 6> macArray;
-  std::copy(mac_addr, mac_addr + 6, macArray.begin());
-  bool isBroadcast = isBroadcastAddress(macArray);
-
-  // シグナルコードを判定
-  bool isInterest = (strncmp(receivedPacket.signalCode, SIGNAL_INTEREST, MAX_SIGNAL_CODE_LENGTH) == 0);
-  bool isData    = (strncmp(receivedPacket.signalCode, SIGNAL_DATA,     MAX_SIGNAL_CODE_LENGTH) == 0);
-
-  // 計測ポイント: Interest/Data 受信時刻
-  #if ICSN_PERF_ENABLED
-    if (isInterest) {
-      g_sensor_perf.recordInterestRx();
-    } else if (isData) {
-      g_sensor_perf.recordDataRx();
-    }
-  #endif
-
-  // ユニキャストの場合のみHMAC検証・カウンタ検証を行う
-  if (!isBroadcast) {
-    // HMAC検証: hmacフィールド以外のパケット全体（counter含む）を対象とする。
-    // hmacフィールドはパケット末尾32バイトなので COMM_DATA_HMAC_DATA_LEN の範囲には含まれない。
-
-    // 計測ポイント: OTA（HMAC）検証開始
-    #if ICSN_PERF_ENABLED
-      if (isInterest) g_sensor_perf.recordOtaStart();
-    #endif
-
-    bool hmacValid = peerCounterManager.verifyHMAC(
-        mac_addr,
-        reinterpret_cast<const uint8_t*>(&receivedPacket),
-        COMM_DATA_HMAC_DATA_LEN,
-        receivedPacket.hmac);
-
-    if (!hmacValid) {
-      LOG_WARN("[SECURITY] HMAC verification FAILED");
-      MEASURE_END(packet_timer, packetProcessStats);
-      return;
-    }
-
-    if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
-      LOG_WARNF("[SECURITY] Replay attack detected! counter=%lu\n",
-                (unsigned long)receivedPacket.counter);
-      MEASURE_END(packet_timer, packetProcessStats);
-      return;
-    }
-
-    // 計測ポイント: OTA（HMAC）検証終了
-    #if ICSN_PERF_ENABLED
-      if (isInterest) g_sensor_perf.recordOtaEnd();
-    #endif
-  }
-
-  // ESP_NOWControlData に変換
-  ESP_NOWControlData inputData = {};
-  strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH);
-  inputData.hopCount = receivedPacket.hopCount;
-  strncpy(inputData.contentName, receivedPacket.contentName, MAX_CONTENT_NAME_LENGTH);
-  strncpy(inputData.content, receivedPacket.content, MAX_CONTENT_LENGTH);
-  std::copy(mac_addr, mac_addr + 6, inputData.txAddress[0].begin());
-  
-  ESP_NOWControlData outputData = espNowController.receiveMessage(myMacAddress, mac_addr, inputData);
-
-  // 計測ポイント: FIB検索完了（Interestの場合）
-  #if ICSN_PERF_ENABLED
-    if (isInterest) g_sensor_perf.recordFibLookup();
-  #endif
-
-  sendPacketToAddresses(outputData);
-
-  // 計測ポイント: 次ホップ送信完了（Interestの場合）
-  #if ICSN_PERF_ENABLED
-    if (isInterest) g_sensor_perf.recordSensorTx();
-  #endif
-
-  // パケット処理時間測定終了
-  MEASURE_END(packet_timer, packetProcessStats);
-}
-
-
-// === パフォーマンスデータJSON出力 ===
-void dumpPerformanceData() {
-#if !ICSN_PERF_ENABLED
-  CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-  return;
-#else
-  uint16_t cnt = g_sensor_perf.getCount();
-  CLI_PRINTLN("{");
-  CLI_PRINTLN("  \"measurements\": [");
-  for (uint16_t i = 0; i < cnt; i++) {
-    const SensorMeasurement& m = g_sensor_perf.getEntry(i);
-    const char* separator = (i < cnt - 1) ? "," : "";
-    uint32_t ota_us   = m.ota_end_us - m.ota_start_us;
-    uint32_t fib_us   = (m.ota_end_us > 0)
-                          ? m.fib_lookup_us - m.ota_end_us
-                          : m.fib_lookup_us - m.interest_rx_us;
-    uint32_t total_us = m.sensor_tx_us - m.interest_rx_us;
-    CLI_PRINTF("    {\"i\": %u, \"ota_us\": %lu, \"fib_us\": %lu, \"total_us\": %lu}%s\n",
-                  (unsigned)i,
-                  (unsigned long)ota_us,
-                  (unsigned long)fib_us,
-                  (unsigned long)total_us,
-                  separator);
-  }
-  CLI_PRINTLN("  ]");
-  CLI_PRINTLN("}");
-#endif
+  espNowController.processReceivedPacket(myMacAddress, mac_addr, data, len);
 }
 
 
@@ -367,25 +126,9 @@ void setup() {
 
   const char* configPath = "/config.json";
 
-  if (!loadSystemConfig(configPath)) {
+  if (!espNowController.loadAndApplyConfig(configPath)) {
     LOG_WARN("Failed to load system config!");
     return;
-  }
-
-  // LMK設定をPeerCounterManagerに反映する
-  // グローバルLMK（encryptionEnabled 時のみ有効）
-  if (systemConfig.encryptionEnabled) {
-    peerCounterManager.setGlobalLMK(systemConfig.lmk);
-    LOG_INFO("[SECURITY] Global LMK configured for HMAC");
-  }
-  // ピア固有LMKを設定
-  for (size_t i = 0; i < systemConfig.peerLmkCount; i++) {
-    const PeerLMKConfig& entry = systemConfig.peerLmkEntries[i];
-    if (entry.valid) {
-      peerCounterManager.setPeerLMK(entry.mac, entry.lmk);
-      LOG_DEBUG("[SECURITY] Peer LMK configured for:");
-      printMac(entry.mac);
-    }
   }
 
   WiFi.mode(WIFI_STA);
@@ -397,8 +140,9 @@ void setup() {
   }
 
   // PMKの設定（暗号化が有効な場合）
-  if (systemConfig.encryptionEnabled) {
-    if (esp_now_set_pmk(systemConfig.pmk) != ESP_OK) {
+  uint8_t pmk[16] = {0};
+  if (espNowController.copyPMK(pmk, sizeof(pmk))) {
+    if (esp_now_set_pmk(pmk) != ESP_OK) {
       LOG_WARN("Failed to set PMK");
       return;
     }
@@ -413,18 +157,7 @@ void setup() {
   esp_now_register_recv_cb(onDataReceive);
 
   // ブロードキャストアドレスを事前登録
-  registerPeerIfNeeded(BROADCAST_ADDRESS);
-
-  // FIB初期エントリの投入（config.jsonの "fib_init" セクションで定義された経路）
-  for (size_t i = 0; i < systemConfig.fibInitCount; i++) {
-    const FibInitEntry& entry = systemConfig.fibInitEntries[i];
-    if (entry.valid) {
-      espNowController.initFIBEntry(std::string(entry.contentName),
-                                    std::string(entry.nextHopMac));
-      LOG_INFOF("[FIB] Initial entry: %s -> %s\n",
-                entry.contentName, entry.nextHopMac);
-    }
-  }
+  espNowController.registerBroadcastPeer();
 
   LOG_INFO("ESP-NOW initialized successfully");
 
@@ -479,36 +212,15 @@ void loop() {
     } else if (msg == "read_sensor") {
       LOG_INFO("[CMD] read_sensor received");
       readSensorData();
-    } else if (msg == "perf_stats") {
-      #if ICSN_PERF_ENABLED
-        packetProcessStats.printStats("Individual Packet Processing");
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
-    } else if (msg == "perf_reset") {
-      #if ICSN_PERF_ENABLED
-        packetProcessStats.reset();
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
     } else if (msg == "dump_perf") {
-      dumpPerformanceData();
+      espNowController.dumpPerformanceData();
     } else if (msg == "reset_perf") {
-      #if ICSN_PERF_ENABLED
-        g_sensor_perf.reset();
-        CLI_PRINTLN("{\"status\": \"perf_reset\"}");
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
+      espNowController.resetPerformanceData();
     } else if (msg == "perf_count") {
-      #if ICSN_PERF_ENABLED
-        CLI_PRINTF("{\"count\": %u}\n", (unsigned)g_sensor_perf.getCount());
-      #else
-        CLI_PRINTLN("{\"error\": \"perf_build_required\"}");
-      #endif
+      espNowController.printPerformanceCount();
     } else if (msg == "show_counters") {
       LOG_INFO("[CMD] show_counters received");
-      peerCounterManager.printCounters();
+      espNowController.printCounters();
     } else if (msg == "show_fib") {
       LOG_INFO("[CMD] show_fib received");
       espNowController.printFIB();
@@ -525,10 +237,8 @@ void loop() {
       CLI_PRINTLN("  show_counters   - Show tx/rx counter state for all peers");
       CLI_PRINTLN("  show_fib        - Show Forwarding Information Base (FIB)");
       CLI_PRINTLN("  clear_cache     - Clear Content Store and PIT");
-      CLI_PRINTLN("  perf_stats      - Show performance statistics (perf build only)");
-      CLI_PRINTLN("  perf_reset      - Reset performance statistics (perf build only)");
-      CLI_PRINTLN("  dump_perf       - Dump sensor measurement buffer as JSON (perf build only)");
-      CLI_PRINTLN("  reset_perf      - Reset sensor measurement buffer (perf build only)");
+      CLI_PRINTLN("  dump_perf       - Dump INTEREST packet timing buffer as JSON (perf build only)");
+      CLI_PRINTLN("  reset_perf      - Reset INTEREST packet timing buffer (perf build only)");
       CLI_PRINTLN("  perf_count      - Show current sample count in measurement buffer (perf build only)");
       CLI_PRINTLN("  help            - Show this help");
     } else {

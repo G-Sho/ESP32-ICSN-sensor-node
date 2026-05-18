@@ -3,8 +3,8 @@
 #include "../../interface/data_access/ICSRepository.hpp"
 #include "FixedSizeLRUCache.hpp"
 #include "../../config/Config.hpp"
+#include "../../BuildProfile.hpp"
 #include <string>
-#include <Arduino.h>
 
 class LRUCSRepository : public ICSRepository
 {
@@ -24,7 +24,7 @@ public:
 
     void printCache() const
     {
-        Serial.printf("=== Content Store ===\n");
+        CLI_PRINTLN("=== Content Store ===");
         cache.printCache();
     }
 };

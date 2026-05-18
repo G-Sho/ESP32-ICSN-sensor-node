@@ -3,9 +3,9 @@
 #include "../../interface/data_access/IPITRepository.hpp"
 #include "FixedSizeLRUCache.hpp"
 #include "../../config/Config.hpp"
+#include "../../BuildProfile.hpp"
 #include <set>
 #include <string>
-#include <Arduino.h>
 
 class LRUPITRepository : public IPITRepository
 {
@@ -25,7 +25,7 @@ public:
 
     void printCache() const
     {
-        Serial.printf("=== Pending Interest Table ===\n");
+        CLI_PRINTLN("=== Pending Interest Table ===");
         cache.printCache();
     }
 };

@@ -1,5 +1,6 @@
 #include "LRUPITRepository.hpp"
 #include "../../config/Config.hpp"
+#include "../../BuildProfile.hpp"
 
 void LRUPITRepository::save(const PITPair &pitPair) {
     const std::string &name = pitPair.getContentName().getValue();
@@ -17,7 +18,7 @@ void LRUPITRepository::remove(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     cache.remove(name);
     
-    Serial.printf("Removed PIT entry: Key=%s\n", name.c_str());
+    LOG_DEBUGF("Removed PIT entry: Key=%s\n", name.c_str());
 }
 
 bool LRUPITRepository::find(const ContentName &contentName) {

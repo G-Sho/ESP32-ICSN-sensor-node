@@ -89,8 +89,6 @@ pio run -e release -t upload
 
 ### perf コマンドについて
 
-- `perf_stats`
-- `perf_reset`
 - `dump_perf`
 - `reset_perf`
 - `perf_count`
@@ -106,10 +104,8 @@ pio run -e release -t upload
 | `read_sensor` | センサデータを手動送信 |
 | `show_counters` | 全ピアの TX/RX カウンタ表示 |
 | `show_fib` | FIB（転送情報テーブル）の内容表示 |
-| `perf_stats` | パフォーマンス統計表示（perf buildのみ） |
-| `perf_reset` | パフォーマンス統計リセット（perf buildのみ） |
-| `dump_perf` | センサ計測バッファをJSON出力（perf buildのみ） |
-| `reset_perf` | センサ計測バッファをリセット（perf buildのみ） |
+| `dump_perf` | Interest受信パケット処理の計測バッファをJSON出力（perf buildのみ） |
+| `reset_perf` | Interest受信パケット処理の計測バッファをリセット（perf buildのみ） |
 | `perf_count` | 計測サンプル数を表示（perf buildのみ） |
 | `help` | コマンド一覧表示 |
 
@@ -118,3 +114,24 @@ pio run -e release -t upload
 | ファイル | 用途 |
 |---------|-----|
 | `data/config.json` | 全プロファイル共通の設定ファイル |
+
+起動時に `src/main.cpp` から ICSN ライブラリの初期化 API を呼び出し、
+`config.json` の読み込みと設定反映（LMK/FIB 初期エントリ）は ICSN 側で実行されます。
+
+## CI (GitHub Actions)
+
+このリポジトリでは、GitHub Actions で以下を実行します。
+
+- `build` ジョブ: `normal` / `perf` / `release` の3プロファイルをビルド
+- `lint` ジョブ: `normal` プロファイルで `pio check -e normal` を実行
+
+CI では実機がないため、`upload` / `uploadfs` は実行しません。
+
+### ローカル再現コマンド
+
+```bash
+pio run -e normal
+pio run -e perf
+pio run -e release
+pio check -e normal
+```
