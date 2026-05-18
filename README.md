@@ -104,3 +104,21 @@ pio run -e release -t upload
 | ファイル | 用途 |
 |---------|-----|
 | `data/config.json` | 全プロファイル共通の設定ファイル |
+
+## CI (GitHub Actions)
+
+このリポジトリでは、GitHub Actions で以下を実行します。
+
+- `build` ジョブ: `normal` / `perf` / `release` の3プロファイルをビルド
+- `lint` ジョブ: `normal` プロファイルで `pio check -e normal` を実行
+
+CI では実機がないため、`upload` / `uploadfs` は実行しません。
+
+### ローカル再現コマンド
+
+```bash
+pio run -e normal
+pio run -e perf
+pio run -e release
+pio check -e normal
+```
