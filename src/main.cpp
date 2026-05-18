@@ -9,7 +9,6 @@
 #include "config/Config.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
-#include "PeerCounterManager.hpp"
 #include "Sensor.h"
 #include "performance/PerformanceStats.hpp"
 #include "performance.h"
@@ -23,7 +22,6 @@ constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 // === グローバル ===
 ESP_NOWController espNowController;
-PeerCounterManager peerCounterManager;
 uint8_t myMacAddress[6];
 
 // パフォーマンス統計
@@ -107,44 +105,15 @@ void registerPeerIfNeeded(const uint8_t *mac) {
 }
 
 void sendPacketToAddresses(const ESP_NOWControlData &data) {
-  CommunicationData packet = {};
-  strncpy(packet.signalCode, data.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
-  packet.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
-  packet.hopCount = data.hopCount;
-  strncpy(packet.contentName, data.contentName, MAX_CONTENT_NAME_LENGTH - 1);
-  packet.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
-  strncpy(packet.content, data.content, MAX_CONTENT_LENGTH - 1);
-  packet.content[MAX_CONTENT_LENGTH - 1] = '\0';
-
   for (const auto &addr : data.txAddress) {
     if (std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0; })) continue;
 
     // ブロードキャスト宛の場合はカウンタ・HMAC処理をスキップ
     bool isBcast = isBroadcastAddress(addr);
+    CommunicationData packet = {};
 
-    if (!isBcast) {
-      // 送信カウンタをインクリメントしてパケットに設定
-      bool counterSuccess = false;
-      packet.counter = peerCounterManager.incrementTxCounter(addr.data(), counterSuccess);
-      if (!counterSuccess) {
-        continue;
-      }
-
-      // HMAC-SHA256(LMK, パケットデータ（hmacフィールド除く）) を計算してパケットに付与
-      memset(packet.hmac, 0, sizeof(packet.hmac));
-      bool hmacOk = peerCounterManager.computeHMAC(
-          addr.data(),
-          reinterpret_cast<const uint8_t*>(&packet),
-          COMM_DATA_HMAC_DATA_LEN,
-          packet.hmac);
-      if (!hmacOk) {
-        LOG_WARN("[SECURITY] HMAC computation failed");
-        continue;
-      }
-    } else {
-      // ブロードキャスト：カウンタはインクリメントしない、HMACも付与しない
-      packet.counter = 0;
-      memset(packet.hmac, 0, sizeof(packet.hmac));
+    if (!espNowController.buildPacketForAddress(addr.data(), data, !isBcast, packet)) {
+      continue;
     }
 
     // ピアを登録（未登録なら追加）してから送信
@@ -279,21 +248,7 @@ void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
       if (isInterest) g_sensor_perf.recordOtaStart();
     #endif
 
-    bool hmacValid = peerCounterManager.verifyHMAC(
-        mac_addr,
-        reinterpret_cast<const uint8_t*>(&receivedPacket),
-        COMM_DATA_HMAC_DATA_LEN,
-        receivedPacket.hmac);
-
-    if (!hmacValid) {
-      LOG_WARN("[SECURITY] HMAC verification FAILED");
-      MEASURE_END(packet_timer, packetProcessStats);
-      return;
-    }
-
-    if (!peerCounterManager.validateRxCounter(mac_addr, receivedPacket.counter)) {
-      LOG_WARNF("[SECURITY] Replay attack detected! counter=%lu\n",
-                (unsigned long)receivedPacket.counter);
+    if (!espNowController.verifyIncomingPacket(mac_addr, receivedPacket)) {
       MEASURE_END(packet_timer, packetProcessStats);
       return;
     }
@@ -372,17 +327,17 @@ void setup() {
     return;
   }
 
-  // LMK設定をPeerCounterManagerに反映する
+  // LMK設定をController内のPeerCounterManagerに反映する
   // グローバルLMK（encryptionEnabled 時のみ有効）
   if (systemConfig.encryptionEnabled) {
-    peerCounterManager.setGlobalLMK(systemConfig.lmk);
+    espNowController.setGlobalLMK(systemConfig.lmk);
     LOG_INFO("[SECURITY] Global LMK configured for HMAC");
   }
   // ピア固有LMKを設定
   for (size_t i = 0; i < systemConfig.peerLmkCount; i++) {
     const PeerLMKConfig& entry = systemConfig.peerLmkEntries[i];
     if (entry.valid) {
-      peerCounterManager.setPeerLMK(entry.mac, entry.lmk);
+      espNowController.setPeerLMK(entry.mac, entry.lmk);
       LOG_DEBUG("[SECURITY] Peer LMK configured for:");
       printMac(entry.mac);
     }
@@ -508,7 +463,7 @@ void loop() {
       #endif
     } else if (msg == "show_counters") {
       LOG_INFO("[CMD] show_counters received");
-      peerCounterManager.printCounters();
+      espNowController.printCounters();
     } else if (msg == "show_fib") {
       LOG_INFO("[CMD] show_fib received");
       espNowController.printFIB();

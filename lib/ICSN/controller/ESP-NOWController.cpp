@@ -112,6 +112,84 @@ void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
     useCaseInteractor.handleSensorDataReceive(inputData);
 }
 
+void ESP_NOWController::setGlobalLMK(const uint8_t lmk[PEER_LMK_LEN])
+{
+    peerCounterManager.setGlobalLMK(lmk);
+}
+
+bool ESP_NOWController::setPeerLMK(const uint8_t mac[6], const uint8_t lmk[PEER_LMK_LEN])
+{
+    return peerCounterManager.setPeerLMK(mac, lmk);
+}
+
+bool ESP_NOWController::buildPacketForAddress(const uint8_t txAddress[6],
+                                              const ESP_NOWControlData &data,
+                                              bool applySecurity,
+                                              CommunicationData &outPacket)
+{
+    memset(&outPacket, 0, sizeof(CommunicationData));
+
+    strncpy(outPacket.signalCode, data.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
+    outPacket.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
+    outPacket.hopCount = data.hopCount;
+    strncpy(outPacket.contentName, data.contentName, MAX_CONTENT_NAME_LENGTH - 1);
+    outPacket.contentName[MAX_CONTENT_NAME_LENGTH - 1] = '\0';
+    strncpy(outPacket.content, data.content, MAX_CONTENT_LENGTH - 1);
+    outPacket.content[MAX_CONTENT_LENGTH - 1] = '\0';
+
+    if (!applySecurity)
+    {
+        outPacket.counter = 0;
+        memset(outPacket.hmac, 0, sizeof(outPacket.hmac));
+        return true;
+    }
+
+    bool counterSuccess = false;
+    outPacket.counter = peerCounterManager.incrementTxCounter(txAddress, counterSuccess);
+    if (!counterSuccess)
+    {
+        return false;
+    }
+
+    memset(outPacket.hmac, 0, sizeof(outPacket.hmac));
+    if (!peerCounterManager.computeHMAC(txAddress,
+                                        reinterpret_cast<const uint8_t *>(&outPacket),
+                                        COMM_DATA_HMAC_DATA_LEN,
+                                        outPacket.hmac))
+    {
+        LOG_WARN("[SECURITY] HMAC computation failed");
+        return false;
+    }
+
+    return true;
+}
+
+bool ESP_NOWController::verifyIncomingPacket(const uint8_t mac[6], const CommunicationData &packet)
+{
+    if (!peerCounterManager.verifyHMAC(mac,
+                                       reinterpret_cast<const uint8_t *>(&packet),
+                                       COMM_DATA_HMAC_DATA_LEN,
+                                       packet.hmac))
+    {
+        LOG_WARN("[SECURITY] HMAC verification FAILED");
+        return false;
+    }
+
+    if (!peerCounterManager.validateRxCounter(mac, packet.counter))
+    {
+        LOG_WARNF("[SECURITY] Replay attack detected! counter=%lu\n",
+                  (unsigned long)packet.counter);
+        return false;
+    }
+
+    return true;
+}
+
+void ESP_NOWController::printCounters() const
+{
+    peerCounterManager.printCounters();
+}
+
 void ESP_NOWController::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
 {
     useCaseInteractor.initFIBEntry(contentName, nextHopMac);
