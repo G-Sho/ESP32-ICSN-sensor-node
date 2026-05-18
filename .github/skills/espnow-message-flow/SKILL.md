@@ -13,7 +13,7 @@ ESP-NOW 通信処理の経路を揃え、分岐追加時の不整合を防ぐ。
 
 1. `src/main.cpp` のコールバックで受信する。
 2. 必要な検証後に `ESP_NOWControlData` へ変換する。
-3. `ESP_NOWController` 経由で `UseCaseInteractor` に渡す。
+3. `ESP_NOWController` 経由で `InputBoundary` に渡す。
 4. 返却された出力を送信形式へ変換し配信する。
 
 ## 実装方針
@@ -26,6 +26,7 @@ ESP-NOW 通信処理の経路を揃え、分岐追加時の不整合を防ぐ。
 ## 非推奨
 
 - 受信コールバック内に大量の業務ロジックを直接書く。
+- controller から `UseCaseInteractor` 具象へ直接依存させる。
 - 変換前後でフィールドの意味を変える。
 - 片方向のみ変更して型定義と処理を不一致にする。
 

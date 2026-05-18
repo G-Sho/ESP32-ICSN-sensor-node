@@ -51,6 +51,8 @@
 ## 実装ポリシー
 
 - 新規機能は、可能な限り `UseCaseInteractor` を中心に振る舞いを追加する。
+- 依存方向は `Controller -> InputBoundary <- UseCaseInteractor -> (Entity, I*Repository)` を維持する。
+- `Infrastructure` は `I*Repository` を実装し、Use Case に具体クラスを露出させない。
 - データアクセスは既存の `I*Repository` と実装クラスの責務を崩さない。
 - 直接 `src/main.cpp` にドメインロジックを増やさない。
 - ログは `BuildProfile.hpp` の `LOG_*` / `CLI_*` ポリシーに従う。
