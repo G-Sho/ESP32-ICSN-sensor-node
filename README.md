@@ -105,6 +105,9 @@ pio run -e release -t upload
 |---------|-----|
 | `data/config.json` | 全プロファイル共通の設定ファイル |
 
+起動時に `src/main.cpp` から ICSN ライブラリの初期化 API を呼び出し、
+`config.json` の読み込みと設定反映（LMK/FIB 初期エントリ）は ICSN 側で実行されます。
+
 ## CI (GitHub Actions)
 
 このリポジトリでは、GitHub Actions で以下を実行します。

@@ -1,11 +1,62 @@
 #include "ESP-NOWController.hpp"
 #include "BuildProfile.hpp"
+#include "config/Config.hpp"
 #include "message/SignalCode.hpp"
 
 #include <string>
 #include <sstream>
 #include <iomanip>
 #include <cstring> // strncpy用
+
+bool ESP_NOWController::loadAndApplyConfig(const char *configPath)
+{
+    if (!loadSystemConfig(configPath))
+    {
+        return false;
+    }
+
+    encryptionEnabled = systemConfig.encryptionEnabled;
+    memset(pmk, 0, sizeof(pmk));
+
+    if (encryptionEnabled)
+    {
+        memcpy(pmk, systemConfig.pmk, sizeof(pmk));
+        setGlobalLMK(systemConfig.lmk);
+        LOG_INFO("[SECURITY] Global LMK configured for HMAC");
+    }
+
+    for (size_t i = 0; i < systemConfig.peerLmkCount; i++)
+    {
+        const PeerLMKConfig &entry = systemConfig.peerLmkEntries[i];
+        if (entry.valid)
+        {
+            setPeerLMK(entry.mac, entry.lmk);
+        }
+    }
+
+    for (size_t i = 0; i < systemConfig.fibInitCount; i++)
+    {
+        const FibInitEntry &entry = systemConfig.fibInitEntries[i];
+        if (entry.valid)
+        {
+            initFIBEntry(std::string(entry.contentName), std::string(entry.nextHopMac));
+            LOG_INFOF("[FIB] Initial entry: %s -> %s\n", entry.contentName, entry.nextHopMac);
+        }
+    }
+
+    return true;
+}
+
+bool ESP_NOWController::copyPMK(uint8_t *outPmk, size_t outLen) const
+{
+    if (outPmk == nullptr || outLen < sizeof(pmk) || !encryptionEnabled)
+    {
+        return false;
+    }
+
+    memcpy(outPmk, pmk, sizeof(pmk));
+    return true;
+}
 
 // ヘルパー: アドレスをログ用のstd::stringに変換
 static std::string addressToString(const uint8_t *address)

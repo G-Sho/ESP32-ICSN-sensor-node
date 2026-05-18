@@ -6,7 +6,6 @@
 #include "esp_wifi.h"
 
 #include "BuildProfile.hpp"
-#include "config/Config.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "ESP-NOWController.hpp"
 #include "Sensor.h"
@@ -322,25 +321,9 @@ void setup() {
 
   const char* configPath = "/config.json";
 
-  if (!loadSystemConfig(configPath)) {
+  if (!espNowController.loadAndApplyConfig(configPath)) {
     LOG_WARN("Failed to load system config!");
     return;
-  }
-
-  // LMK設定をController内のPeerCounterManagerに反映する
-  // グローバルLMK（encryptionEnabled 時のみ有効）
-  if (systemConfig.encryptionEnabled) {
-    espNowController.setGlobalLMK(systemConfig.lmk);
-    LOG_INFO("[SECURITY] Global LMK configured for HMAC");
-  }
-  // ピア固有LMKを設定
-  for (size_t i = 0; i < systemConfig.peerLmkCount; i++) {
-    const PeerLMKConfig& entry = systemConfig.peerLmkEntries[i];
-    if (entry.valid) {
-      espNowController.setPeerLMK(entry.mac, entry.lmk);
-      LOG_DEBUG("[SECURITY] Peer LMK configured for:");
-      printMac(entry.mac);
-    }
   }
 
   WiFi.mode(WIFI_STA);
@@ -352,8 +335,9 @@ void setup() {
   }
 
   // PMKの設定（暗号化が有効な場合）
-  if (systemConfig.encryptionEnabled) {
-    if (esp_now_set_pmk(systemConfig.pmk) != ESP_OK) {
+  uint8_t pmk[16] = {0};
+  if (espNowController.copyPMK(pmk, sizeof(pmk))) {
+    if (esp_now_set_pmk(pmk) != ESP_OK) {
       LOG_WARN("Failed to set PMK");
       return;
     }
@@ -369,17 +353,6 @@ void setup() {
 
   // ブロードキャストアドレスを事前登録
   registerPeerIfNeeded(BROADCAST_ADDRESS);
-
-  // FIB初期エントリの投入（config.jsonの "fib_init" セクションで定義された経路）
-  for (size_t i = 0; i < systemConfig.fibInitCount; i++) {
-    const FibInitEntry& entry = systemConfig.fibInitEntries[i];
-    if (entry.valid) {
-      espNowController.initFIBEntry(std::string(entry.contentName),
-                                    std::string(entry.nextHopMac));
-      LOG_INFOF("[FIB] Initial entry: %s -> %s\n",
-                entry.contentName, entry.nextHopMac);
-    }
-  }
 
   LOG_INFO("ESP-NOW initialized successfully");
 

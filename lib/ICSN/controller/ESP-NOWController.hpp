@@ -6,14 +6,23 @@
 #include "InputData.hpp"
 #include "OutputData.hpp"
 
+#include <cstddef>
+
 /// @brief ESP-NOWControllerクラス
 class ESP_NOWController
 {
 private:
+    static constexpr size_t PMK_LENGTH = 16;
+
     UseCaseInteractor useCaseInteractor;
     PeerCounterManager peerCounterManager;
+    bool encryptionEnabled = false;
+    uint8_t pmk[PMK_LENGTH] = {0};
 
 public:
+    bool loadAndApplyConfig(const char *configPath = "/config.json");
+    bool copyPMK(uint8_t *outPmk, size_t outLen) const;
+
     ESP_NOWControlData receiveMessage(const uint8_t rxAddress[6], const uint8_t txAddress[6], const ESP_NOWControlData &data);
     void receiveSensorData(const ESP_NOWControlData &data);
 
