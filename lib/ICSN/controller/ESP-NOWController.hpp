@@ -1,6 +1,7 @@
 #pragma once
 
-#include "UseCaseInteractor.hpp"
+#include "InputBoundary.hpp"
+#include "ManagementBoundary.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "PeerCounterManager.hpp"
 #include "InputData.hpp"
@@ -16,7 +17,8 @@ class ESP_NOWController
 private:
     static constexpr size_t PMK_LENGTH = 16;
 
-    UseCaseInteractor useCaseInteractor;
+    IInputBoundary &inputBoundary;
+    IManagementBoundary &managementBoundary;
     PeerCounterManager peerCounterManager;
     InterestPacketTimingBuffer interestTiming;
     bool encryptionEnabled = false;
@@ -33,6 +35,8 @@ private:
     static bool isBroadcastAddress(const std::array<uint8_t, 6> &addr);
 
 public:
+    ESP_NOWController(IInputBoundary &inputBoundary, IManagementBoundary &managementBoundary);
+
     struct ReceiveProcessResult
     {
         bool validPacket = false;
@@ -76,11 +80,11 @@ public:
 
     // Content Store をクリアする
     void clearCSCache() {
-        useCaseInteractor.clearCSCache();
+        managementBoundary.clearCSCache();
     }
 
     // PIT をクリアする
     void clearPITCache() {
-        useCaseInteractor.clearPITCache();
+        managementBoundary.clearPITCache();
     }
 };

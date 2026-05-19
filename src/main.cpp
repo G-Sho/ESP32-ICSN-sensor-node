@@ -7,10 +7,18 @@
 
 #include "BuildProfile.hpp"
 #include "ESP-NOWController.hpp"
+#include "UseCaseInteractor.hpp"
+#include "LRUForwardingInformationBase.hpp"
+#include "LRUPendingInterestTable.hpp"
+#include "LRUContentStore.hpp"
 #include "Sensor.h"
 
 // === グローバル ===
-ESP_NOWController espNowController;
+LRUForwardingInformationBase fibRepository;
+LRUPendingInterestTable pitRepository;
+LRUContentStore csRepository;
+UseCaseInteractor useCaseInteractor(fibRepository, pitRepository, csRepository);
+ESP_NOWController espNowController(useCaseInteractor, useCaseInteractor);
 uint8_t myMacAddress[6];
 
 // === タイマー関連 ===

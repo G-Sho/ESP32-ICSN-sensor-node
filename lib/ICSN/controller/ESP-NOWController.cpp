@@ -16,6 +16,13 @@ namespace {
 constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 }
 
+ESP_NOWController::ESP_NOWController(IInputBoundary &inputBoundary,
+                                                                         IManagementBoundary &managementBoundary)
+        : inputBoundary(inputBoundary),
+            managementBoundary(managementBoundary)
+{
+}
+
 bool ESP_NOWController::loadAndApplyConfig(const char *configPath)
 {
     if (!loadSystemConfig(configPath))
@@ -316,11 +323,11 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
 
     if (code == SignalCode::INTEREST)
     {
-        outputData = useCaseInteractor.handleInterestReceive(inputData);
+        outputData = inputBoundary.handleInterestReceive(inputData);
     }
     else if (code == SignalCode::DATA)
     {
-        outputData = useCaseInteractor.handleDataReceive(inputData);
+        outputData = inputBoundary.handleDataReceive(inputData);
     }
     else
     {
@@ -367,7 +374,7 @@ void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
         std::string(data.contentName),
         std::string(data.content));
 
-    useCaseInteractor.handleSensorDataReceive(inputData);
+    inputBoundary.handleSensorDataReceive(inputData);
 }
 
 void ESP_NOWController::setGlobalLMK(const uint8_t lmk[PEER_LMK_LEN])
@@ -450,12 +457,12 @@ void ESP_NOWController::printCounters() const
 
 void ESP_NOWController::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
 {
-    useCaseInteractor.initFIBEntry(contentName, nextHopMac);
+    managementBoundary.initFIBEntry(contentName, nextHopMac);
 }
 
 void ESP_NOWController::printFIB() const
 {
-    useCaseInteractor.printFIB();
+    managementBoundary.printFIB();
 }
 
 void ESP_NOWController::dumpPerformanceData() const

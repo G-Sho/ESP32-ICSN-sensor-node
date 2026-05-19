@@ -8,6 +8,15 @@
 #include "config/Config.hpp"
 #include "BuildProfile.hpp"
 
+UseCaseInteractor::UseCaseInteractor(IForwardingInformationBase &fibRepository,
+                                                                         IPendingInterestTable &pitRepository,
+                                                                         IContentStore &csRepository)
+        : fibRepository(fibRepository),
+            pitRepository(pitRepository),
+            csRepository(csRepository)
+{
+}
+
 /// @brief Interestパケットを受信したときの処理
 /// @param inputData 入力された Interest データ構造
 /// @return 応答パケット（DATA, INTEREST, INVALID）
@@ -146,7 +155,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 /// @brief FIBに初期エントリを投入する
 /// @param contentName コンテンツ名プレフィックス
 /// @param nextHopMac 次ホップのMACアドレス文字列（小文字コロン区切り）
-void UseCaseInteractor::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
+void UseCaseInteractor::initFIBEntry(const std::string &contentName, const std::string &nextHopMac)
 {
     ContentName name(contentName);
     FIBPair fibPair(name, DestinationId({nextHopMac}));
