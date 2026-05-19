@@ -1,23 +1,23 @@
-#include "LRUCSRepository.hpp"
+#include "LRUContentStore.hpp"
 #include "../../config/Config.hpp"
 
-void LRUCSRepository::save(const CSPair &csPair) {
+void LRUContentStore::save(const CSPair &csPair) {
     const std::string &name = csPair.getContentName().getValue();
     const std::string &content = csPair.getContent().getValue();
     
     cache.put(name, content);
 }
 
-void LRUCSRepository::remove(const ContentName &contentName) {
+void LRUContentStore::remove(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     cache.remove(name);
 }
 
-bool LRUCSRepository::find(const ContentName &contentName) {
+bool LRUContentStore::find(const ContentName &contentName) {
     return cache.contains(contentName.getValue());
 }
 
-Content LRUCSRepository::get(const ContentName &contentName) {
+Content LRUContentStore::get(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     std::string content;
     

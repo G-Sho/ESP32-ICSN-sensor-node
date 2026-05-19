@@ -4,9 +4,9 @@
 #include "../data_structure/InputData.hpp"
 #include "../data_structure/OutputData.hpp"
 // #include "data_access/TwoStageLookupFIBRepository.hpp"
-#include "../infrastructure/data_access/LRUFIBRepository.hpp"
-#include "../infrastructure/data_access/LRUPITRepository.hpp"
-#include "../infrastructure/data_access/LRUCSRepository.hpp"
+#include "../infrastructure/data_access/LRUForwardingInformationBase.hpp"
+#include "../infrastructure/data_access/LRUPendingInterestTable.hpp"
+#include "../infrastructure/data_access/LRUContentStore.hpp"
 // #include "data_access/pCASTINGCSRepository.hpp"
 
 class UseCaseInteractor : public IInputBoundary
@@ -14,9 +14,9 @@ class UseCaseInteractor : public IInputBoundary
 private:
     // FIB, PIT, CSのリポジトリ
     // TwoStageLookupFIBRepository fibRepository;
-    LRUFIBRepository fibRepository;
-    LRUPITRepository pitRepository;
-    LRUCSRepository csRepository;
+    LRUForwardingInformationBase fibRepository;
+    LRUPendingInterestTable pitRepository;
+    LRUContentStore csRepository;
     // pCASTINGCSRepository csRepository;
 
 public:

@@ -1,8 +1,8 @@
-#include "LRUPITRepository.hpp"
+#include "LRUPendingInterestTable.hpp"
 #include "../../config/Config.hpp"
 #include "../../BuildProfile.hpp"
 
-void LRUPITRepository::save(const PITPair &pitPair) {
+void LRUPendingInterestTable::save(const PITPair &pitPair) {
     const std::string &name = pitPair.getContentName().getValue();
     std::set<std::string> newDestinations = pitPair.getDestinationId().getValue();
     
@@ -14,18 +14,18 @@ void LRUPITRepository::save(const PITPair &pitPair) {
     cache.put(name, newDestinations);
 }
 
-void LRUPITRepository::remove(const ContentName &contentName) {
+void LRUPendingInterestTable::remove(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     cache.remove(name);
     
     LOG_DEBUGF("Removed PIT entry: Key=%s\n", name.c_str());
 }
 
-bool LRUPITRepository::find(const ContentName &contentName) {
+bool LRUPendingInterestTable::find(const ContentName &contentName) {
     return cache.contains(contentName.getValue());
 }
 
-DestinationId LRUPITRepository::get(const ContentName &contentName) {
+DestinationId LRUPendingInterestTable::get(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     std::set<std::string> destinations;
     

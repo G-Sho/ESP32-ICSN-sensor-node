@@ -4,7 +4,7 @@
 #include "../entity/message/ContentName.hpp"
 #include "../entity/message/DestinationId.hpp"
 
-class IFIBRepository
+class IForwardingInformationBase
 {
 public:
     virtual void save(const FIBPair &fibPair) = 0;
@@ -12,5 +12,5 @@ public:
     virtual bool find(const ContentName &contentName) = 0;
     virtual DestinationId get(const ContentName &contentName) = 0;
 
-    virtual ~IFIBRepository() = default;
+    virtual ~IForwardingInformationBase() = default;
 };

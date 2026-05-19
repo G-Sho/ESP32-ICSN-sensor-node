@@ -50,16 +50,26 @@
 
 ## 実装ポリシー
 
+- 依存関係ルールとして、`<I>` は Interface、`<DS>` は DataStructure として扱う。
 - 新規機能は、可能な限り `UseCaseInteractor` を中心に振る舞いを追加する。
-- 依存方向は `Controller -> InputBoundary <- UseCaseInteractor -> (Entity, I*Repository)` を維持する。
-- `Infrastructure` は `I*Repository` を実装し、Use Case に具体クラスを露出させない。
-- データアクセスは既存の `I*Repository` と実装クラスの責務を崩さない。
+- 依存方向は以下を維持する。
+  - `Controller -> InputBoundary(<I>)`
+  - `Controller -> InputData/OutputData(<DS>)`
+  - `UseCaseInteractor -> InputBoundary(<I>)`（実装）
+  - `UseCaseInteractor -> Data Access Interface(<I>)`
+  - `UseCaseInteractor -> Entities`
+  - `UseCaseInteractor -> InputData/OutputData(<DS>)`
+  - `Data Access(infrastructure) -> Data Access Interface(<I>)`（実装）
+- データアクセスは既存の Data Access ポート（`IContentStore` / `IForwardingInformationBase` / `IPendingInterestTable`）と実装クラスの責務を崩さない。
 - 直接 `src/main.cpp` にドメインロジックを増やさない。
 - ログは `BuildProfile.hpp` の `LOG_*` / `CLI_*` ポリシーに従う。
 
 ## 禁止・非推奨
 
 - 層を飛び越えた依存（例: controller から infrastructure へ直接操作）
+- controller から `UseCaseInteractor` 具象へ直接依存する変更
+- use case から data access 具象へ直接依存する変更（`Data Access Interface(<I>)` 経由にする）
+- `InputData/OutputData(<DS>)` を controller-use case 境界以外の都合で肥大化させる変更
 - プロファイル条件を無視した perf 専用コードの常時実行
 - 既存のセキュリティ検証（HMAC/counter）を省略する変更
 

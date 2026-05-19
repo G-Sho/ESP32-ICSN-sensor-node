@@ -1,8 +1,8 @@
-#include "LRUFIBRepository.hpp"
+#include "LRUForwardingInformationBase.hpp"
 #include "../../config/Config.hpp"
 
 // TwoStageアルゴリズム用ヘルパー関数の実装
-std::string LRUFIBRepository::extractPrefix(const std::string &name, int prefixDepth) const {
+std::string LRUForwardingInformationBase::extractPrefix(const std::string &name, int prefixDepth) const {
     int cnt = 0;
     for (size_t i = 0; i < name.length(); i++) {
         if (name[i] == '/') {
@@ -15,12 +15,12 @@ std::string LRUFIBRepository::extractPrefix(const std::string &name, int prefixD
     return name;
 }
 
-bool LRUFIBRepository::lookupEntry(const std::string &name, int prefixDepth, FIBEntry& outEntry) {
+bool LRUForwardingInformationBase::lookupEntry(const std::string &name, int prefixDepth, FIBEntry& outEntry) {
     std::string prefix = extractPrefix(name, prefixDepth);
     return cache.get(prefix, outEntry);
 }
 
-bool LRUFIBRepository::fibLpmLookup(const std::string &name, int nameDepth, int maxVirtualDepth, FIBEntry& outEntry) {
+bool LRUForwardingInformationBase::fibLpmLookup(const std::string &name, int nameDepth, int maxVirtualDepth, FIBEntry& outEntry) {
     FIBEntry fibEntry;
     FIBEntry fibEntry1s;
     int startPfx;
@@ -59,7 +59,7 @@ bool LRUFIBRepository::fibLpmLookup(const std::string &name, int nameDepth, int 
     return false;
 }
 
-void LRUFIBRepository::saveFibEntry(const std::string &contentName, const std::set<std::string> &nodeIds, int depth) {
+void LRUForwardingInformationBase::saveFibEntry(const std::string &contentName, const std::set<std::string> &nodeIds, int depth) {
     FIBEntry existingEntry;
     if (systemConfig.maxVirtualDepth >= depth) {
         if (cache.get(contentName, existingEntry)) {
@@ -88,7 +88,7 @@ void LRUFIBRepository::saveFibEntry(const std::string &contentName, const std::s
     }
 }
 
-void LRUFIBRepository::save(const FIBPair &fibPair) {
+void LRUForwardingInformationBase::save(const FIBPair &fibPair) {
     const std::string &name = fibPair.getContentName().getValue();
     const std::set<std::string> &nodeIds = fibPair.getDestinationId().getValue();
     int depth = std::count(name.begin(), name.end(), '/');
@@ -96,19 +96,19 @@ void LRUFIBRepository::save(const FIBPair &fibPair) {
     saveFibEntry(name, nodeIds, depth);
 }
 
-void LRUFIBRepository::remove(const ContentName &contentName) {
+void LRUForwardingInformationBase::remove(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     cache.remove(name);
 }
 
-bool LRUFIBRepository::find(const ContentName &contentName) {
+bool LRUForwardingInformationBase::find(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     int nameDepth = std::count(name.begin(), name.end(), '/');
     FIBEntry tempEntry;
     return fibLpmLookup(name, nameDepth, systemConfig.maxVirtualDepth, tempEntry);
 }
 
-DestinationId LRUFIBRepository::get(const ContentName &contentName) {
+DestinationId LRUForwardingInformationBase::get(const ContentName &contentName) {
     const std::string &name = contentName.getValue();
     int nameDepth = std::count(name.begin(), name.end(), '/');
     FIBEntry result;
