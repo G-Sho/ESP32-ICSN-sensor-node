@@ -18,7 +18,7 @@ ESP-NOW 通信処理の経路を揃え、分岐追加時の不整合を防ぐ。
 
 ## 実装方針
 
-- `signalCode` 判定は既存定数（INTEREST/DATA）と整合させる。
+- `signalCode` 判定は既存定数（INTEREST/DATA/INVALID）と整合させる。
 - 受信側でサイズ・妥当性チェックを先に行う。
 - アドレス配列操作は既存のコピー手順に合わせる。
 - 新しいメッセージ種別追加時は、InputData/OutputData と UseCase の両方を更新する。
