@@ -53,9 +53,9 @@
 - 依存関係ルールとして、`<I>` は Interface、`<DS>` は DataStructure として扱う。
 - 新規機能は、可能な限り `UseCaseInteractor` を中心に振る舞いを追加する。
 - 依存方向は以下を維持する。
-  - `Controller -> InputBoundary(<I>)`
+  - `Controller -> IInputBoundary(<I>)`
   - `Controller -> InputData/OutputData(<DS>)`
-  - `UseCaseInteractor -> InputBoundary(<I>)`（実装）
+  - `UseCaseInteractor -> IInputBoundary(<I>)`（実装）
   - `UseCaseInteractor -> Data Access Interface(<I>)`
   - `UseCaseInteractor -> Entities`
   - `UseCaseInteractor -> InputData/OutputData(<DS>)`

@@ -18,10 +18,10 @@ description: ESP32-ICSN の Clean Architecture を維持するための指針。
   - 外部I/Oやハードウェア依存を持たない。
 - Use Case (`lib/ICSN/use_case/`)
   - アプリケーションの振る舞いを定義する。
-  - `InputBoundary(<I>)` を実装し、`Data Access Interface(<I>)` と `Entity` に依存する。
+  - `IInputBoundary(<I>)` を実装し、`Data Access Interface(<I>)` と `Entity` に依存する。
   - `InputData/OutputData(<DS>)` を境界データとして扱う。
 - Interface (`lib/ICSN/interface/`)
-  - Use Case から見たポート（`InputBoundary`, Data Access ポート）を定義する。
+  - Use Case から見たポート（`IInputBoundary`, Data Access ポート）を定義する。
   - 具象実装（controller/infrastructure）には依存しない。
 - Data Structure (`lib/ICSN/data_structure/`)
   - Controller と Use Case 間の入出力契約（`InputData`, `OutputData`）を定義する。
@@ -29,15 +29,15 @@ description: ESP32-ICSN の Clean Architecture を維持するための指針。
 - Infrastructure (`lib/ICSN/infrastructure/`)
   - Data Access の具象実装を提供し、Interface の Data Access ポートを実装する。
 - Controller (`lib/ICSN/controller/`)
-  - 外部入力を `InputData(<DS>)` へ変換し、`InputBoundary(<I>)` に渡す。
+  - 外部入力を `InputData(<DS>)` へ変換し、`IInputBoundary(<I>)` に渡す。
   - 返却された `OutputData(<DS>)` を送信形式へ変換する。
   - `UseCaseInteractor` 具象や infrastructure 具象へ直接依存しない。
 
 ## 依存方向（必須）
 
-- Controller -> Interface (`InputBoundary`)
+- Controller -> Interface (`IInputBoundary`)
 - Controller -> Data Structure (`InputData`, `OutputData`)
-- Use Case Interactor -> Interface (`InputBoundary` 実装)
+- Use Case Interactor -> Interface (`IInputBoundary` 実装)
 - Use Case Interactor -> Interface (Data Access ポート: `IContentStore` / `IForwardingInformationBase` / `IPendingInterestTable`)
 - Use Case Interactor -> Entity
 - Use Case Interactor -> Data Structure (`InputData`, `OutputData`)
@@ -64,7 +64,7 @@ description: ESP32-ICSN の Clean Architecture を維持するための指針。
 
 ## 変更チェックリスト
 
-- controller が `InputBoundary` のみを参照しているか。
+- controller が `IInputBoundary` のみを参照しているか。
 - controller が `InputData/OutputData` を境界データとして扱っているか。
 - use case が Entity / Interface / DataStructure 以外へ依存していないか。
 - infrastructure が Interface ポートを実装する向きになっているか。
