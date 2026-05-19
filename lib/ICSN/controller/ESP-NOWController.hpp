@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <array>
 
-/// @brief ESP-NOWControllerクラス
+/// @brief ESP_NOWControllerクラス（ファイル名: ESP-NOWController.hpp）
 class ESP_NOWController
 {
 private:

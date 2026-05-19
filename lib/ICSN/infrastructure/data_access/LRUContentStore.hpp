@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../../interface/data_access/ICSRepository.hpp"
+#include "../../interface/data_access/IContentStore.hpp"
 #include "FixedSizeLRUCache.hpp"
 #include "../../config/Config.hpp"
 #include "../../BuildProfile.hpp"
 #include <string>
 
-class LRUCSRepository : public ICSRepository
+class LRUContentStore : public IContentStore
 {
 private:
     FixedSizeLRUCache<std::string, MAX_CS_TABLE_SIZE> cache;

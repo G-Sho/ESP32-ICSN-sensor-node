@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../interface/data_access/IFIBRepository.hpp"
+#include "../../interface/data_access/IForwardingInformationBase.hpp"
 #include "FixedSizeLRUCache.hpp"
 #include "../../config/Config.hpp"
 #include "../../BuildProfile.hpp"
@@ -8,7 +8,7 @@
 #include <string>
 #include <algorithm>
 
-class LRUFIBRepository : public IFIBRepository
+class LRUForwardingInformationBase : public IForwardingInformationBase
 {
 private:
     // TwoStage用のFIBエントリ構造体

@@ -4,7 +4,7 @@
 #include "../entity/message/ContentName.hpp"
 #include "../entity/message/Content.hpp"
 
-class ICSRepository
+class IContentStore
 {
 public:
     virtual void save(const CSPair &csPair) = 0;
@@ -12,5 +12,5 @@ public:
     virtual bool find(const ContentName &contentName) = 0;
     virtual Content get(const ContentName &contentName) = 0;
 
-    virtual ~ICSRepository() = default;
+    virtual ~IContentStore() = default;
 };

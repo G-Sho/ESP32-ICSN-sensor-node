@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../interface/data_access/IPITRepository.hpp"
+#include "../../interface/data_access/IPendingInterestTable.hpp"
 #include "FixedSizeLRUCache.hpp"
 #include "../../config/Config.hpp"
 #include "../../BuildProfile.hpp"
 #include <set>
 #include <string>
 
-class LRUPITRepository : public IPITRepository
+class LRUPendingInterestTable : public IPendingInterestTable
 {
 private:
     FixedSizeLRUCache<std::set<std::string>, MAX_PIT_TABLE_SIZE> cache;

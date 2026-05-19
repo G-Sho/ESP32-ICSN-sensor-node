@@ -5,10 +5,10 @@
 class Sensor
 {
 public:
-    virtual void run();
-    virtual void read();
-    virtual String getData();
-    virtual String getContentName();
+    virtual void run() = 0;
+    virtual void read() = 0;
+    virtual String getData() = 0;
+    virtual String getContentName() = 0;
 };
 
 class DHTTemperature : public Sensor
