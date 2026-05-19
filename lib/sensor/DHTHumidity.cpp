@@ -5,6 +5,9 @@
 constexpr uint8_t dhtPin = 14;     // DHTセンサーが刺さっているピン
 constexpr uint8_t dhtType = DHT11; // 今回使うのはDHT11
 DHT dht{dhtPin, dhtType};
+constexpr const char* kSite = "buildingA";
+constexpr const char* kDeviceType = "env-sensor";
+constexpr const char* kDeviceId = "node01";
 
 void DHTHumidity::run()
 {
@@ -30,7 +33,7 @@ void DHTHumidity::read()
   if (m_maxSiza <= m_numberOfSensorData)
     m_numberOfSensorData = 0;
 
-  m_contentName = String("/humid/") + String(m_numberOfSensorData);
+  m_contentName = String("/iot/") + kSite + "/" + kDeviceType + "/" + kDeviceId + "/humidity";
 }
 
 String DHTHumidity::getData()
