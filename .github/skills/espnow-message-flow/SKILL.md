@@ -34,6 +34,7 @@ ESP-NOW 通信処理の経路を揃え、分岐追加時の不整合を防ぐ。
 
 - `ESP_NOWControlData` と domain データ間の変換が往復で一貫しているか。
 - `hopCount` や `contentName` の更新規則が既存ロジックと一致するか。
+- `contentName` が `/iot/{site}/{deviceType}/{deviceId}/{metric}` 命名規約と一致しているか。
 - 送信先決定 (`txAddress`) が既存の期待仕様を壊していないか。
 
 ## 参照先
