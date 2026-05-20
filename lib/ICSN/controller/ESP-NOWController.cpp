@@ -91,7 +91,12 @@ bool ESP_NOWController::initializeCommunication(const char *configPath,
     }
 
     WiFi.mode(WIFI_STA);
-    esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+    esp_err_t channelErr = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+    if (channelErr != ESP_OK)
+    {
+        LOG_WARNF("Failed to set Wi-Fi channel %u (err=%d)\n", channel, channelErr);
+        return false;
+    }
 
     if (esp_now_init() != ESP_OK)
     {
@@ -110,7 +115,14 @@ bool ESP_NOWController::initializeCommunication(const char *configPath,
         LOG_INFO("ESP-NOW encryption enabled (PMK/LMK configured)");
     }
 
-    esp_wifi_get_mac(WIFI_IF_STA, myMac);
+    esp_err_t macErr = esp_wifi_get_mac(WIFI_IF_STA, myMac);
+    if (macErr != ESP_OK)
+    {
+        memset(myMac, 0, 6);
+        LOG_WARNF("Failed to get Wi-Fi MAC address (err=%d)\n", macErr);
+        return false;
+    }
+
     esp_now_register_send_cb(sendCb);
     esp_now_register_recv_cb(recvCb);
     registerBroadcastPeer();
