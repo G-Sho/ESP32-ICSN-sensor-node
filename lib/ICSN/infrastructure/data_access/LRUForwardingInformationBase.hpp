@@ -38,6 +38,10 @@ private:
     }
 
 public:
+    /// @brief コンストラクタ（デフォルト activeSize は MAX_FIB_TABLE_SIZE）
+    LRUForwardingInformationBase(size_t activeSize = MAX_FIB_TABLE_SIZE) 
+        : cache(activeSize) {}
+
     void save(const FIBPair &fibPair) override;
     void remove(const ContentName &contentName) override;
     bool find(const ContentName &contentName) override;
@@ -48,5 +52,15 @@ public:
         CLI_PRINTLN("=== Forwarding Information Base (TwoStage + LRU) ===");
         cache.printCache();
         CLI_PRINTLN("======================");
+    }
+    
+    void setActiveSize(size_t size) override
+    {
+        cache.setActiveSize(size);
+    }
+    
+    size_t getActiveSize() const override
+    {
+        return cache.getActiveSize();
     }
 };

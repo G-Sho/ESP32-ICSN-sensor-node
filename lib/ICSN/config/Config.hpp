@@ -4,9 +4,10 @@
 #include <cstdint>
 
 // コンパイル時定数の定義
-constexpr size_t MAX_PIT_TABLE_SIZE = 20;
-constexpr size_t MAX_CS_TABLE_SIZE = 20;
-constexpr size_t MAX_FIB_TABLE_SIZE = 20;
+// 実装側の最大割当サイズ。systemConfig の値で実使用上限を制御
+constexpr size_t MAX_CS_TABLE_SIZE = 80;
+constexpr size_t MAX_PIT_TABLE_SIZE = 50;
+constexpr size_t MAX_FIB_TABLE_SIZE = 50;
 
 // セキュリティ関連定数
 constexpr size_t ESP_NOW_PMK_LEN = 16;
