@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <string>
+
 #include "../interface/InputBoundary.hpp"
 #include "../interface/ForwardingStateBoundary.hpp"
 #include "../interface/data_access/IForwardingInformationBase.hpp"
@@ -42,10 +45,4 @@ public:
 
     // PIT をクリアする
     void clearPITCache() override;
-
-#ifdef UNIT_TEST
-    void mockAddToCS(const std::string &name, const std::string &content);
-    void mockAddToFIB(const std::string &name, uint32_t nextHop);
-    void mockAddToPIT(const std::string &name, uint32_t fromNode);
-#endif
 };
