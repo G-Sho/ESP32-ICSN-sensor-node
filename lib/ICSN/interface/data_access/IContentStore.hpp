@@ -11,6 +11,7 @@ public:
     virtual void remove(const ContentName &contentName) = 0;
     virtual bool find(const ContentName &contentName) = 0;
     virtual Content get(const ContentName &contentName) = 0;
+    virtual void clear() = 0;
 
     virtual ~IContentStore() = default;
 };

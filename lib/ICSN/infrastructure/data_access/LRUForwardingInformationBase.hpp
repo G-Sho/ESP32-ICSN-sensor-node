@@ -43,7 +43,7 @@ public:
     bool find(const ContentName &contentName) override;
     DestinationId get(const ContentName &contentName) override;
 
-    void printCache() const
+    void printCache() const override
     {
         CLI_PRINTLN("=== Forwarding Information Base (TwoStage + LRU) ===");
         cache.printCache();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "InputData.hpp"
+#include "data_structure/InputData.hpp"
 #include "data_structure/OutputData.hpp"
 
 class IInputBoundary {

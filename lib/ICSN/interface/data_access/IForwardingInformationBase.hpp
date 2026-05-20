@@ -11,6 +11,7 @@ public:
     virtual void remove(const ContentName &contentName) = 0;
     virtual bool find(const ContentName &contentName) = 0;
     virtual DestinationId get(const ContentName &contentName) = 0;
+    virtual void printCache() const = 0;
 
     virtual ~IForwardingInformationBase() = default;
 };

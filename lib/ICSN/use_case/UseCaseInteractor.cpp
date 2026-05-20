@@ -8,6 +8,13 @@
 #include "config/Config.hpp"
 #include "BuildProfile.hpp"
 
+UseCaseInteractor::UseCaseInteractor(IForwardingInformationBase &fibRepository,
+                                     IPendingInterestTable &pitRepository,
+                                     IContentStore &csRepository)
+    : fibRepository(fibRepository), pitRepository(pitRepository), csRepository(csRepository)
+{
+}
+
 /// @brief Interestパケットを受信したときの処理
 /// @param inputData 入力された Interest データ構造
 /// @return 応答パケット（DATA, INTEREST, INVALID）
@@ -146,7 +153,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 /// @brief FIBに初期エントリを投入する
 /// @param contentName コンテンツ名プレフィックス
 /// @param nextHopMac 次ホップのMACアドレス文字列（小文字コロン区切り）
-void UseCaseInteractor::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
+void UseCaseInteractor::initFIBEntry(const std::string &contentName, const std::string &nextHopMac)
 {
     ContentName name(contentName);
     FIBPair fibPair(name, DestinationId({nextHopMac}));
@@ -172,29 +179,3 @@ void UseCaseInteractor::clearPITCache()
     pitRepository.clear();
     CLI_PRINTLN("[CACHE] PIT cleared");
 }
-
-#ifdef UNIT_TEST
-void UseCaseInteractor::mockAddToCS(const std::string &name, const std::string &content)
-{
-    ContentName contentName(name);
-    Content contentObj(content);
-    CSPair pair(contentName, contentObj);
-    csRepository.save(pair);
-}
-
-void UseCaseInteractor::mockAddToFIB(const std::string &name, uint32_t nextHop)
-{
-    ContentName contentName(name);
-    DestinationId dest({std::to_string(nextHop)});
-    FIBPair pair(contentName, dest);
-    fibRepository.save(pair);
-}
-
-void UseCaseInteractor::mockAddToPIT(const std::string &name, uint32_t fromNode)
-{
-    ContentName contentName(name);
-    DestinationId dest({std::to_string(fromNode)});
-    PITPair pair(contentName, dest);
-    pitRepository.save(pair);
-}
-#endif

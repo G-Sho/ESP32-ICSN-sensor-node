@@ -5,6 +5,7 @@
 
 #include <esp_now.h>
 #include <esp_wifi.h>
+#include <WiFi.h>
 
 #include <string>
 #include <sstream>
@@ -14,6 +15,13 @@
 
 namespace {
 constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+}
+
+ESP_NOWController::ESP_NOWController(IInputBoundary &inputBoundary,
+                         IForwardingStateBoundary &forwardingStateBoundary)
+    : inputBoundary(inputBoundary),
+    forwardingStateBoundary(forwardingStateBoundary)
+{
 }
 
 bool ESP_NOWController::loadAndApplyConfig(const char *configPath)
@@ -63,6 +71,63 @@ bool ESP_NOWController::copyPMK(uint8_t *outPmk, size_t outLen) const
     }
 
     memcpy(outPmk, pmk, sizeof(pmk));
+    return true;
+}
+
+bool ESP_NOWController::initializeCommunication(const char *configPath,
+                                                uint8_t myMac[6],
+                                                esp_now_recv_cb_t recvCb,
+                                                esp_now_send_cb_t sendCb,
+                                                uint8_t channel)
+{
+    if (myMac == nullptr || recvCb == nullptr || sendCb == nullptr)
+    {
+        return false;
+    }
+
+    if (!loadAndApplyConfig(configPath))
+    {
+        return false;
+    }
+
+    WiFi.mode(WIFI_STA);
+    esp_err_t channelErr = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+    if (channelErr != ESP_OK)
+    {
+        LOG_WARNF("Failed to set Wi-Fi channel %u (err=%d)\n", channel, channelErr);
+        return false;
+    }
+
+    if (esp_now_init() != ESP_OK)
+    {
+        LOG_WARN("ESP-NOW initialization failed");
+        return false;
+    }
+
+    uint8_t localPmk[PMK_LENGTH] = {0};
+    if (copyPMK(localPmk, sizeof(localPmk)))
+    {
+        if (esp_now_set_pmk(localPmk) != ESP_OK)
+        {
+            LOG_WARN("Failed to set PMK");
+            return false;
+        }
+        LOG_INFO("ESP-NOW encryption enabled (PMK/LMK configured)");
+    }
+
+    esp_err_t macErr = esp_wifi_get_mac(WIFI_IF_STA, myMac);
+    if (macErr != ESP_OK)
+    {
+        memset(myMac, 0, 6);
+        LOG_WARNF("Failed to get Wi-Fi MAC address (err=%d)\n", macErr);
+        return false;
+    }
+
+    esp_now_register_send_cb(sendCb);
+    esp_now_register_recv_cb(recvCb);
+    registerBroadcastPeer();
+
+    LOG_INFO("ESP-NOW initialized successfully");
     return true;
 }
 
@@ -316,11 +381,11 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
 
     if (code == SignalCode::INTEREST)
     {
-        outputData = useCaseInteractor.handleInterestReceive(inputData);
+        outputData = inputBoundary.handleInterestReceive(inputData);
     }
     else if (code == SignalCode::DATA)
     {
-        outputData = useCaseInteractor.handleDataReceive(inputData);
+        outputData = inputBoundary.handleDataReceive(inputData);
     }
     else
     {
@@ -367,7 +432,7 @@ void ESP_NOWController::receiveSensorData(const ESP_NOWControlData &data)
         std::string(data.contentName),
         std::string(data.content));
 
-    useCaseInteractor.handleSensorDataReceive(inputData);
+    inputBoundary.handleSensorDataReceive(inputData);
 }
 
 void ESP_NOWController::setGlobalLMK(const uint8_t lmk[PEER_LMK_LEN])
@@ -450,12 +515,22 @@ void ESP_NOWController::printCounters() const
 
 void ESP_NOWController::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
 {
-    useCaseInteractor.initFIBEntry(contentName, nextHopMac);
+    forwardingStateBoundary.initFIBEntry(contentName, nextHopMac);
 }
 
 void ESP_NOWController::printFIB() const
 {
-    useCaseInteractor.printFIB();
+    forwardingStateBoundary.printFIB();
+}
+
+void ESP_NOWController::clearCSCache()
+{
+    forwardingStateBoundary.clearCSCache();
+}
+
+void ESP_NOWController::clearPITCache()
+{
+    forwardingStateBoundary.clearPITCache();
 }
 
 void ESP_NOWController::dumpPerformanceData() const

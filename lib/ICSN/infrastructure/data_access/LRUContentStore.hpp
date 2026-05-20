@@ -17,7 +17,7 @@ public:
     bool find(const ContentName &contentName) override;
     Content get(const ContentName &contentName) override;
 
-    void clear()
+    void clear() override
     {
         cache.clear();
     }

@@ -1,11 +1,14 @@
 #pragma once
 
-#include "UseCaseInteractor.hpp"
+#include "../interface/InputBoundary.hpp"
+#include "../interface/ForwardingStateBoundary.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "PeerCounterManager.hpp"
 #include "InputData.hpp"
 #include "OutputData.hpp"
 #include "performance/InterestPacketTimingBuffer.hpp"
+
+#include <esp_now.h>
 
 #include <cstddef>
 #include <array>
@@ -16,7 +19,8 @@ class ESP_NOWController
 private:
     static constexpr size_t PMK_LENGTH = 16;
 
-    UseCaseInteractor useCaseInteractor;
+    IInputBoundary &inputBoundary;
+    IForwardingStateBoundary &forwardingStateBoundary;
     PeerCounterManager peerCounterManager;
     InterestPacketTimingBuffer interestTiming;
     bool encryptionEnabled = false;
@@ -33,6 +37,8 @@ private:
     static bool isBroadcastAddress(const std::array<uint8_t, 6> &addr);
 
 public:
+    ESP_NOWController(IInputBoundary &inputBoundary, IForwardingStateBoundary &forwardingStateBoundary);
+
     struct ReceiveProcessResult
     {
         bool validPacket = false;
@@ -44,6 +50,11 @@ public:
     };
 
     bool loadAndApplyConfig(const char *configPath = "/config.json");
+    bool initializeCommunication(const char *configPath,
+                                 uint8_t myMac[6],
+                                 esp_now_recv_cb_t recvCb,
+                                 esp_now_send_cb_t sendCb,
+                                 uint8_t channel = 1);
     bool copyPMK(uint8_t *outPmk, size_t outLen) const;
 
     void registerPeerIfNeeded(const uint8_t mac[6]);
@@ -75,12 +86,8 @@ public:
     void printPerformanceCount() const;
 
     // Content Store をクリアする
-    void clearCSCache() {
-        useCaseInteractor.clearCSCache();
-    }
+    void clearCSCache();
 
     // PIT をクリアする
-    void clearPITCache() {
-        useCaseInteractor.clearPITCache();
-    }
+    void clearPITCache();
 };
