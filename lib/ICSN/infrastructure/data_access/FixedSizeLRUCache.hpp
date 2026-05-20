@@ -22,6 +22,7 @@ private:
     int head;
     int tail;
     size_t currentSize;
+    size_t activeSize;  // 実使用上限（config.json で制御可能）
     
     static constexpr int EMPTY_SLOT = -1;
     
@@ -110,7 +111,11 @@ private:
     }
 
 public:
-    FixedSizeLRUCache() : head(-1), tail(-1), currentSize(0) {
+    /// @brief コンストラクタ
+    /// @param initialActiveSize 実使用上限（デフォルトは MaxSize）
+    FixedSizeLRUCache(size_t initialActiveSize = MaxSize) 
+        : head(-1), tail(-1), currentSize(0), activeSize(initialActiveSize) {
+        if (activeSize > MaxSize) activeSize = MaxSize;
         for (int i = 0; i < MaxSize * 2; i++) {
             hashTable[i] = EMPTY_SLOT;
         }
@@ -120,10 +125,16 @@ public:
         int hashSlot = findHashSlot(key);
         
         if (hashSlot != -1) {
+            // 既存キーの更新
             int entryIndex = hashTable[hashSlot];
             entries[entryIndex].value = value;
             moveToFront(entryIndex);
             return true;
+        }
+        
+        // activeSize に達していたら新規追加不可
+        if (currentSize >= activeSize) {
+            return false;
         }
         
         int entryIndex = findEmptyEntry();
@@ -223,7 +234,8 @@ public:
     }
     
     void printCache() const {
-        CLI_PRINTF("=== LRU Cache (Size: %u/%u) ===\n", currentSize, MaxSize);
+        CLI_PRINTF("=== LRU Cache (Size: %u / Active: %u / Max: %u) ===\n", 
+                   currentSize, activeSize, MaxSize);
         int current = head;
         int index = 0;
         
@@ -234,5 +246,17 @@ public:
             current = entries[current].next;
         }
         CLI_PRINTF("======================\n\n");
+    }
+    
+    /// @brief アクティブサイズを設定
+    /// @param newActiveSize 新しい上限（MaxSize を超えない）
+    void setActiveSize(size_t newActiveSize) {
+        if (newActiveSize > MaxSize) newActiveSize = MaxSize;
+        activeSize = newActiveSize;
+    }
+    
+    /// @brief 現在のアクティブサイズを取得
+    size_t getActiveSize() const {
+        return activeSize;
     }
 };

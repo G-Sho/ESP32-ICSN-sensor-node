@@ -142,6 +142,20 @@ void setup() {
   LOG_INFO("My MAC Address:");
   printMac(myMacAddress);
 
+  // config.json で読み込んだサイズ制限をリポジトリに適用
+  if (systemConfig.maxCsTableSize > 0) {
+    csRepository.setActiveSize(systemConfig.maxCsTableSize);
+    LOG_INFOF("[CONFIG] CS active size: %u\n", systemConfig.maxCsTableSize);
+  }
+  if (systemConfig.maxPitTableSize > 0) {
+    pitRepository.setActiveSize(systemConfig.maxPitTableSize);
+    LOG_INFOF("[CONFIG] PIT active size: %u\n", systemConfig.maxPitTableSize);
+  }
+  if (systemConfig.maxFibTableSize > 0) {
+    fibRepository.setActiveSize(systemConfig.maxFibTableSize);
+    LOG_INFOF("[CONFIG] FIB active size: %u\n", systemConfig.maxFibTableSize);
+  }
+
   if (AUTO_SENSOR_ENABLED) {
     sensorTicker.attach(SENSOR_INTERVAL_SEC, onSensorTicker);
     sensorReadRequested = true;  // 起動直後にも1回実行
