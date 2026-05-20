@@ -16,7 +16,9 @@ LRUForwardingInformationBase fibRepository;
 LRUPendingInterestTable pitRepository;
 LRUContentStore csRepository;
 UseCaseInteractor useCaseInteractor(fibRepository, pitRepository, csRepository);
-ESP_NOWController espNowController(useCaseInteractor, useCaseInteractor);
+IInputBoundary &inputBoundary = useCaseInteractor;
+IForwardingStateBoundary &forwardingStateBoundary = useCaseInteractor;
+ESP_NOWController espNowController(inputBoundary, forwardingStateBoundary);
 uint8_t myMacAddress[6];
 
 // === タイマー関連 ===

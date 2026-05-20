@@ -1,14 +1,14 @@
 #pragma once
 
 #include "../interface/InputBoundary.hpp"
-#include "../interface/ManagementBoundary.hpp"
+#include "../interface/ForwardingStateBoundary.hpp"
 #include "../interface/data_access/IForwardingInformationBase.hpp"
 #include "../interface/data_access/IPendingInterestTable.hpp"
 #include "../interface/data_access/IContentStore.hpp"
 #include "../data_structure/InputData.hpp"
 #include "../data_structure/OutputData.hpp"
 
-class UseCaseInteractor : public IInputBoundary, public IManagementBoundary
+class UseCaseInteractor : public IInputBoundary, public IForwardingStateBoundary
 {
 private:
     IForwardingInformationBase &fibRepository;

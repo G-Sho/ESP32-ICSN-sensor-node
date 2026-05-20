@@ -18,9 +18,9 @@ constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 }
 
 ESP_NOWController::ESP_NOWController(IInputBoundary &inputBoundary,
-                                     IManagementBoundary &managementBoundary)
+                         IForwardingStateBoundary &forwardingStateBoundary)
     : inputBoundary(inputBoundary),
-      managementBoundary(managementBoundary)
+    forwardingStateBoundary(forwardingStateBoundary)
 {
 }
 
@@ -503,22 +503,22 @@ void ESP_NOWController::printCounters() const
 
 void ESP_NOWController::initFIBEntry(const std::string& contentName, const std::string& nextHopMac)
 {
-    managementBoundary.initFIBEntry(contentName, nextHopMac);
+    forwardingStateBoundary.initFIBEntry(contentName, nextHopMac);
 }
 
 void ESP_NOWController::printFIB() const
 {
-    managementBoundary.printFIB();
+    forwardingStateBoundary.printFIB();
 }
 
 void ESP_NOWController::clearCSCache()
 {
-    managementBoundary.clearCSCache();
+    forwardingStateBoundary.clearCSCache();
 }
 
 void ESP_NOWController::clearPITCache()
 {
-    managementBoundary.clearPITCache();
+    forwardingStateBoundary.clearPITCache();
 }
 
 void ESP_NOWController::dumpPerformanceData() const

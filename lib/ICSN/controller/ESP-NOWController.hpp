@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../interface/InputBoundary.hpp"
-#include "../interface/ManagementBoundary.hpp"
+#include "../interface/ForwardingStateBoundary.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "PeerCounterManager.hpp"
 #include "InputData.hpp"
@@ -20,7 +20,7 @@ private:
     static constexpr size_t PMK_LENGTH = 16;
 
     IInputBoundary &inputBoundary;
-    IManagementBoundary &managementBoundary;
+    IForwardingStateBoundary &forwardingStateBoundary;
     PeerCounterManager peerCounterManager;
     InterestPacketTimingBuffer interestTiming;
     bool encryptionEnabled = false;
@@ -37,7 +37,7 @@ private:
     static bool isBroadcastAddress(const std::array<uint8_t, 6> &addr);
 
 public:
-    ESP_NOWController(IInputBoundary &inputBoundary, IManagementBoundary &managementBoundary);
+    ESP_NOWController(IInputBoundary &inputBoundary, IForwardingStateBoundary &forwardingStateBoundary);
 
     struct ReceiveProcessResult
     {
