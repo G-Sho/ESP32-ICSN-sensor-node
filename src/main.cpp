@@ -2,15 +2,13 @@
 #include <Adafruit_Sensor.h>
 #include <Ticker.h>
 #include <esp_now.h>
-#include <WiFi.h>
-#include "esp_wifi.h"
 
 #include "BuildProfile.hpp"
 #include "ESP-NOWController.hpp"
-#include "UseCaseInteractor.hpp"
-#include "LRUForwardingInformationBase.hpp"
-#include "LRUPendingInterestTable.hpp"
-#include "LRUContentStore.hpp"
+#include "use_case/UseCaseInteractor.hpp"
+#include "infrastructure/data_access/LRUForwardingInformationBase.hpp"
+#include "infrastructure/data_access/LRUPendingInterestTable.hpp"
+#include "infrastructure/data_access/LRUContentStore.hpp"
 #include "Sensor.h"
 
 // === グローバル ===
@@ -134,40 +132,13 @@ void setup() {
 
   const char* configPath = "/config.json";
 
-  if (!espNowController.loadAndApplyConfig(configPath)) {
-    LOG_WARN("Failed to load system config!");
+  if (!espNowController.initializeCommunication(configPath, myMacAddress, onDataReceive, onDataSent, 1)) {
+    LOG_WARN("Failed to initialize communication stack");
     return;
   }
 
-  WiFi.mode(WIFI_STA);
-  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-
-  if (esp_now_init() != ESP_OK) {
-    LOG_WARN("ESP-NOW initialization failed");
-    return;
-  }
-
-  // PMKの設定（暗号化が有効な場合）
-  uint8_t pmk[16] = {0};
-  if (espNowController.copyPMK(pmk, sizeof(pmk))) {
-    if (esp_now_set_pmk(pmk) != ESP_OK) {
-      LOG_WARN("Failed to set PMK");
-      return;
-    }
-    LOG_INFO("ESP-NOW encryption enabled (PMK/LMK configured)");
-  }
-
-  esp_wifi_get_mac(WIFI_IF_STA, myMacAddress);
   LOG_INFO("My MAC Address:");
   printMac(myMacAddress);
-
-  esp_now_register_send_cb(onDataSent);
-  esp_now_register_recv_cb(onDataReceive);
-
-  // ブロードキャストアドレスを事前登録
-  espNowController.registerBroadcastPeer();
-
-  LOG_INFO("ESP-NOW initialized successfully");
 
   if (AUTO_SENSOR_ENABLED) {
     sensorTicker.attach(SENSOR_INTERVAL_SEC, onSensorTicker);

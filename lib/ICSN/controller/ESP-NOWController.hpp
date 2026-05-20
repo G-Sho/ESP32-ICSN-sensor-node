@@ -1,12 +1,14 @@
 #pragma once
 
-#include "InputBoundary.hpp"
-#include "ManagementBoundary.hpp"
+#include "../interface/InputBoundary.hpp"
+#include "../interface/ManagementBoundary.hpp"
 #include "ESP-NOWControlData.hpp"
 #include "PeerCounterManager.hpp"
 #include "InputData.hpp"
 #include "OutputData.hpp"
 #include "performance/InterestPacketTimingBuffer.hpp"
+
+#include <esp_now.h>
 
 #include <cstddef>
 #include <array>
@@ -48,6 +50,11 @@ public:
     };
 
     bool loadAndApplyConfig(const char *configPath = "/config.json");
+    bool initializeCommunication(const char *configPath,
+                                 uint8_t myMac[6],
+                                 esp_now_recv_cb_t recvCb,
+                                 esp_now_send_cb_t sendCb,
+                                 uint8_t channel = 1);
     bool copyPMK(uint8_t *outPmk, size_t outLen) const;
 
     void registerPeerIfNeeded(const uint8_t mac[6]);
@@ -79,12 +86,8 @@ public:
     void printPerformanceCount() const;
 
     // Content Store をクリアする
-    void clearCSCache() {
-        managementBoundary.clearCSCache();
-    }
+    void clearCSCache();
 
     // PIT をクリアする
-    void clearPITCache() {
-        managementBoundary.clearPITCache();
-    }
+    void clearPITCache();
 };

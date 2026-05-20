@@ -5,6 +5,7 @@
 
 #include <esp_now.h>
 #include <esp_wifi.h>
+#include <WiFi.h>
 
 #include <string>
 #include <sstream>
@@ -17,9 +18,9 @@ constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 }
 
 ESP_NOWController::ESP_NOWController(IInputBoundary &inputBoundary,
-                                                                         IManagementBoundary &managementBoundary)
-        : inputBoundary(inputBoundary),
-            managementBoundary(managementBoundary)
+                                     IManagementBoundary &managementBoundary)
+    : inputBoundary(inputBoundary),
+      managementBoundary(managementBoundary)
 {
 }
 
@@ -70,6 +71,51 @@ bool ESP_NOWController::copyPMK(uint8_t *outPmk, size_t outLen) const
     }
 
     memcpy(outPmk, pmk, sizeof(pmk));
+    return true;
+}
+
+bool ESP_NOWController::initializeCommunication(const char *configPath,
+                                                uint8_t myMac[6],
+                                                esp_now_recv_cb_t recvCb,
+                                                esp_now_send_cb_t sendCb,
+                                                uint8_t channel)
+{
+    if (myMac == nullptr || recvCb == nullptr || sendCb == nullptr)
+    {
+        return false;
+    }
+
+    if (!loadAndApplyConfig(configPath))
+    {
+        return false;
+    }
+
+    WiFi.mode(WIFI_STA);
+    esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+
+    if (esp_now_init() != ESP_OK)
+    {
+        LOG_WARN("ESP-NOW initialization failed");
+        return false;
+    }
+
+    uint8_t localPmk[PMK_LENGTH] = {0};
+    if (copyPMK(localPmk, sizeof(localPmk)))
+    {
+        if (esp_now_set_pmk(localPmk) != ESP_OK)
+        {
+            LOG_WARN("Failed to set PMK");
+            return false;
+        }
+        LOG_INFO("ESP-NOW encryption enabled (PMK/LMK configured)");
+    }
+
+    esp_wifi_get_mac(WIFI_IF_STA, myMac);
+    esp_now_register_send_cb(sendCb);
+    esp_now_register_recv_cb(recvCb);
+    registerBroadcastPeer();
+
+    LOG_INFO("ESP-NOW initialized successfully");
     return true;
 }
 
@@ -463,6 +509,16 @@ void ESP_NOWController::initFIBEntry(const std::string& contentName, const std::
 void ESP_NOWController::printFIB() const
 {
     managementBoundary.printFIB();
+}
+
+void ESP_NOWController::clearCSCache()
+{
+    managementBoundary.clearCSCache();
+}
+
+void ESP_NOWController::clearPITCache()
+{
+    managementBoundary.clearPITCache();
 }
 
 void ESP_NOWController::dumpPerformanceData() const

@@ -9,11 +9,9 @@
 #include "BuildProfile.hpp"
 
 UseCaseInteractor::UseCaseInteractor(IForwardingInformationBase &fibRepository,
-                                                                         IPendingInterestTable &pitRepository,
-                                                                         IContentStore &csRepository)
-        : fibRepository(fibRepository),
-            pitRepository(pitRepository),
-            csRepository(csRepository)
+                                     IPendingInterestTable &pitRepository,
+                                     IContentStore &csRepository)
+    : fibRepository(fibRepository), pitRepository(pitRepository), csRepository(csRepository)
 {
 }
 

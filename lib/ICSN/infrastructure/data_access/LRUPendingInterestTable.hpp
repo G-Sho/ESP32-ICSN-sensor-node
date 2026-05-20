@@ -18,7 +18,7 @@ public:
     bool find(const ContentName &contentName) override;
     DestinationId get(const ContentName &contentName) override;
 
-    void clear()
+    void clear() override
     {
         cache.clear();
     }
