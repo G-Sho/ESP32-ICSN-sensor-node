@@ -7,7 +7,7 @@ ESP32を使用したICSN（Interest-Centric Sensor Network）の実装です。
 ## 機能
 
 - **ESP-NOW**を使用したメッシュネットワーク通信
-- センサーデータのJSON形式での送受信
+- センサーデータの送受信
 - INTEREST/DATA/INVALIDの3つのメッセージタイプ
 - 設定可能なネットワークパラメータ（`data/config.json`）
 - パフォーマンス測定機能
