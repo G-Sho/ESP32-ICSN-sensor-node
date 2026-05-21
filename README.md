@@ -55,10 +55,9 @@ ESP-NOW の WPA2 ベース暗号化を有効化します。
 
 ```json
 {
-    "MAX_PIT_TABLE_SIZE": 20,
-    "MAX_CS_TABLE_SIZE": 20,
-    "CACHE_ENTRY_TTL_US": 100000000,
-    "MAX_FIB_TABLE_SIZE": 20,
+  "MAX_PIT_TABLE_SIZE": 50,
+  "MAX_CS_TABLE_SIZE": 80,
+  "MAX_FIB_TABLE_SIZE": 50,
     "MAX_VIRTUAL_DEPTH": 5,
     "HOP_COUNT_THRESHOLD": 10,
     "PMK": "0123456789abcdef0123456789abcdef",
@@ -70,10 +69,9 @@ ESP-NOW の WPA2 ベース暗号化を有効化します。
 
 | フィールド | 説明 |
 |-----------|------|
-| `MAX_PIT_TABLE_SIZE` | PIT（Pending Interest Table）の最大エントリ数 |
-| `MAX_CS_TABLE_SIZE` | CS（Content Store）の最大エントリ数 |
-| `CACHE_ENTRY_TTL_US` | CS キャッシュの有効期限（マイクロ秒） |
-| `MAX_FIB_TABLE_SIZE` | FIB（Forwarding Information Base）の最大エントリ数 |
+| `MAX_PIT_TABLE_SIZE` | PIT（Pending Interest Table）の最大エントリ数（有効範囲: 0-50） |
+| `MAX_CS_TABLE_SIZE` | CS（Content Store）の最大エントリ数（有効範囲: 0-80） |
+| `MAX_FIB_TABLE_SIZE` | FIB（Forwarding Information Base）の最大エントリ数（有効範囲: 0-50） |
 | `MAX_VIRTUAL_DEPTH` | 仮想深さの上限（ルーティング制御用） |
 | `HOP_COUNT_THRESHOLD` | ホップカウントの上限（ループ抑制） |
 | `PMK` | ESP-NOW Global PMK（32 文字 hex = 16 バイト）。全ピア共通の暗号化マスターキー |
