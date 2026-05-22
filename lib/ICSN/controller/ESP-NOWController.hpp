@@ -11,7 +11,6 @@
 #include <esp_now.h>
 
 #include <cstddef>
-#include <array>
 
 /// @brief ESP_NOWControllerクラス（ファイル名: ESP-NOWController.hpp）
 class ESP_NOWController
@@ -34,7 +33,6 @@ private:
                                CommunicationData &outPacket);
     bool verifyIncomingPacket(const uint8_t mac[6], const CommunicationData &packet);
     bool sendPacketToAddresses(const ESP_NOWControlData &data);
-    static bool isBroadcastAddress(const std::array<uint8_t, 6> &addr);
 
 public:
     ESP_NOWController(IInputBoundary &inputBoundary, IForwardingStateBoundary &forwardingStateBoundary);
@@ -58,9 +56,8 @@ public:
     bool copyPMK(uint8_t *outPmk, size_t outLen) const;
 
     void registerPeerIfNeeded(const uint8_t mac[6]);
-    void registerBroadcastPeer();
     bool sendSensorData(const char *contentName, const char *content, uint8_t hopCount = 1);
-    bool sendInterest(const char *contentName, const uint8_t *targetMac = nullptr, uint8_t hopCount = 1);
+    bool sendInterest(const char *contentName, const uint8_t *targetMac, uint8_t hopCount = 1);
     bool processReceivedPacket(const uint8_t myMac[6],
                                const uint8_t senderMac[6],
                                const uint8_t *data,

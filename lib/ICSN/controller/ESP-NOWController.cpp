@@ -13,10 +13,6 @@
 #include <cstring> // strncpy用
 #include <algorithm>
 
-namespace {
-constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-}
-
 ESP_NOWController::ESP_NOWController(IInputBoundary &inputBoundary,
                          IForwardingStateBoundary &forwardingStateBoundary)
     : inputBoundary(inputBoundary),
@@ -125,15 +121,9 @@ bool ESP_NOWController::initializeCommunication(const char *configPath,
 
     esp_now_register_send_cb(sendCb);
     esp_now_register_recv_cb(recvCb);
-    registerBroadcastPeer();
 
     LOG_INFO("ESP-NOW initialized successfully");
     return true;
-}
-
-bool ESP_NOWController::isBroadcastAddress(const std::array<uint8_t, 6> &addr)
-{
-    return std::all_of(addr.begin(), addr.end(), [](uint8_t b) { return b == 0xFF; });
 }
 
 void ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6])
@@ -155,11 +145,6 @@ void ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6])
     }
 }
 
-void ESP_NOWController::registerBroadcastPeer()
-{
-    registerPeerIfNeeded(BROADCAST_ADDRESS);
-}
-
 bool ESP_NOWController::sendPacketToAddresses(const ESP_NOWControlData &data)
 {
     bool sentAny = false;
@@ -171,9 +156,8 @@ bool ESP_NOWController::sendPacketToAddresses(const ESP_NOWControlData &data)
             continue;
         }
 
-        bool isBcast = isBroadcastAddress(addr);
         CommunicationData packet = {};
-        if (!buildPacketForAddress(addr.data(), data, !isBcast, packet))
+        if (!buildPacketForAddress(addr.data(), data, true, packet))
         {
             continue;
         }
@@ -215,20 +199,13 @@ bool ESP_NOWController::sendSensorData(const char *contentName, const char *cont
 
 bool ESP_NOWController::sendInterest(const char *contentName, const uint8_t *targetMac, uint8_t hopCount)
 {
-    if (contentName == nullptr)
+    if (contentName == nullptr || targetMac == nullptr)
     {
         return false;
     }
 
     ESP_NOWControlData interest = {};
-    if (targetMac == nullptr)
-    {
-        std::copy(BROADCAST_ADDRESS, BROADCAST_ADDRESS + 6, interest.txAddress[0].begin());
-    }
-    else
-    {
-        std::copy(targetMac, targetMac + 6, interest.txAddress[0].begin());
-    }
+    std::copy(targetMac, targetMac + 6, interest.txAddress[0].begin());
 
     strncpy(interest.signalCode, "INTEREST", MAX_SIGNAL_CODE_LENGTH - 1);
     interest.signalCode[MAX_SIGNAL_CODE_LENGTH - 1] = '\0';
@@ -272,11 +249,7 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6],
     }
 #endif
 
-    std::array<uint8_t, 6> macArray = {};
-    std::copy(senderMac, senderMac + 6, macArray.begin());
-    bool isBroadcast = isBroadcastAddress(macArray);
-
-    out.securityCheckRequired = !isBroadcast;
+    out.securityCheckRequired = true;
     if (out.securityCheckRequired)
     {
 #if ICSN_PERF_ENABLED

@@ -158,7 +158,7 @@ pio run -e release -t upload
 
 | コマンド | 説明 |
 |---------|-----|
-| `send_interest` | INTEREST をブロードキャスト送信開始 |
+| `send_interest` | 宛先 MAC 必須 |
 | `stop_interest` | 定期 INTEREST 送信を停止 |
 | `read_sensor` | センサデータを手動送信 |
 | `show_counters` | 全ピアの TX/RX カウンタ表示 |
@@ -185,7 +185,7 @@ pio run -e release -t upload
 | 定数 | デフォルト | 説明 |
 |-----|----------|------|
 | `AUTO_SENSOR_ENABLED` | `false` | 起動直後から定期センサーデータ送信（10 秒間隔）を開始する |
-| `AUTO_INTEREST_ENABLED` | `false` | 起動 40 秒後から定期 INTEREST ブロードキャスト（10 秒間隔）を自動開始する |
+| `AUTO_INTEREST_ENABLED` | `false` | 宛先 MAC が必要 |
 
 ## CI (GitHub Actions)
 

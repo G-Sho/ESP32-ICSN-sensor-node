@@ -72,14 +72,14 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData &inputData)
         }
         else
         {
-            // INTERESTブロードキャスト (転送なのでホップ数+1)
+            // FIB未ヒット時はブロードキャストせず破棄
             return makeOutput(
-                *destinationId.getValue().begin(),
-                {DEST_BROADCAST},
-                toString(SignalCode::INTEREST),
+                VALUE_NA,
+                {VALUE_NA},
+                toString(SignalCode::INVALID),
                 hopcount.getValue() + 1,
-                contentName.getValue(),
-                content.getValue());
+                VALUE_NA,
+                VALUE_NA);
         }
     }
 };
