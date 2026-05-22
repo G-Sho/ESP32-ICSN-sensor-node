@@ -76,9 +76,10 @@ void readSensorData() {
 }
 
 // === INTEREST送信 ===
-void sendInterest(const uint8_t* targetMac = nullptr) {
+void sendInterest(const uint8_t* targetMac) {
   if (targetMac == nullptr) {
-    LOG_DEBUG("Sending INTEREST (broadcast)...");
+    LOG_WARN("Sending INTEREST requires target MAC (broadcast removed)");
+    return;
   } else {
     LOG_DEBUG("Sending INTEREST to:");
     printMac(targetMac);
@@ -108,10 +109,7 @@ void stopInterestTicker() {
 // === 起動後の自動INTEREST送信 ===
 void autoStartInterest() {
   cancelAutoInterestStart();
-  LOG_INFO("[AUTO] Starting periodic INTEREST broadcast (10s interval)");
-  interestTargetMac = nullptr;
-  sendInterest(interestTargetMac);                    // 即座に1回送信
-  startInterestTicker();                              // 10秒後から定期送信開始
+  LOG_WARN("[AUTO] Auto INTEREST disabled: target MAC is required (broadcast removed)");
 }
 
 // === ESP-NOW コールバック ===
@@ -164,7 +162,7 @@ void setup() {
   }
 
   if (AUTO_INTEREST_ENABLED) {
-    LOG_INFO("[AUTO] Scheduling INTEREST broadcast to start in 40s");
+    LOG_WARN("[AUTO] AUTO_INTEREST_ENABLED is ignored: target MAC is required");
     autoInterestTicker.once(AUTO_INTEREST_DELAY_SEC, onAutoInterestTicker);
   } else {
     LOG_DEBUG("[AUTO] Auto INTEREST start disabled");
@@ -195,11 +193,9 @@ void loop() {
     msg.trim();
 
     if (msg == "send_interest") {
-      LOG_INFO("[CMD] send_interest received - Starting periodic INTEREST broadcast (10s interval)");
+      LOG_WARN("[CMD] send_interest requires target MAC. This command is disabled after broadcast removal.");
       cancelAutoInterestStart();
-      interestTargetMac = nullptr;
-      sendInterest(interestTargetMac);                    // 即座に1回送信
-      startInterestTicker();                              // 10秒後から定期送信開始
+      stopInterestTicker();
     } else if (msg == "stop_interest") {
       LOG_INFO("[CMD] stop_interest received - Stopping periodic INTEREST");
       stopInterestTicker();
@@ -226,7 +222,7 @@ void loop() {
       CLI_PRINTLN("Cache cleared successfully.");
     } else if (msg == "help") {
       CLI_PRINTLN("=== Available Commands ===");
-      CLI_PRINTLN("  send_interest   - Start periodic INTEREST broadcast (10s interval)");
+      CLI_PRINTLN("  send_interest   - Disabled (target MAC required; broadcast removed)");
       CLI_PRINTLN("  stop_interest   - Stop periodic INTEREST sending");
       CLI_PRINTLN("  read_sensor     - Simulate sensor data send");
       CLI_PRINTLN("  show_counters   - Show tx/rx counter state for all peers");
