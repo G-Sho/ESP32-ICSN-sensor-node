@@ -29,7 +29,6 @@ private:
     std::string extractPrefix(const std::string &name, int prefixDepth) const;
     bool lookupEntry(const std::string &name, int prefixDepth, FIBEntry& outEntry);
     bool fibLpmLookup(const std::string &name, int nameDepth, int maxVirtualDepth, FIBEntry& outEntry);
-    void saveFibEntry(const std::string &contentName, const std::set<std::string> &nodeIds, int depth);
     
     template<typename T>
     bool chmax(T &a, const T &b) {
@@ -43,6 +42,7 @@ public:
         : cache(activeSize) {}
 
     void save(const FIBPair &fibPair) override;
+    void saveVirtualEntry(const ContentName &prefix, int maximumDepth) override;
     void remove(const ContentName &contentName) override;
     bool find(const ContentName &contentName) override;
     DestinationId get(const ContentName &contentName) override;

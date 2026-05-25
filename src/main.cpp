@@ -9,13 +9,15 @@
 #include "infrastructure/data_access/LRUForwardingInformationBase.hpp"
 #include "infrastructure/data_access/LRUPendingInterestTable.hpp"
 #include "infrastructure/data_access/LRUContentStore.hpp"
+#include "infrastructure/data_access/PrefixTreeRIB.hpp"
 #include "Sensor.h"
 
 // === グローバル ===
 LRUForwardingInformationBase fibRepository;
 LRUPendingInterestTable pitRepository;
 LRUContentStore csRepository;
-UseCaseInteractor useCaseInteractor(fibRepository, pitRepository, csRepository);
+PrefixTreeRIB ribRepository(fibRepository);
+UseCaseInteractor useCaseInteractor(fibRepository, pitRepository, csRepository, ribRepository);
 IInputBoundary &inputBoundary = useCaseInteractor;
 IForwardingStateBoundary &forwardingStateBoundary = useCaseInteractor;
 ESP_NOWController espNowController(inputBoundary, forwardingStateBoundary);

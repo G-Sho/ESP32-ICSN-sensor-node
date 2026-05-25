@@ -8,6 +8,7 @@
 constexpr size_t MAX_CS_TABLE_SIZE = 80;
 constexpr size_t MAX_PIT_TABLE_SIZE = 50;
 constexpr size_t MAX_FIB_TABLE_SIZE = 50;
+constexpr size_t MAX_RIB_NODE_SIZE = 100;
 
 // セキュリティ関連定数
 constexpr size_t ESP_NOW_PMK_LEN = 16;
