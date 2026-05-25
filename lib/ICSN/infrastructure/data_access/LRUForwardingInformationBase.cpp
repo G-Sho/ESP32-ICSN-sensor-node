@@ -59,41 +59,30 @@ bool LRUForwardingInformationBase::fibLpmLookup(const std::string &name, int nam
     return false;
 }
 
-void LRUForwardingInformationBase::saveFibEntry(const std::string &contentName, const std::set<std::string> &nodeIds, int depth) {
-    FIBEntry existingEntry;
-    if (systemConfig.maxVirtualDepth >= depth) {
-        if (cache.get(contentName, existingEntry)) {
-            existingEntry.isVirtual = false;
-            existingEntry.nodeIds.insert(nodeIds.begin(), nodeIds.end());
-            cache.put(contentName, existingEntry);
-        } else {
-            cache.put(contentName, FIBEntry(false, depth, nodeIds));
-        }
-    } else {
-        std::string virtualPrefix = extractPrefix(contentName, systemConfig.maxVirtualDepth);
-        FIBEntry virtualEntry;
-        if (cache.get(virtualPrefix, virtualEntry)) {
-            chmax(virtualEntry.maximumDepth, depth);
-            cache.put(virtualPrefix, virtualEntry);
-        } else {
-            cache.put(virtualPrefix, FIBEntry(true, depth, {}));
-        }
-        
-        if (cache.get(contentName, existingEntry)) {
-            existingEntry.nodeIds.insert(nodeIds.begin(), nodeIds.end());
-            cache.put(contentName, existingEntry);
-        } else {
-            cache.put(contentName, FIBEntry(false, depth, nodeIds));
-        }
-    }
-}
-
 void LRUForwardingInformationBase::save(const FIBPair &fibPair) {
     const std::string &name = fibPair.getContentName().getValue();
     const std::set<std::string> &nodeIds = fibPair.getDestinationId().getValue();
     int depth = std::count(name.begin(), name.end(), '/');
-    
-    saveFibEntry(name, nodeIds, depth);
+
+    FIBEntry existing;
+    if (cache.get(name, existing)) {
+        existing.isVirtual = false;
+        existing.nodeIds.insert(nodeIds.begin(), nodeIds.end());
+        cache.put(name, existing);
+    } else {
+        cache.put(name, FIBEntry(false, depth, nodeIds));
+    }
+}
+
+void LRUForwardingInformationBase::saveVirtualEntry(const ContentName &prefix, int maximumDepth) {
+    const std::string &name = prefix.getValue();
+    FIBEntry existing;
+    if (cache.get(name, existing)) {
+        chmax(existing.maximumDepth, maximumDepth);
+        cache.put(name, existing);
+    } else {
+        cache.put(name, FIBEntry(true, maximumDepth, {}));
+    }
 }
 
 void LRUForwardingInformationBase::remove(const ContentName &contentName) {

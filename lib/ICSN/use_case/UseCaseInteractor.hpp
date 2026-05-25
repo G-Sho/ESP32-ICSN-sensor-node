@@ -8,6 +8,7 @@
 #include "../interface/data_access/IForwardingInformationBase.hpp"
 #include "../interface/data_access/IPendingInterestTable.hpp"
 #include "../interface/data_access/IContentStore.hpp"
+#include "../interface/data_access/IRIB.hpp"
 #include "../data_structure/InputData.hpp"
 #include "../data_structure/OutputData.hpp"
 
@@ -17,11 +18,13 @@ private:
     IForwardingInformationBase &fibRepository;
     IPendingInterestTable &pitRepository;
     IContentStore &csRepository;
+    IRIB &ribRepository;
 
 public:
     UseCaseInteractor(IForwardingInformationBase &fibRepository,
                       IPendingInterestTable &pitRepository,
-                      IContentStore &csRepository);
+                      IContentStore &csRepository,
+                      IRIB &ribRepository);
 
     virtual ~UseCaseInteractor() = default;
 

@@ -7,11 +7,14 @@
 #include "message/Content.hpp"
 #include "config/Config.hpp"
 #include "BuildProfile.hpp"
+#include "interface/data_access/IRIB.hpp"
 
 UseCaseInteractor::UseCaseInteractor(IForwardingInformationBase &fibRepository,
                                      IPendingInterestTable &pitRepository,
-                                     IContentStore &csRepository)
-    : fibRepository(fibRepository), pitRepository(pitRepository), csRepository(csRepository)
+                                     IContentStore &csRepository,
+                                     IRIB &ribRepository)
+    : fibRepository(fibRepository), pitRepository(pitRepository),
+      csRepository(csRepository), ribRepository(ribRepository)
 {
 }
 
@@ -105,10 +108,6 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
             csRepository.save(csPair);
         }
 
-        // FIBにキャッシュ
-        FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
-        fibRepository.save(fibPair);
-
         // PITに基づいてデータ送信 (転送なのでホップ数+1)
         return makeOutput(
             *destinationId.getValue().begin(),
@@ -120,10 +119,6 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
     }
     else
     {
-        // 将来の使用のためFIBテーブルに保存
-        FIBPair fibPair(contentName, DestinationId({senderId.getValue()}));
-        fibRepository.save(fibPair);
-
         // パケット破棄 (対応するINTERESTがない)
         return makeOutput(
             VALUE_NA,
@@ -155,9 +150,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData &inputData)
 /// @param nextHopMac 次ホップのMACアドレス文字列（小文字コロン区切り）
 void UseCaseInteractor::initFIBEntry(const std::string &contentName, const std::string &nextHopMac)
 {
-    ContentName name(contentName);
-    FIBPair fibPair(name, DestinationId({nextHopMac}));
-    fibRepository.save(fibPair);
+    ribRepository.addRoute(contentName, nextHopMac);
 }
 
 /// @brief FIBの内容をシリアルに出力する
