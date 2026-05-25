@@ -108,9 +108,6 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
             csRepository.save(csPair);
         }
 
-        // FIBにキャッシュ
-        ribRepository.addRoute(contentName.getValue(), senderId.getValue());
-
         // PITに基づいてデータ送信 (転送なのでホップ数+1)
         return makeOutput(
             *destinationId.getValue().begin(),
@@ -122,9 +119,6 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData &inputData)
     }
     else
     {
-        // 将来の使用のためFIBテーブルに保存
-        ribRepository.addRoute(contentName.getValue(), senderId.getValue());
-
         // パケット破棄 (対応するINTERESTがない)
         return makeOutput(
             VALUE_NA,
