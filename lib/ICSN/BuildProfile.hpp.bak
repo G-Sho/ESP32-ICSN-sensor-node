@@ -1,7 +1,0 @@
-#pragma once
-#define LOG_DEBUG(x)
-#define LOG_INFO(x)
-#define LOG_INFOF(...)
-#define LOG_WARN(x)
-#define LOG_WARNF(...)
-#define CLI_PRINTLN(x)

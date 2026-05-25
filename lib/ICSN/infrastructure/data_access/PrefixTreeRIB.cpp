@@ -2,6 +2,7 @@
 #include "../../entity/routing_table/FIBPair.hpp"
 #include "../../entity/message/ContentName.hpp"
 #include "../../entity/message/DestinationId.hpp"
+#include "../../BuildProfile.hpp"
 #include <algorithm>
 
 PrefixTreeRIB::PrefixTreeRIB(IForwardingInformationBase &fib)
@@ -27,6 +28,8 @@ void PrefixTreeRIB::addRoute(const std::string &contentName, const std::string &
 {
     // RIB ノード上限チェック
     if (tree.find(contentName) == tree.end() && tree.size() >= MAX_RIB_NODE_SIZE) {
+        LOG_WARNF("[RIB] Capacity full (%u), cannot add: %s\n",
+                  (unsigned)MAX_RIB_NODE_SIZE, contentName.c_str());
         return;
     }
 
