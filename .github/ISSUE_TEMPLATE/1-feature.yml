@@ -1,0 +1,98 @@
+name: "機能追加・改善"
+description: "ESP32-ICSN ノード向けの機能追加・改善・リファクタリング提案に使用します。"
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 対象領域
+      description: 主に変更対象となる領域を選択してください
+      options:
+        - controller (ESP-NOW / InputData/OutputData 変換)
+        - use_case (UseCaseInteractor)
+        - interface / data_access
+        - infrastructure (CS / FIB / PIT / RIB)
+        - sensor (DHT など)
+        - build / ci / docs
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: 実現したい内容を簡潔に記述してください
+      placeholder: |
+        例）INTEREST 受信時の転送先選定ロジックを改善し、不要転送を削減する
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 背景と目的
+      description: いま対応が必要な理由、現状の課題、期待する効果を記述してください
+      placeholder: |
+        例）normal プロファイルでログ調査したところ、重複転送が多く無線帯域を圧迫している
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案内容（実装案）
+      description: 想定する変更点を記述してください（必要なら疑似コード可）
+      placeholder: |
+        - UseCaseInteractor の転送判定を FIB/PIT 状態に応じて見直す
+        - controller は IInputBoundary 経由の呼び出しを維持する
+        - perf 専用処理は PERFORMANCE_MEASURE 条件下に限定する
+    validations:
+      required: true
+
+  - type: textarea
+    id: architecture-impact
+    attributes:
+      label: アーキテクチャ影響
+      description: Clean Architecture の依存方向に対する影響を記述してください
+      placeholder: |
+        - 追加/変更する層:
+        - 新規インターフェースの有無:
+        - 依存方向が変わる場合の理由:
+
+  - type: checkboxes
+    id: security-perf-check
+    attributes:
+      label: Security / Perf 観点
+      options:
+        - label: HMAC / カウンタ検証ロジックに影響しない、または影響内容を説明した
+        - label: perf 機能（dump_perf/reset_perf/perf_count）への影響を確認した
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      description: 完了と判断できる条件をチェックリスト形式で記述してください
+      placeholder: |
+        - [ ] normal でビルドが通る
+        - [ ] 必要に応じて perf/release でもビルド確認済み
+        - [ ] 関連ドキュメント（README 等）を更新した
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation-plan
+    attributes:
+      label: 検証手順
+      description: 想定する確認手順を記述してください
+      placeholder: |
+        例）
+        1. pio run -e normal
+        2. 実機書き込み後、シリアルで show_fib / send_interest を確認
+        3. 必要なら pio run -e perf で計測コマンドを確認
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 補足情報
+      description: 関連 Issue/PR、参考資料、ログ、スクリーンショット等
+
