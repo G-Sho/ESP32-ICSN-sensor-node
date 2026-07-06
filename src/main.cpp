@@ -10,6 +10,7 @@
 #include "infrastructure/data_access/LRUPendingInterestTable.hpp"
 #include "infrastructure/data_access/LRUContentStore.hpp"
 #include "infrastructure/data_access/PrefixTreeRIB.hpp"
+#include "MemoryStats.hpp"
 #include "Sensor.h"
 
 // === グローバル ===
@@ -30,18 +31,35 @@ constexpr float AUTO_INTEREST_DELAY_SEC = 40.0f;
 constexpr bool AUTO_SENSOR_ENABLED = false; // 起動後の自動センサデータ読み取りを有効にするかどうか
 constexpr bool AUTO_INTEREST_ENABLED = false; // 起動後の自動INTEREST送信を有効にするかどうか
 constexpr uint32_t LOOP_IDLE_DELAY_MS = 5;  // Allow IDLE task scheduling & reduce active time
+#if ICSN_PERF_ENABLED
+constexpr float MEMORY_LOG_INTERVAL_SEC = 30.0f;
+#endif
 
 Ticker sensorTicker;
 Ticker interestTicker;
 Ticker autoInterestTicker;
+#if ICSN_PERF_ENABLED
+Ticker memoryTicker;
+#endif
 
 volatile bool sensorReadRequested = false;
 volatile bool interestSendRequested = false;
 volatile bool autoInterestStartRequested = false;
+#if ICSN_PERF_ENABLED
+volatile bool memoryLogRequested = false;
+#endif
 
 void IRAM_ATTR onSensorTicker() { sensorReadRequested = true; }
 void IRAM_ATTR onInterestTicker() { interestSendRequested = true; }
 void IRAM_ATTR onAutoInterestTicker() { autoInterestStartRequested = true; }
+#if ICSN_PERF_ENABLED
+void IRAM_ATTR onMemoryTicker() { memoryLogRequested = true; }
+#endif
+
+void printMemoryUsage(const char *label) {
+  const MemorySnapshot snapshot = collectMemorySnapshot();
+  printMemorySnapshot(snapshot, label);
+}
 
 void cancelAutoInterestStart() {
   autoInterestTicker.detach();
@@ -139,6 +157,10 @@ void setup() {
     return;
   }
 
+#if ICSN_BUILD_PROFILE != ICSN_PROFILE_RELEASE
+  printMemoryUsage("startup");
+#endif
+
   LOG_INFO("My MAC Address:");
   printMac(myMacAddress);
 
@@ -170,6 +192,10 @@ void setup() {
     LOG_DEBUG("[AUTO] Auto INTEREST start disabled");
   }
 
+#if ICSN_PERF_ENABLED
+  memoryTicker.attach(MEMORY_LOG_INTERVAL_SEC, onMemoryTicker);
+#endif
+
   LOG_INFO("Setup complete.");
 }
 
@@ -189,6 +215,13 @@ void loop() {
     interestSendRequested = false;
     periodicSendInterest();
   }
+
+#if ICSN_PERF_ENABLED
+  if (memoryLogRequested) {
+    memoryLogRequested = false;
+    printMemoryUsage("periodic(perf)");
+  }
+#endif
 
   if (Serial.available() > 0) {
     String msg = Serial.readStringUntil('\n');
@@ -222,6 +255,9 @@ void loop() {
       espNowController.clearCSCache();
       espNowController.clearPITCache();
       CLI_PRINTLN("Cache cleared successfully.");
+    } else if (msg == "show_mem") {
+      LOG_INFO("[CMD] show_mem received");
+      printMemoryUsage("cli");
     } else if (msg == "help") {
       CLI_PRINTLN("=== Available Commands ===");
       CLI_PRINTLN("  send_interest   - Disabled (target MAC required; broadcast removed)");
@@ -230,6 +266,7 @@ void loop() {
       CLI_PRINTLN("  show_counters   - Show tx/rx counter state for all peers");
       CLI_PRINTLN("  show_fib        - Show Forwarding Information Base (FIB)");
       CLI_PRINTLN("  clear_cache     - Clear Content Store and PIT");
+      CLI_PRINTLN("  show_mem        - Show internal RAM/PSRAM heap stats");
       CLI_PRINTLN("  dump_perf       - Dump INTEREST packet timing buffer as JSON (perf build only)");
       CLI_PRINTLN("  reset_perf      - Reset INTEREST packet timing buffer (perf build only)");
       CLI_PRINTLN("  perf_count      - Show current sample count in measurement buffer (perf build only)");

@@ -188,6 +188,17 @@ pio run -e normal_s3 -t monitor
 
 上記は `perf` プロファイルでのみ有効です。`normal`/`release` では `{"error": "perf_build_required"}` を返します。
 
+### メモリ可視化について
+
+- 起動時に内部RAM/PSRAMのヒープ統計（`total` / `free` / `min`）をシリアルへ出力します。
+- `show_mem` コマンドで任意タイミングに同じ統計を取得できます。
+- `perf` / `perf_s3` では、30秒ごとに定期メモリログを自動出力します。
+
+補足:
+
+- PlatformIO の RAM 使用率は静的領域中心の指標です。
+- `show_mem` は実行時ヒープの実測値（空き量や最小空き量）で、断片化や運用中変動の確認に使います。
+
 ### シリアルコマンド一覧
 
 | コマンド | 説明 |
@@ -198,6 +209,7 @@ pio run -e normal_s3 -t monitor
 | `show_counters` | 全ピアの TX/RX カウンタ表示 |
 | `show_fib` | FIB（転送情報テーブル）の内容表示 |
 | `clear_cache` | Content Store と PIT のキャッシュをクリア |
+| `show_mem` | 内部RAM/PSRAMヒープ統計（total/free/min）を表示 |
 | `dump_perf` | Interest受信パケット処理の計測バッファをJSON出力（perf buildのみ） |
 | `reset_perf` | Interest受信パケット処理の計測バッファをリセット（perf buildのみ） |
 | `perf_count` | 計測サンプル数を表示（perf buildのみ） |

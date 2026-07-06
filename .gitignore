@@ -4,7 +4,3 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
-
-# Claude Code files
-.claude/
-CLAUDE.md
