@@ -1,6 +1,6 @@
+#include "BuildProfile.hpp"
 #include "Sensor.h"
 #include <DHT.h>
-#include "BuildProfile.hpp"
 
 constexpr uint8_t dhtPin = 14;     // DHTセンサーが刺さっているピン
 constexpr uint8_t dhtType = DHT11; // 今回使うのはDHT11
@@ -9,19 +9,16 @@ constexpr const char* kSite = "buildingA";
 constexpr const char* kDeviceType = "env-sensor";
 constexpr const char* kDeviceId = "node01";
 
-void DHTHumidity::run()
-{
+void DHTHumidity::run() {
   dht.begin();
 }
 
-void DHTHumidity::read()
-{
+void DHTHumidity::read() {
   // 温度を読み取る
   double h = dht.readHumidity();
 
   // 読み取り失敗
-  if (isnan(h))
-  {
+  if (isnan(h)) {
     LOG_WARNF("Failed to read from DHT sensor\n");
     return;
   }
@@ -36,12 +33,10 @@ void DHTHumidity::read()
   m_contentName = String("/iot/") + kSite + "/" + kDeviceType + "/" + kDeviceId + "/humidity";
 }
 
-String DHTHumidity::getData()
-{
+String DHTHumidity::getData() {
   return m_data;
 }
 
-String DHTHumidity::getContentName()
-{
+String DHTHumidity::getContentName() {
   return m_contentName;
 }

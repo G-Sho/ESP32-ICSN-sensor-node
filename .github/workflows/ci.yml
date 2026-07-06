@@ -10,6 +10,28 @@ permissions:
   contents: read
 
 jobs:
+  format:
+    name: Format (clang-format)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-16
+
+      - name: Check formatting (C/C++)
+        run: |
+          files=$(git ls-files "*.c" "*.cc" "*.cpp" "*.h" "*.hpp")
+          if [ -z "$files" ]; then
+            echo "No C/C++ files found"
+            exit 0
+          fi
+          echo "$files" | xargs clang-format-16 --dry-run --Werror
+
   build:
     name: Build (${{ matrix.environment }})
     runs-on: ubuntu-latest

@@ -27,7 +27,7 @@ void printBytesAndKiB(const size_t bytes) {
   CLI_PRINTF("%uB (%uKiB)", static_cast<unsigned int>(bytes), static_cast<unsigned int>(kib));
 }
 
-void printRegionLine(const char *label, const HeapStats &stats) {
+void printRegionLine(const char* label, const HeapStats& stats) {
   CLI_PRINTF("[MEM] %s: ", label);
 
   if (!stats.available) {
@@ -44,7 +44,7 @@ void printRegionLine(const char *label, const HeapStats &stats) {
   CLI_PRINTLN();
 }
 
-}  // namespace
+} // namespace
 
 MemorySnapshot collectMemorySnapshot() {
   MemorySnapshot snapshot{};
@@ -53,7 +53,7 @@ MemorySnapshot collectMemorySnapshot() {
   return snapshot;
 }
 
-void printMemorySnapshot(const MemorySnapshot &snapshot, const char *header) {
+void printMemorySnapshot(const MemorySnapshot& snapshot, const char* header) {
   CLI_PRINTF("[MEM] %s\n", (header != nullptr) ? header : "snapshot");
   printRegionLine("internal", snapshot.internal);
   printRegionLine("psram", snapshot.psram);

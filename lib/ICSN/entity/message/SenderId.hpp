@@ -2,12 +2,13 @@
 
 #include <string>
 
-class SenderId
-{
+class SenderId {
 private:
   std::string id;
 
 public:
-  SenderId(const std::string &i) : id(i) {}
-  const std::string &getValue() const { return id; };
+  SenderId(const std::string& i) : id(i) {}
+  const std::string& getValue() const {
+    return id;
+  };
 };

@@ -15,4 +15,4 @@ struct MemorySnapshot {
 };
 
 MemorySnapshot collectMemorySnapshot();
-void printMemorySnapshot(const MemorySnapshot &snapshot, const char *header);
+void printMemorySnapshot(const MemorySnapshot& snapshot, const char* header);
