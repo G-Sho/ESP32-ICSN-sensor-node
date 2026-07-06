@@ -157,7 +157,9 @@ void setup() {
     return;
   }
 
+#if ICSN_BUILD_PROFILE != ICSN_PROFILE_RELEASE
   printMemoryUsage("startup");
+#endif
 
   LOG_INFO("My MAC Address:");
   printMac(myMacAddress);
