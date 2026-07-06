@@ -225,8 +225,8 @@ pio run -e normal_s3 -t monitor
 
 このリポジトリでは、GitHub Actions で以下を実行します。
 
-- `build` ジョブ: `normal` / `perf` / `release` の3プロファイルをビルド
-- `lint` ジョブ: `normal` プロファイルで `pio check -e normal` を実行
+- `build` ジョブ: `normal` / `perf` / `release` / `normal_s3` / `perf_s3` / `release_s3` をビルド
+- `lint` ジョブ: `normal` / `normal_s3` で `pio check` を実行
 
 CI では実機がないため、`upload` / `uploadfs` は実行しません。
 
@@ -240,4 +240,5 @@ pio run -e normal_s3
 pio run -e perf_s3
 pio run -e release_s3
 pio check -e normal
+pio check -e normal_s3
 ```

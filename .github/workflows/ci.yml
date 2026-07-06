@@ -1,8 +1,10 @@
 name: CI
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -14,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [normal, perf, release]
+        environment: [normal, perf, release, normal_s3, perf_s3, release_s3]
 
     steps:
       - name: Checkout
@@ -31,7 +33,7 @@ jobs:
           path: |
             ~/.platformio
             .pio
-          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini') }}
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini', 'boards/*.json') }}
           restore-keys: |
             ${{ runner.os }}-platformio-
 
@@ -42,8 +44,12 @@ jobs:
         run: pio run -e ${{ matrix.environment }}
 
   lint:
-    name: Lint (normal)
+    name: Lint (${{ matrix.environment }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [normal, normal_s3]
 
     steps:
       - name: Checkout
@@ -60,7 +66,7 @@ jobs:
           path: |
             ~/.platformio
             .pio
-          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini') }}
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini', 'boards/*.json') }}
           restore-keys: |
             ${{ runner.os }}-platformio-
 
@@ -68,4 +74,4 @@ jobs:
         run: python -m pip install --upgrade pip platformio
 
       - name: Run lint (pio check)
-        run: pio check -e normal
+        run: pio check -e ${{ matrix.environment }}
