@@ -254,3 +254,37 @@ pio run -e release_s3
 pio check -e normal
 pio check -e normal_s3
 ```
+
+## Formatter (C/C++)
+
+このリポジトリでは C/C++（`*.c`, `*.cc`, `*.cpp`, `*.h`, `*.hpp`）のみを
+`clang-format` で整形します。
+
+- ルール定義: `.clang-format`
+- 除外定義: `.clang-format-ignore`
+- CI での必須チェック: `.github/workflows/ci.yml` の `format` ジョブ
+
+推奨バージョン:
+
+- `clang-format-16`
+
+### ローカルで一括整形
+
+PowerShell:
+
+```powershell
+$files = git ls-files "*.c" "*.cc" "*.cpp" "*.h" "*.hpp"
+if ($files) { clang-format -i --style=file $files }
+```
+
+### ローカルでCI同等チェック
+
+PowerShell:
+
+```powershell
+$files = git ls-files "*.c" "*.cc" "*.cpp" "*.h" "*.hpp"
+if ($files) { clang-format --dry-run --Werror --style=file $files }
+```
+
+GitHub Actions (Ubuntu) では `clang-format-16 --dry-run --Werror` を実行し、
+差分がある場合はジョブが失敗します。
