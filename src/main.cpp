@@ -1,17 +1,17 @@
-#include <Arduino.h>
 #include <Adafruit_Sensor.h>
+#include <Arduino.h>
 #include <Ticker.h>
 #include <esp_now.h>
 
 #include "BuildProfile.hpp"
 #include "ESP-NOWController.hpp"
-#include "use_case/UseCaseInteractor.hpp"
-#include "infrastructure/data_access/LRUForwardingInformationBase.hpp"
-#include "infrastructure/data_access/LRUPendingInterestTable.hpp"
-#include "infrastructure/data_access/LRUContentStore.hpp"
-#include "infrastructure/data_access/PrefixTreeRIB.hpp"
 #include "MemoryStats.hpp"
 #include "Sensor.h"
+#include "infrastructure/data_access/LRUContentStore.hpp"
+#include "infrastructure/data_access/LRUForwardingInformationBase.hpp"
+#include "infrastructure/data_access/LRUPendingInterestTable.hpp"
+#include "infrastructure/data_access/PrefixTreeRIB.hpp"
+#include "use_case/UseCaseInteractor.hpp"
 
 // === グローバル ===
 LRUForwardingInformationBase fibRepository;
@@ -19,8 +19,8 @@ LRUPendingInterestTable pitRepository;
 LRUContentStore csRepository;
 PrefixTreeRIB ribRepository(fibRepository);
 UseCaseInteractor useCaseInteractor(fibRepository, pitRepository, csRepository, ribRepository);
-IInputBoundary &inputBoundary = useCaseInteractor;
-IForwardingStateBoundary &forwardingStateBoundary = useCaseInteractor;
+IInputBoundary& inputBoundary = useCaseInteractor;
+IForwardingStateBoundary& forwardingStateBoundary = useCaseInteractor;
 ESP_NOWController espNowController(inputBoundary, forwardingStateBoundary);
 uint8_t myMacAddress[6];
 
@@ -30,7 +30,7 @@ constexpr float INTEREST_INTERVAL_SEC = 10.0f;
 constexpr float AUTO_INTEREST_DELAY_SEC = 40.0f;
 constexpr bool AUTO_SENSOR_ENABLED = false; // 起動後の自動センサデータ読み取りを有効にするかどうか
 constexpr bool AUTO_INTEREST_ENABLED = false; // 起動後の自動INTEREST送信を有効にするかどうか
-constexpr uint32_t LOOP_IDLE_DELAY_MS = 5;  // Allow IDLE task scheduling & reduce active time
+constexpr uint32_t LOOP_IDLE_DELAY_MS = 5; // Allow IDLE task scheduling & reduce active time
 #if ICSN_PERF_ENABLED
 constexpr float MEMORY_LOG_INTERVAL_SEC = 30.0f;
 #endif
@@ -49,14 +49,22 @@ volatile bool autoInterestStartRequested = false;
 volatile bool memoryLogRequested = false;
 #endif
 
-void IRAM_ATTR onSensorTicker() { sensorReadRequested = true; }
-void IRAM_ATTR onInterestTicker() { interestSendRequested = true; }
-void IRAM_ATTR onAutoInterestTicker() { autoInterestStartRequested = true; }
+void IRAM_ATTR onSensorTicker() {
+  sensorReadRequested = true;
+}
+void IRAM_ATTR onInterestTicker() {
+  interestSendRequested = true;
+}
+void IRAM_ATTR onAutoInterestTicker() {
+  autoInterestStartRequested = true;
+}
 #if ICSN_PERF_ENABLED
-void IRAM_ATTR onMemoryTicker() { memoryLogRequested = true; }
+void IRAM_ATTR onMemoryTicker() {
+  memoryLogRequested = true;
+}
 #endif
 
-void printMemoryUsage(const char *label) {
+void printMemoryUsage(const char* label) {
   const MemorySnapshot snapshot = collectMemorySnapshot();
   printMemorySnapshot(snapshot, label);
 }
@@ -68,16 +76,17 @@ void cancelAutoInterestStart() {
 
 /// MACアドレスを "XX:XX:XX:XX:XX:XX" 形式に整形する
 /// outLen は最低18（終端文字を含む）必要
-void formatMac(const uint8_t *mac, char *out, size_t outLen) {
+void formatMac(const uint8_t* mac, char* out, size_t outLen) {
   if (outLen < 18) {
-    if (outLen > 0) out[0] = '\0';
+    if (outLen > 0)
+      out[0] = '\0';
     return;
   }
-  snprintf(out, outLen, "%02X:%02X:%02X:%02X:%02X:%02X",
-           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  snprintf(out, outLen, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4],
+           mac[5]);
 }
 
-void printMac(const uint8_t *mac) {
+void printMac(const uint8_t* mac) {
   char macStr[18];
   formatMac(mac, macStr, sizeof(macStr));
   LOG_DEBUG(macStr);
@@ -113,7 +122,9 @@ void sendInterest(const uint8_t* targetMac) {
 // === INTEREST定期送信用 ===
 const uint8_t* interestTargetMac = nullptr;
 
-void periodicSendInterest() { sendInterest(interestTargetMac); }
+void periodicSendInterest() {
+  sendInterest(interestTargetMac);
+}
 
 void startInterestTicker() {
   interestTicker.detach();
@@ -133,7 +144,7 @@ void autoStartInterest() {
 }
 
 // === ESP-NOW コールバック ===
-void onDataSent(const uint8_t * /*mac_addr*/, esp_now_send_status_t status) {
+void onDataSent(const uint8_t* /*mac_addr*/, esp_now_send_status_t status) {
   // This callback keeps warning output compact by design in perf/release-oriented profiles.
   // CLI commands remain available for deeper diagnostics when needed.
   if (status != ESP_NOW_SEND_SUCCESS) {
@@ -141,10 +152,9 @@ void onDataSent(const uint8_t * /*mac_addr*/, esp_now_send_status_t status) {
   }
 }
 
-void onDataReceive(const uint8_t *mac_addr, const uint8_t *data, int len) {
+void onDataReceive(const uint8_t* mac_addr, const uint8_t* data, int len) {
   espNowController.processReceivedPacket(myMacAddress, mac_addr, data, len);
 }
-
 
 void setup() {
   Serial.begin(115200);
@@ -152,7 +162,8 @@ void setup() {
 
   const char* configPath = "/config.json";
 
-  if (!espNowController.initializeCommunication(configPath, myMacAddress, onDataReceive, onDataSent, 1)) {
+  if (!espNowController.initializeCommunication(configPath, myMacAddress, onDataReceive, onDataSent,
+                                                1)) {
     LOG_WARN("Failed to initialize communication stack");
     return;
   }
@@ -180,7 +191,7 @@ void setup() {
 
   if (AUTO_SENSOR_ENABLED) {
     sensorTicker.attach(SENSOR_INTERVAL_SEC, onSensorTicker);
-    sensorReadRequested = true;  // 起動直後にも1回実行
+    sensorReadRequested = true; // 起動直後にも1回実行
   } else {
     LOG_DEBUG("[AUTO] Auto sensor read disabled");
   }
@@ -228,7 +239,8 @@ void loop() {
     msg.trim();
 
     if (msg == "send_interest") {
-      LOG_WARN("[CMD] send_interest requires target MAC. This command is disabled after broadcast removal.");
+      LOG_WARN("[CMD] send_interest requires target MAC. This command is disabled after broadcast "
+               "removal.");
       cancelAutoInterestStart();
       stopInterestTicker();
     } else if (msg == "stop_interest") {
@@ -267,9 +279,11 @@ void loop() {
       CLI_PRINTLN("  show_fib        - Show Forwarding Information Base (FIB)");
       CLI_PRINTLN("  clear_cache     - Clear Content Store and PIT");
       CLI_PRINTLN("  show_mem        - Show internal RAM/PSRAM heap stats");
-      CLI_PRINTLN("  dump_perf       - Dump INTEREST packet timing buffer as JSON (perf build only)");
+      CLI_PRINTLN(
+          "  dump_perf       - Dump INTEREST packet timing buffer as JSON (perf build only)");
       CLI_PRINTLN("  reset_perf      - Reset INTEREST packet timing buffer (perf build only)");
-      CLI_PRINTLN("  perf_count      - Show current sample count in measurement buffer (perf build only)");
+      CLI_PRINTLN(
+          "  perf_count      - Show current sample count in measurement buffer (perf build only)");
       CLI_PRINTLN("  help            - Show this help");
     } else {
       LOG_WARNF("Unknown command: %s\n", msg.c_str());

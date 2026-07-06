@@ -1,10 +1,10 @@
 #pragma once
 
+#include "BuildProfile.hpp"
 #include <Arduino.h>
 #include <cstdint>
 #include <cstring>
 #include <mbedtls/md.h>
-#include "BuildProfile.hpp"
 
 /// @brief HMAC-SHA256の出力長（バイト）
 constexpr size_t HMAC_SHA256_LEN = 32;
@@ -14,12 +14,12 @@ constexpr size_t PEER_LMK_LEN = 16;
 
 /// @brief ピアごとのカウンタ・LMK情報
 struct PeerCounter {
-  uint8_t  peer_mac[6];        ///< ピアのMACアドレス
-  uint32_t tx_counter;         ///< 送信カウンタ（txCounter）
-  uint32_t rx_counter;         ///< 受信カウンタ（rxCounter）
-  uint8_t  lmk[PEER_LMK_LEN]; ///< このピア向けのLocal Master Key
-  bool     lmk_set;            ///< LMKが設定済みかどうか
-  bool     active;             ///< スロット使用中フラグ
+  uint8_t peer_mac[6];       ///< ピアのMACアドレス
+  uint32_t tx_counter;       ///< 送信カウンタ（txCounter）
+  uint32_t rx_counter;       ///< 受信カウンタ（rxCounter）
+  uint8_t lmk[PEER_LMK_LEN]; ///< このピア向けのLocal Master Key
+  bool lmk_set;              ///< LMKが設定済みかどうか
+  bool active;               ///< スロット使用中フラグ
 };
 
 /// @brief ピアごとの送受信カウンタとHMACを管理するクラス（リプレイ攻撃対策・OTT認証）
@@ -30,7 +30,7 @@ private:
 
   /// @brief グローバルLMK（ピア固有LMKが未設定の場合に使用）
   uint8_t globalLmk[PEER_LMK_LEN];
-  bool    globalLmkSet;
+  bool globalLmkSet;
 
   int findPeerIndex(const uint8_t mac[6]) const {
     for (size_t i = 0; i < MAX_PEERS; i++) {
@@ -43,7 +43,8 @@ private:
 
   int findOrCreatePeerIndex(const uint8_t mac[6]) {
     int idx = findPeerIndex(mac);
-    if (idx >= 0) return idx;
+    if (idx >= 0)
+      return idx;
 
     // 空きスロットを探す
     for (size_t i = 0; i < MAX_PEERS; i++) {
@@ -53,7 +54,7 @@ private:
         peers[i].rx_counter = 0;
         memset(peers[i].lmk, 0, PEER_LMK_LEN);
         peers[i].lmk_set = false;
-        peers[i].active   = true;
+        peers[i].active = true;
         return static_cast<int>(i);
       }
     }
@@ -64,8 +65,10 @@ private:
   /// @param idx ピアインデックス
   /// @return 使用するLMKへのポインタ（nullptrの場合は未設定）
   const uint8_t* resolveLmk(int idx) const {
-    if (peers[idx].lmk_set) return peers[idx].lmk;
-    if (globalLmkSet)        return globalLmk;
+    if (peers[idx].lmk_set)
+      return peers[idx].lmk;
+    if (globalLmkSet)
+      return globalLmk;
     return nullptr;
   }
 
@@ -102,7 +105,7 @@ public:
   /// @param mac 送信先MACアドレス
   /// @param success 成功時true、スロット不足時false
   /// @return インクリメント後のカウンタ値。スロット不足時は0
-  uint32_t incrementTxCounter(const uint8_t mac[6], bool &success) {
+  uint32_t incrementTxCounter(const uint8_t mac[6], bool& success) {
     int idx = findOrCreatePeerIndex(mac);
     if (idx < 0) {
       LOG_WARNF("[SECURITY] Peer counter slot exhaustion on TX - cannot track counter\n");
@@ -191,7 +194,8 @@ public:
   bool verifyHMAC(const uint8_t mac[6], const uint8_t* data, size_t dataLen,
                   const uint8_t expectedHmac[HMAC_SHA256_LEN]) {
     uint8_t computed[HMAC_SHA256_LEN];
-    if (!computeHMAC(mac, data, dataLen, computed)) return false;
+    if (!computeHMAC(mac, data, dataLen, computed))
+      return false;
     // タイミング攻撃を防ぐため定数時間比較を行う
     uint8_t diff = 0;
     for (size_t i = 0; i < HMAC_SHA256_LEN; i++) {
@@ -205,19 +209,18 @@ public:
     CLI_PRINTLN("[COUNTERS] === Peer Counter State ===");
     bool any = false;
     for (size_t i = 0; i < MAX_PEERS; i++) {
-      if (!peers[i].active) continue;
+      if (!peers[i].active)
+        continue;
       any = true;
       CLI_PRINTF("[COUNTERS]  Peer %02d: %02X:%02X:%02X:%02X:%02X:%02X"
                  "  tx=%lu  rx=%lu  lmk=%s\n",
-                 (int)i,
-                 peers[i].peer_mac[0], peers[i].peer_mac[1],
-                 peers[i].peer_mac[2], peers[i].peer_mac[3],
-                 peers[i].peer_mac[4], peers[i].peer_mac[5],
-                 (unsigned long)peers[i].tx_counter,
-                 (unsigned long)peers[i].rx_counter,
+                 (int)i, peers[i].peer_mac[0], peers[i].peer_mac[1], peers[i].peer_mac[2],
+                 peers[i].peer_mac[3], peers[i].peer_mac[4], peers[i].peer_mac[5],
+                 (unsigned long)peers[i].tx_counter, (unsigned long)peers[i].rx_counter,
                  peers[i].lmk_set ? "peer" : (globalLmkSet ? "global" : "NONE"));
     }
-    if (!any) CLI_PRINTLN("[COUNTERS]  (no active peers)");
+    if (!any)
+      CLI_PRINTLN("[COUNTERS]  (no active peers)");
     CLI_PRINTLN("[COUNTERS] ============================");
   }
 };

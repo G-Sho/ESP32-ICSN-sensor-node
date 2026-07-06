@@ -18,7 +18,7 @@ constexpr size_t ESP_NOW_LMK_LEN = 16;
 struct PeerLMKConfig {
   uint8_t mac[6];               ///< ピアのMACアドレス
   uint8_t lmk[ESP_NOW_LMK_LEN]; ///< このピア向けのLocal Master Key
-  bool    valid;                 ///< エントリが有効かどうか
+  bool valid;                   ///< エントリが有効かどうか
 };
 
 /// @brief ピア固有LMKの最大登録数
@@ -26,9 +26,9 @@ constexpr size_t MAX_PEER_LMK_ENTRIES = 20;
 
 /// @brief FIB初期エントリ（起動時にFIBへ投入するルーティング設定）
 struct FibInitEntry {
-  char contentName[64];  ///< コンテンツ名プレフィックス（例: "/iot/buildingA/room101"）
-  char nextHopMac[18];   ///< 次ホップMACアドレス（小文字コロン区切り、例: "cc:7b:5c:9a:f3:ac"）
-  bool valid;            ///< エントリが有効かどうか
+  char contentName[64]; ///< コンテンツ名プレフィックス（例: "/iot/buildingA/room101"）
+  char nextHopMac[18]; ///< 次ホップMACアドレス（小文字コロン区切り、例: "cc:7b:5c:9a:f3:ac"）
+  bool valid; ///< エントリが有効かどうか
 };
 
 /// @brief FIB初期エントリの最大数
@@ -42,8 +42,8 @@ struct SystemConfig {
   int hopCountThreshold = 10;
 
   // セキュリティ設定
-  uint8_t pmk[ESP_NOW_PMK_LEN] = {0};  // Primary Master Key
-  uint8_t lmk[ESP_NOW_LMK_LEN] = {0};  // グローバルLocal Master Key（ピア固有LMK未設定時に使用）
+  uint8_t pmk[ESP_NOW_PMK_LEN] = {0}; // Primary Master Key
+  uint8_t lmk[ESP_NOW_LMK_LEN] = {0}; // グローバルLocal Master Key（ピア固有LMK未設定時に使用）
   bool encryptionEnabled = false;
 
   // ピア固有LMK設定

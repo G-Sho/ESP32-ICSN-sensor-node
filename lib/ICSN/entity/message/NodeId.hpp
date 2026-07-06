@@ -2,12 +2,13 @@
 
 #include <string>
 
-class NodeId
-{
+class NodeId {
 private:
   std::string value;
 
 public:
-  NodeId(const std::string &value) : value(value) {}
-  const std::string &getValue() const { return value; };
+  NodeId(const std::string& value) : value(value) {}
+  const std::string& getValue() const {
+    return value;
+  };
 };

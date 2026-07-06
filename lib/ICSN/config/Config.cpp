@@ -9,15 +9,18 @@ SystemConfig systemConfig;
 /// @param out 出力先バッファ（16バイト）
 /// @return 成功時true
 static bool hexStringToBytes(const char* hexStr, uint8_t* out, size_t outLen) {
-  if (hexStr == nullptr || out == nullptr) return false;
+  if (hexStr == nullptr || out == nullptr)
+    return false;
   size_t strLen = strlen(hexStr);
-  if (strLen != outLen * 2) return false;
+  if (strLen != outLen * 2)
+    return false;
 
   for (size_t i = 0; i < outLen; i++) {
     char byteStr[3] = {hexStr[i * 2], hexStr[i * 2 + 1], '\0'};
     char* endPtr = nullptr;
     unsigned long val = strtoul(byteStr, &endPtr, 16);
-    if (endPtr != byteStr + 2 || val > 255) return false;
+    if (endPtr != byteStr + 2 || val > 255)
+      return false;
     out[i] = static_cast<uint8_t>(val);
   }
   return true;
@@ -28,10 +31,12 @@ static bool hexStringToBytes(const char* hexStr, uint8_t* out, size_t outLen) {
 /// @param out 出力先バッファ（6バイト）
 /// @return 成功時true
 static bool macStringToBytes(const char* macStr, uint8_t out[6]) {
-  if (macStr == nullptr || out == nullptr) return false;
+  if (macStr == nullptr || out == nullptr)
+    return false;
   unsigned int b[6];
-  if (sscanf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X",
-             &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) != 6) return false;
+  if (sscanf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) !=
+      6)
+    return false;
   for (int i = 0; i < 6; i++) {
     out[i] = static_cast<uint8_t>(b[i]);
   }
@@ -39,19 +44,22 @@ static bool macStringToBytes(const char* macStr, uint8_t out[6]) {
 }
 
 bool loadSystemConfig(const char* path) {
-  if (!LittleFS.begin()) return false;
+  if (!LittleFS.begin())
+    return false;
 
   File file = LittleFS.open(path, "r");
-  if (!file) return false;
+  if (!file)
+    return false;
 
   // 2048バイトに拡張: fib_init配列（最大10エントリ）の追加によりメモリが増加
   StaticJsonDocument<2048> doc;
-  if (deserializeJson(doc, file)) return false;
+  if (deserializeJson(doc, file))
+    return false;
 
-  systemConfig.maxPitTableSize  = doc["MAX_PIT_TABLE_SIZE"] | MAX_PIT_TABLE_SIZE;
-  systemConfig.maxCsTableSize   = doc["MAX_CS_TABLE_SIZE"] | MAX_CS_TABLE_SIZE;
-  systemConfig.maxFibTableSize  = doc["MAX_FIB_TABLE_SIZE"] | MAX_FIB_TABLE_SIZE;
-  systemConfig.maxVirtualDepth  = doc["MAX_VIRTUAL_DEPTH"] | 5;
+  systemConfig.maxPitTableSize = doc["MAX_PIT_TABLE_SIZE"] | MAX_PIT_TABLE_SIZE;
+  systemConfig.maxCsTableSize = doc["MAX_CS_TABLE_SIZE"] | MAX_CS_TABLE_SIZE;
+  systemConfig.maxFibTableSize = doc["MAX_FIB_TABLE_SIZE"] | MAX_FIB_TABLE_SIZE;
+  systemConfig.maxVirtualDepth = doc["MAX_VIRTUAL_DEPTH"] | 5;
   systemConfig.hopCountThreshold = doc["HOP_COUNT_THRESHOLD"] | 10;
 
   // セキュリティ設定の読み込み
@@ -72,10 +80,11 @@ bool loadSystemConfig(const char* path) {
   if (doc.containsKey("peers")) {
     JsonArray peers = doc["peers"].as<JsonArray>();
     for (JsonObject peer : peers) {
-      if (systemConfig.peerLmkCount >= MAX_PEER_LMK_ENTRIES) break;
+      if (systemConfig.peerLmkCount >= MAX_PEER_LMK_ENTRIES)
+        break;
 
-      const char* macStr  = peer["mac"]  | "";
-      const char* peerLmk = peer["lmk"]  | "";
+      const char* macStr = peer["mac"] | "";
+      const char* peerLmk = peer["lmk"] | "";
 
       PeerLMKConfig& entry = systemConfig.peerLmkEntries[systemConfig.peerLmkCount];
       if (macStringToBytes(macStr, entry.mac) &&
@@ -93,7 +102,8 @@ bool loadSystemConfig(const char* path) {
   if (doc.containsKey("fib_init")) {
     JsonArray fibArray = doc["fib_init"].as<JsonArray>();
     for (JsonObject fibEntry : fibArray) {
-      if (systemConfig.fibInitCount >= MAX_FIB_INIT_ENTRIES) break;
+      if (systemConfig.fibInitCount >= MAX_FIB_INIT_ENTRIES)
+        break;
 
       const char* content = fibEntry["content"] | "";
       const char* nextHop = fibEntry["next_hop"] | "";

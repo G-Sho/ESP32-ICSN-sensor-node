@@ -2,14 +2,19 @@
 
 #include <string>
 
-class ContentName
-{
+class ContentName {
 private:
   std::string name;
 
 public:
-  ContentName(const std::string &v) : name(v) {}
-  static ContentName Null() { return ContentName({}); }
-  bool isNull() const { return name.empty(); }
-  const std::string &getValue() const { return name; }
+  ContentName(const std::string& v) : name(v) {}
+  static ContentName Null() {
+    return ContentName({});
+  }
+  bool isNull() const {
+    return name.empty();
+  }
+  const std::string& getValue() const {
+    return name;
+  }
 };

@@ -1,25 +1,21 @@
 #pragma once
 
 #include "message/SignalCode.hpp"
-#include <string>
-#include <set>
 #include <cstdint>
+#include <set>
+#include <string>
 
-struct InputData
-{
-    std::string senderId;
-    std::set<std::string> destId;
-    std::string signalCode;
-    int hopCount;
-    std::string contentName;
-    std::string content;
+struct InputData {
+  std::string senderId;
+  std::set<std::string> destId;
+  std::string signalCode;
+  int hopCount;
+  std::string contentName;
+  std::string content;
 
-    InputData(const std::string& senderId,
-              const std::set<std::string>& destId,
-              const std::string& signalCode,
-              int hopCount,
-              const std::string& contentName,
-              const std::string& content)
-        : senderId(senderId), destId(destId), signalCode(signalCode),
-          hopCount(hopCount), contentName(contentName), content(content) {}
+  InputData(const std::string& senderId, const std::set<std::string>& destId,
+            const std::string& signalCode, int hopCount, const std::string& contentName,
+            const std::string& content)
+      : senderId(senderId), destId(destId), signalCode(signalCode), hopCount(hopCount),
+        contentName(contentName), content(content) {}
 };

@@ -3,13 +3,16 @@
 #include "message/ContentName.hpp"
 #include "message/DestinationId.hpp"
 
-class FIBPair
-{
+class FIBPair {
   ContentName name;
   DestinationId destId;
 
 public:
-  FIBPair(const ContentName &c, const DestinationId &d) : name(c), destId(d) {}
-  const ContentName &getContentName() const { return name; }
-  const DestinationId &getDestinationId() const { return destId; }
+  FIBPair(const ContentName& c, const DestinationId& d) : name(c), destId(d) {}
+  const ContentName& getContentName() const {
+    return name;
+  }
+  const DestinationId& getDestinationId() const {
+    return destId;
+  }
 };
