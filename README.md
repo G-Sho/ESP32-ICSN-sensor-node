@@ -151,6 +151,8 @@ pio run -e perf    -t upload
 pio run -e release -t upload
 
 # ESP32-S3-DevKitC-1-N8R8 向け
+pio run -e normal_s3 -t uploadfs
+
 pio run -e normal_s3  -t upload
 pio run -e perf_s3    -t upload
 pio run -e release_s3 -t upload
