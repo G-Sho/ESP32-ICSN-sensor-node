@@ -132,6 +132,13 @@ data/
 | `perf` | ログ最小化（WARN中心）、perf 機能を有効化 |
 | `release` | ログ最小化（WARN中心）、perf 機能は無効 |
 
+利用可能な PlatformIO 環境は以下のとおりです。
+
+| Environment | Board | 用途 |
+|-------------|-------|------|
+| `normal` / `perf` / `release` | `ESP32-DevKitC-32E` | センサノード用 |
+| `normal_s3` / `perf_s3` / `release_s3` | `ESP32-S3-DevKitC-1-N8R8` | クラスタヘッド用 |
+
 ### ビルド・書き込み
 
 ```bash
@@ -142,9 +149,36 @@ pio run -e normal -t uploadfs
 pio run -e normal  -t upload
 pio run -e perf    -t upload
 pio run -e release -t upload
+
+# ESP32-S3-DevKitC-1-N8R8 向け
+pio run -e normal_s3 -t uploadfs
+
+pio run -e normal_s3  -t upload
+pio run -e perf_s3    -t upload
+pio run -e release_s3 -t upload
 ```
 
 `upload_port` は `platformio.ini` か CLI の `--upload-port` で指定してください。
+
+CLI で一時的に上書きする場合の例:
+
+```bash
+pio run -e normal_s3 -t upload --upload-port COM7
+pio run -e normal_s3 -t monitor --monitor-port COM7
+```
+
+ESP32-S3-DevKitC-1-N8R8 で書き込みに失敗する場合は、以下を順に確認してください。
+
+- USB ケーブルの挿し直し後に COM ポート番号が変わっていないか
+- `platformio.ini` の `upload_port` / `monitor_port` と実機のポートが一致しているか
+- 書き込み開始時に `BOOT` を押しながら `RESET` を短く押し、その後 `BOOT` を離してダウンロードモードに入れられるか
+- それでも不安定な場合は `--upload-port` に加えて `--upload-speed 115200` を指定して再試行する
+
+S3 のシリアルモニタ例:
+
+```bash
+pio run -e normal_s3 -t monitor
+```
 
 ### perf コマンドについて
 
@@ -202,5 +236,8 @@ CI では実機がないため、`upload` / `uploadfs` は実行しません。
 pio run -e normal
 pio run -e perf
 pio run -e release
+pio run -e normal_s3
+pio run -e perf_s3
+pio run -e release_s3
 pio check -e normal
 ```
