@@ -4,14 +4,22 @@
 
 void LRUPendingInterestTable::save(const PITPair& pitPair) {
   const std::string& name = pitPair.getContentName().getValue();
-  std::set<std::string> newDestinations = pitPair.getDestinationId().getValue();
+  RequesterSet mergedDestinations;
+  size_t dropped = 0;
 
-  std::set<std::string> existingDestinations;
+  RequesterSet existingDestinations;
   if (cache.get(name, existingDestinations)) {
-    newDestinations.insert(existingDestinations.begin(), existingDestinations.end());
+    dropped += mergedDestinations.insertFromOther(existingDestinations);
   }
 
-  cache.put(name, newDestinations);
+  dropped += mergedDestinations.insertFromStdSet(pitPair.getDestinationId().getValue());
+
+  cache.put(name, mergedDestinations);
+
+  if (dropped > 0) {
+    LOG_WARNF("[PIT] requester capacity exceeded for key=%s, dropped=%u\n", name.c_str(),
+              static_cast<unsigned int>(dropped));
+  }
 }
 
 void LRUPendingInterestTable::remove(const ContentName& contentName) {
@@ -27,10 +35,10 @@ bool LRUPendingInterestTable::find(const ContentName& contentName) {
 
 DestinationId LRUPendingInterestTable::get(const ContentName& contentName) {
   const std::string& name = contentName.getValue();
-  std::set<std::string> destinations;
+  RequesterSet destinations;
 
   if (cache.get(name, destinations)) {
-    return DestinationId(destinations);
+    return DestinationId(destinations.toStdSet());
   }
 
   return DestinationId::Null();

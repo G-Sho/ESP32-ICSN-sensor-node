@@ -67,6 +67,12 @@ PlatformIO の pre-script（`scripts/generate_node_profile.py`）が、ロール
 - `psram`: 常に PSRAM 優先（確保失敗時の実運用フォールバックは実装側に依存）
 - `heap`: 常に heap
 
+また、`build` には FIB/PIT の固定集合上限を調整する次の項目を持てます。
+
+- `fib_next_hops_per_entry`: FIB 1エントリあたりの次ホップ最大数
+- `pit_requesters_per_entry`: PIT 1エントリあたりの requester 最大数
+- `node_id_max_chars`: ノードIDの最大文字数（超過時は切り詰め）
+
 `uploadfs` 実行時は同じ内容が `data/config.json` にも出力され、LittleFS に書き込まれます。
 
 `custom_node_profile`（既定: `sensor`）または環境変数 `ICSN_NODE_PROFILE` でロールを選択できます。

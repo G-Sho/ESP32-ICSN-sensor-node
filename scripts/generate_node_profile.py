@@ -40,6 +40,18 @@ def _load_profile(profile_path):
         "pit": _to_positive_int(build.get("pit_capacity"), "build.pit_capacity"),
         "cs": _to_positive_int(build.get("cs_capacity"), "build.cs_capacity"),
         "rib": _to_positive_int(build.get("rib_capacity"), "build.rib_capacity"),
+        "fib_next_hops_per_entry": _to_positive_int(
+            build.get("fib_next_hops_per_entry", 4),
+            "build.fib_next_hops_per_entry",
+        ),
+        "pit_requesters_per_entry": _to_positive_int(
+            build.get("pit_requesters_per_entry", 4),
+            "build.pit_requesters_per_entry",
+        ),
+        "node_id_max_chars": _to_positive_int(
+            build.get("node_id_max_chars", 17),
+            "build.node_id_max_chars",
+        ),
     }
 
     memory_policy = {
@@ -102,6 +114,9 @@ constexpr size_t FIB_ENTRIES = {fib};
 constexpr size_t PIT_ENTRIES = {pit};
 constexpr size_t CS_ENTRIES = {cs};
 constexpr size_t RIB_ENTRIES = {rib};
+constexpr size_t FIB_NEXT_HOPS_PER_ENTRY = {fib_next_hops_per_entry};
+constexpr size_t PIT_REQUESTERS_PER_ENTRY = {pit_requesters_per_entry};
+constexpr size_t NODE_ID_MAX_CHARS = {node_id_max_chars};
 }} // namespace BuildCapacity
 
 namespace BuildMemoryPolicy {{
@@ -112,6 +127,9 @@ constexpr bool CS_PAYLOAD_PSRAM_PREFERRED = {cs_payload_psram_preferred};
         pit=capacities["pit"],
         cs=capacities["cs"],
         rib=capacities["rib"],
+        fib_next_hops_per_entry=capacities["fib_next_hops_per_entry"],
+        pit_requesters_per_entry=capacities["pit_requesters_per_entry"],
+        node_id_max_chars=capacities["node_id_max_chars"],
         cs_payload_psram_preferred=(
             "true" if resolved_policy["cs_payload_psram_preferred"] else "false"
         ),

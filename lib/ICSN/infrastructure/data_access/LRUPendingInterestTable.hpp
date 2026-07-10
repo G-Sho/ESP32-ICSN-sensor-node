@@ -3,13 +3,15 @@
 #include "../../BuildProfile.hpp"
 #include "../../config/Config.hpp"
 #include "../../interface/data_access/IPendingInterestTable.hpp"
+#include "FixedNodeIdSet.hpp"
 #include "FixedSizeLRUCache.hpp"
-#include <set>
 #include <string>
 
 class LRUPendingInterestTable : public IPendingInterestTable {
 private:
-  FixedSizeLRUCache<std::set<std::string>, BuildCapacity::PIT_ENTRIES> cache;
+  using RequesterSet =
+      FixedNodeIdSet<BuildCapacity::PIT_REQUESTERS_PER_ENTRY, BuildCapacity::NODE_ID_MAX_CHARS>;
+  FixedSizeLRUCache<RequesterSet, BuildCapacity::PIT_ENTRIES> cache;
 
 public:
   LRUPendingInterestTable() = default;

@@ -3,21 +3,24 @@
 #include "../../BuildProfile.hpp"
 #include "../../config/Config.hpp"
 #include "../../interface/data_access/IForwardingInformationBase.hpp"
+#include "FixedNodeIdSet.hpp"
 #include "FixedSizeLRUCache.hpp"
 #include <algorithm>
-#include <set>
 #include <string>
 
 class LRUForwardingInformationBase : public IForwardingInformationBase {
 private:
+  using NextHopSet =
+      FixedNodeIdSet<BuildCapacity::FIB_NEXT_HOPS_PER_ENTRY, BuildCapacity::NODE_ID_MAX_CHARS>;
+
   // TwoStage用のFIBエントリ構造体
   struct FIBEntry {
     bool isVirtual;
     int maximumDepth;
-    std::set<std::string> nodeIds;
+    NextHopSet nodeIds;
 
     FIBEntry() : isVirtual(false), maximumDepth(0) {}
-    FIBEntry(bool isVir, int maxDepth, const std::set<std::string>& nodes)
+    FIBEntry(bool isVir, int maxDepth, const NextHopSet& nodes)
         : isVirtual(isVir), maximumDepth(maxDepth), nodeIds(nodes) {}
   };
 

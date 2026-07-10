@@ -5,6 +5,9 @@
     "pit_capacity": 32,
     "cs_capacity": 48,
     "rib_capacity": 80,
+    "fib_next_hops_per_entry": 8,
+    "pit_requesters_per_entry": 8,
+    "node_id_max_chars": 17,
     "cs_payload_memory": "auto"
   },
   "runtime": {
