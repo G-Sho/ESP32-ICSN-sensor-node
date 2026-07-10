@@ -67,6 +67,7 @@ void IRAM_ATTR onMemoryTicker() {
 void printMemoryUsage(const char* label) {
   const MemorySnapshot snapshot = collectMemorySnapshot();
   printMemorySnapshot(snapshot, label);
+  csRepository.printPayloadStats();
 }
 
 void printBuildMemoryPolicy() {
