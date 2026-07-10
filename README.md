@@ -61,6 +61,12 @@ PlatformIO の pre-script（`scripts/generate_node_profile.py`）が、ロール
 - Build-time capacity ヘッダ: `.pio/build/<env>/generated/BuildCapacity.hpp`
 - Runtime 設定プレビュー: `.pio/build/<env>/generated/config.json`
 
+`node_profiles/*.json` の `build.cs_payload_memory` で、CS payload の優先配置先を指定できます。
+
+- `auto`: ボードに `BOARD_HAS_PSRAM` がある場合は PSRAM 優先、なければ heap
+- `psram`: 常に PSRAM 優先（確保失敗時の実運用フォールバックは実装側に依存）
+- `heap`: 常に heap
+
 `uploadfs` 実行時は同じ内容が `data/config.json` にも出力され、LittleFS に書き込まれます。
 
 `custom_node_profile`（既定: `sensor`）または環境変数 `ICSN_NODE_PROFILE` でロールを選択できます。

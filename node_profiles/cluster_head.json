@@ -4,7 +4,8 @@
     "fib_capacity": 64,
     "pit_capacity": 32,
     "cs_capacity": 48,
-    "rib_capacity": 80
+    "rib_capacity": 80,
+    "cs_payload_memory": "auto"
   },
   "runtime": {
     "max_virtual_depth": 6,

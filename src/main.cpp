@@ -69,6 +69,11 @@ void printMemoryUsage(const char* label) {
   printMemorySnapshot(snapshot, label);
 }
 
+void printBuildMemoryPolicy() {
+  LOG_INFOF("[MEM-POLICY] CS payload psram preferred: %s\n",
+            BuildMemoryPolicy::CS_PAYLOAD_PSRAM_PREFERRED ? "true" : "false");
+}
+
 void cancelAutoInterestStart() {
   autoInterestTicker.detach();
   autoInterestStartRequested = false;
@@ -167,6 +172,8 @@ void setup() {
     LOG_WARN("Failed to initialize communication stack");
     return;
   }
+
+  printBuildMemoryPolicy();
 
 #if ICSN_BUILD_PROFILE != ICSN_PROFILE_RELEASE
   printMemoryUsage("startup");

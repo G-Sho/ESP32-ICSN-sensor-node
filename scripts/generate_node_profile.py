@@ -42,6 +42,10 @@ def _load_profile(profile_path):
         "rib": _to_positive_int(build.get("rib_capacity"), "build.rib_capacity"),
     }
 
+    memory_policy = {
+        "cs_payload_memory": str(build.get("cs_payload_memory", "auto")).strip().lower(),
+    }
+
     runtime_config = {
         "MAX_VIRTUAL_DEPTH": int(runtime.get("max_virtual_depth", 5)),
         "HOP_COUNT_THRESHOLD": int(runtime.get("hop_count_threshold", 10)),
@@ -51,10 +55,44 @@ def _load_profile(profile_path):
         "fib_init": runtime.get("fib_init", []),
     }
 
-    return capacities, runtime_config
+    return capacities, runtime_config, memory_policy
 
 
-def _write_build_header(header_path, capacities):
+def _board_has_psram():
+    board_cfg = env.BoardConfig()
+    extra_flags = board_cfg.get("build.extra_flags", [])
+    if isinstance(extra_flags, str):
+        extra_flags = [extra_flags]
+
+    for flag in extra_flags:
+        if "BOARD_HAS_PSRAM" in str(flag):
+            return True
+
+    return False
+
+
+def _resolve_memory_policy(memory_policy):
+    raw = memory_policy.get("cs_payload_memory", "auto")
+    valid = {"auto", "heap", "psram"}
+    if raw not in valid:
+        raise ValueError(
+            "build.cs_payload_memory must be one of: auto, heap, psram"
+        )
+
+    if raw == "heap":
+        return {"cs_payload_psram_preferred": False, "effective_mode": "heap"}
+
+    if raw == "psram":
+        return {"cs_payload_psram_preferred": True, "effective_mode": "psram"}
+
+    use_psram = _board_has_psram()
+    return {
+        "cs_payload_psram_preferred": use_psram,
+        "effective_mode": "psram" if use_psram else "heap",
+    }
+
+
+def _write_build_header(header_path, capacities, resolved_policy):
     content = """#pragma once
 
 #include <cstddef>
@@ -65,11 +103,18 @@ constexpr size_t PIT_ENTRIES = {pit};
 constexpr size_t CS_ENTRIES = {cs};
 constexpr size_t RIB_ENTRIES = {rib};
 }} // namespace BuildCapacity
+
+namespace BuildMemoryPolicy {{
+constexpr bool CS_PAYLOAD_PSRAM_PREFERRED = {cs_payload_psram_preferred};
+}} // namespace BuildMemoryPolicy
 """.format(
         fib=capacities["fib"],
         pit=capacities["pit"],
         cs=capacities["cs"],
         rib=capacities["rib"],
+        cs_payload_psram_preferred=(
+            "true" if resolved_policy["cs_payload_psram_preferred"] else "false"
+        ),
     )
     header_path.parent.mkdir(parents=True, exist_ok=True)
     header_path.write_text(content, encoding="utf-8")
@@ -92,13 +137,14 @@ def main():
     if not profile_path.exists():
         raise FileNotFoundError(f"Node profile not found: {profile_path}")
 
-    capacities, runtime_config = _load_profile(profile_path)
+    capacities, runtime_config, memory_policy = _load_profile(profile_path)
+    resolved_policy = _resolve_memory_policy(memory_policy)
 
     generated_dir = build_dir / "generated"
     build_header = generated_dir / "BuildCapacity.hpp"
     runtime_json_preview = generated_dir / "config.json"
 
-    _write_build_header(build_header, capacities)
+    _write_build_header(build_header, capacities, resolved_policy)
     _write_runtime_json(runtime_json_preview, runtime_config)
 
     # Ensure the env-specific generated header is preferred over fallback headers.
@@ -113,13 +159,14 @@ def main():
         _write_runtime_json(runtime_json, runtime_config)
 
     print(
-        "[node-profile] env={env_name} role={role} capacities=(fib={fib},pit={pit},cs={cs},rib={rib}) preview={preview}".format(
+        "[node-profile] env={env_name} role={role} capacities=(fib={fib},pit={pit},cs={cs},rib={rib}) cs_payload={cs_payload_mode} preview={preview}".format(
             env_name=pioenv,
             role=profile_name,
             fib=capacities["fib"],
             pit=capacities["pit"],
             cs=capacities["cs"],
             rib=capacities["rib"],
+            cs_payload_mode=resolved_policy["effective_mode"],
             preview=runtime_json_preview,
         )
     )
