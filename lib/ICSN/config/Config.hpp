@@ -10,9 +10,9 @@ constexpr size_t ESP_NOW_LMK_LEN = 16;
 
 /// @brief ピア固有LMK設定エントリ
 struct PeerLMKConfig {
-  uint8_t mac[6]; ///< ピアのMACアドレス
+  uint8_t mac[6];               ///< ピアのMACアドレス
   uint8_t lmk[ESP_NOW_LMK_LEN]; ///< このピア向けのLocal Master Key
-  bool valid; ///< エントリが有効かどうか
+  bool valid;                   ///< エントリが有効かどうか
 };
 
 /// @brief ピア固有LMKの最大登録数
