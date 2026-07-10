@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../../config/Config.hpp"
-#include "../../entity/routing_table/RIBNode.hpp"
 #include "../../interface/data_access/IForwardingInformationBase.hpp"
 #include "../../interface/data_access/IRIB.hpp"
+#include "FixedNodeIdSet.hpp"
 #include <string>
 #include <unordered_map>
 
@@ -12,8 +12,18 @@
 ///          FIB への real/virtual エントリ書き込みを担う Control plane 実装。
 class PrefixTreeRIB : public IRIB {
 private:
+  using NextHopSet =
+      FixedNodeIdSet<BuildCapacity::RIB_NEXT_HOPS_PER_NODE, BuildCapacity::NODE_ID_MAX_CHARS>;
+
+  struct RIBEntry {
+    NextHopSet nextHopIds;
+    bool isReal;
+
+    RIBEntry() : isReal(false) {}
+  };
+
   IForwardingInformationBase& fibRepository;
-  std::unordered_map<std::string, RIBNode> tree;
+  std::unordered_map<std::string, RIBEntry> tree;
 
   /// @brief コンテンツ名から指定深さのプレフィックスを抽出する
   static std::string extractPrefix(const std::string& name, int prefixDepth);
@@ -27,4 +37,6 @@ public:
 
   /// @brief ルートを削除し、対応する FIB エントリを整理する
   void removeRoute(const std::string& contentName) override;
+
+  void printUsageStats() const;
 };

@@ -7,6 +7,7 @@
     "rib_capacity": 16,
     "fib_next_hops_per_entry": 4,
     "pit_requesters_per_entry": 4,
+    "rib_next_hops_per_node": 4,
     "node_id_max_chars": 17,
     "cs_payload_memory": "auto"
   },

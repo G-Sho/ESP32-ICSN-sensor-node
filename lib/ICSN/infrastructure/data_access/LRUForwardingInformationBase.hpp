@@ -54,4 +54,11 @@ public:
     cache.printCache();
     CLI_PRINTLN("======================");
   }
+
+  void printUsageStats() const {
+    CLI_PRINTF("[FIB] entries=%u/%u, next_hops_per_entry=%u\n",
+               static_cast<unsigned int>(cache.size()),
+               static_cast<unsigned int>(BuildCapacity::FIB_ENTRIES),
+               static_cast<unsigned int>(BuildCapacity::FIB_NEXT_HOPS_PER_ENTRY));
+  }
 };

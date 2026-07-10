@@ -52,6 +52,10 @@ def _load_profile(profile_path):
             build.get("node_id_max_chars", 17),
             "build.node_id_max_chars",
         ),
+        "rib_next_hops_per_node": _to_positive_int(
+            build.get("rib_next_hops_per_node", 4),
+            "build.rib_next_hops_per_node",
+        ),
     }
 
     memory_policy = {
@@ -117,6 +121,7 @@ constexpr size_t RIB_ENTRIES = {rib};
 constexpr size_t FIB_NEXT_HOPS_PER_ENTRY = {fib_next_hops_per_entry};
 constexpr size_t PIT_REQUESTERS_PER_ENTRY = {pit_requesters_per_entry};
 constexpr size_t NODE_ID_MAX_CHARS = {node_id_max_chars};
+constexpr size_t RIB_NEXT_HOPS_PER_NODE = {rib_next_hops_per_node};
 }} // namespace BuildCapacity
 
 namespace BuildMemoryPolicy {{
@@ -130,6 +135,7 @@ constexpr bool CS_PAYLOAD_PSRAM_PREFERRED = {cs_payload_psram_preferred};
         fib_next_hops_per_entry=capacities["fib_next_hops_per_entry"],
         pit_requesters_per_entry=capacities["pit_requesters_per_entry"],
         node_id_max_chars=capacities["node_id_max_chars"],
+        rib_next_hops_per_node=capacities["rib_next_hops_per_node"],
         cs_payload_psram_preferred=(
             "true" if resolved_policy["cs_payload_psram_preferred"] else "false"
         ),

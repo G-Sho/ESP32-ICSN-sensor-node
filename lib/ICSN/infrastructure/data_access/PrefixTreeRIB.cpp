@@ -29,9 +29,11 @@ void PrefixTreeRIB::addRoute(const std::string& contentName, const std::string& 
   }
 
   // RIB を更新
-  RIBNode& node = tree[contentName];
+  RIBEntry& node = tree[contentName];
   node.isReal = true;
-  node.nextHopIds.insert(nextHopId);
+  if (!node.nextHopIds.insert(nextHopId)) {
+    LOG_WARNF("[RIB] next-hop capacity exceeded for key=%s\n", contentName.c_str());
+  }
 
   int depth = std::count(contentName.begin(), contentName.end(), '/');
 
@@ -47,6 +49,13 @@ void PrefixTreeRIB::addRoute(const std::string& contentName, const std::string& 
     FIBPair fibPair(ContentName(contentName), DestinationId({nextHopId}));
     fibRepository.save(fibPair);
   }
+}
+
+void PrefixTreeRIB::printUsageStats() const {
+  CLI_PRINTF("[RIB] entries=%u/%u, next_hops_per_node=%u\n",
+             static_cast<unsigned int>(tree.size()),
+             static_cast<unsigned int>(BuildCapacity::RIB_ENTRIES),
+             static_cast<unsigned int>(BuildCapacity::RIB_NEXT_HOPS_PER_NODE));
 }
 
 void PrefixTreeRIB::removeRoute(const std::string& contentName) {

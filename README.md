@@ -71,6 +71,7 @@ PlatformIO の pre-script（`scripts/generate_node_profile.py`）が、ロール
 
 - `fib_next_hops_per_entry`: FIB 1エントリあたりの次ホップ最大数
 - `pit_requesters_per_entry`: PIT 1エントリあたりの requester 最大数
+- `rib_next_hops_per_node`: RIB 1ノードあたりの次ホップ最大数
 - `node_id_max_chars`: ノードIDの最大文字数（超過時は切り詰め）
 
 `uploadfs` 実行時は同じ内容が `data/config.json` にも出力され、LittleFS に書き込まれます。

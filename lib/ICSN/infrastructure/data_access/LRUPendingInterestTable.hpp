@@ -29,4 +29,11 @@ public:
     CLI_PRINTLN("=== Pending Interest Table ===");
     cache.printCache();
   }
+
+  void printUsageStats() const {
+    CLI_PRINTF("[PIT] entries=%u/%u, requesters_per_entry=%u\n",
+               static_cast<unsigned int>(cache.size()),
+               static_cast<unsigned int>(BuildCapacity::PIT_ENTRIES),
+               static_cast<unsigned int>(BuildCapacity::PIT_REQUESTERS_PER_ENTRY));
+  }
 };
