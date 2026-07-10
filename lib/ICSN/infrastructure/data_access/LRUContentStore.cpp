@@ -171,9 +171,8 @@ void LRUContentStore::clear() {
 
 void LRUContentStore::printPayloadStats() const {
   const PayloadUsageStats stats = collectPayloadUsageStats();
-  CLI_PRINTF("[CS] payload slots=%u/%u, heap=%uB, psram=%uB\n",
-             static_cast<unsigned int>(stats.usedSlots),
-             static_cast<unsigned int>(BuildCapacity::CS_ENTRIES),
-             static_cast<unsigned int>(stats.heapBytes),
-             static_cast<unsigned int>(stats.psramBytes));
+  CLI_PRINTF(
+      "[CS] payload slots=%u/%u, heap=%uB, psram=%uB\n", static_cast<unsigned int>(stats.usedSlots),
+      static_cast<unsigned int>(BuildCapacity::CS_ENTRIES),
+      static_cast<unsigned int>(stats.heapBytes), static_cast<unsigned int>(stats.psramBytes));
 }

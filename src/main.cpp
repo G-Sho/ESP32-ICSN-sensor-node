@@ -30,7 +30,7 @@ constexpr float INTEREST_INTERVAL_SEC = 10.0f;
 constexpr float AUTO_INTEREST_DELAY_SEC = 40.0f;
 constexpr bool AUTO_SENSOR_ENABLED = false; // 起動後の自動センサデータ読み取りを有効にするかどうか
 constexpr bool AUTO_INTEREST_ENABLED = false; // 起動後の自動INTEREST送信を有効にするかどうか
-constexpr uint32_t LOOP_IDLE_DELAY_MS = 5; // Allow IDLE task scheduling & reduce active time
+constexpr uint32_t LOOP_IDLE_DELAY_MS = 5;    // Allow IDLE task scheduling & reduce active time
 #if ICSN_PERF_ENABLED
 constexpr float MEMORY_LOG_INTERVAL_SEC = 30.0f;
 #endif

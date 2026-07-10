@@ -52,8 +52,7 @@ void PrefixTreeRIB::addRoute(const std::string& contentName, const std::string& 
 }
 
 void PrefixTreeRIB::printUsageStats() const {
-  CLI_PRINTF("[RIB] entries=%u/%u, next_hops_per_node=%u\n",
-             static_cast<unsigned int>(tree.size()),
+  CLI_PRINTF("[RIB] entries=%u/%u, next_hops_per_node=%u\n", static_cast<unsigned int>(tree.size()),
              static_cast<unsigned int>(BuildCapacity::RIB_ENTRIES),
              static_cast<unsigned int>(BuildCapacity::RIB_NEXT_HOPS_PER_NODE));
 }
