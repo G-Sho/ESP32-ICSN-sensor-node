@@ -9,11 +9,10 @@
 
 class LRUPendingInterestTable : public IPendingInterestTable {
 private:
-  FixedSizeLRUCache<std::set<std::string>, MAX_PIT_TABLE_SIZE> cache;
+  FixedSizeLRUCache<std::set<std::string>, BuildCapacity::PIT_ENTRIES> cache;
 
 public:
-  /// @brief コンストラクタ（デフォルト activeSize は MAX_PIT_TABLE_SIZE）
-  LRUPendingInterestTable(size_t activeSize = MAX_PIT_TABLE_SIZE) : cache(activeSize) {}
+  LRUPendingInterestTable() = default;
 
   void save(const PITPair& pitPair) override;
   void remove(const ContentName& contentName) override;
@@ -27,13 +26,5 @@ public:
   void printCache() const {
     CLI_PRINTLN("=== Pending Interest Table ===");
     cache.printCache();
-  }
-
-  void setActiveSize(size_t size) override {
-    cache.setActiveSize(size);
-  }
-
-  size_t getActiveSize() const override {
-    return cache.getActiveSize();
   }
 };

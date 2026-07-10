@@ -1,0 +1,19 @@
+{
+  "role": "cluster_head",
+  "build": {
+    "fib_capacity": 64,
+    "pit_capacity": 32,
+    "cs_capacity": 48,
+    "rib_capacity": 80
+  },
+  "runtime": {
+    "max_virtual_depth": 6,
+    "hop_count_threshold": 12,
+    "security": {
+      "pmk": "0123456789abcdef0123456789abcdef",
+      "lmk": "fedcba9876543210fedcba9876543210"
+    },
+    "peers": [],
+    "fib_init": []
+  }
+}

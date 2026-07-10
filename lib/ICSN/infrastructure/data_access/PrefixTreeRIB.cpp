@@ -22,8 +22,8 @@ std::string PrefixTreeRIB::extractPrefix(const std::string& name, int prefixDept
 
 void PrefixTreeRIB::addRoute(const std::string& contentName, const std::string& nextHopId) {
   // RIB ノード上限チェック
-  if (tree.find(contentName) == tree.end() && tree.size() >= MAX_RIB_NODE_SIZE) {
-    LOG_WARNF("[RIB] Capacity full (%u), cannot add: %s\n", (unsigned)MAX_RIB_NODE_SIZE,
+  if (tree.find(contentName) == tree.end() && tree.size() >= BuildCapacity::RIB_ENTRIES) {
+    LOG_WARNF("[RIB] Capacity full (%u), cannot add: %s\n", (unsigned)BuildCapacity::RIB_ENTRIES,
               contentName.c_str());
     return;
   }

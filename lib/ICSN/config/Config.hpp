@@ -1,14 +1,8 @@
 #pragma once
 
+#include "BuildCapacity.hpp"
 #include <cstddef>
 #include <cstdint>
-
-// コンパイル時定数の定義
-// 実装側の最大割当サイズ。systemConfig の値で実使用上限を制御
-constexpr size_t MAX_CS_TABLE_SIZE = 80;
-constexpr size_t MAX_PIT_TABLE_SIZE = 50;
-constexpr size_t MAX_FIB_TABLE_SIZE = 50;
-constexpr size_t MAX_RIB_NODE_SIZE = 100;
 
 // セキュリティ関連定数
 constexpr size_t ESP_NOW_PMK_LEN = 16;
@@ -35,9 +29,6 @@ struct FibInitEntry {
 constexpr size_t MAX_FIB_INIT_ENTRIES = 10;
 
 struct SystemConfig {
-  size_t maxPitTableSize = MAX_PIT_TABLE_SIZE;
-  size_t maxCsTableSize = MAX_CS_TABLE_SIZE;
-  size_t maxFibTableSize = MAX_FIB_TABLE_SIZE;
   int maxVirtualDepth = 5;
   int hopCountThreshold = 10;
 

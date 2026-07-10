@@ -8,11 +8,10 @@
 
 class LRUContentStore : public IContentStore {
 private:
-  FixedSizeLRUCache<std::string, MAX_CS_TABLE_SIZE> cache;
+  FixedSizeLRUCache<std::string, BuildCapacity::CS_ENTRIES> cache;
 
 public:
-  /// @brief コンストラクタ（デフォルト activeSize は MAX_CS_TABLE_SIZE）
-  LRUContentStore(size_t activeSize = MAX_CS_TABLE_SIZE) : cache(activeSize) {}
+  LRUContentStore() = default;
 
   void save(const CSPair& csPair) override;
   void remove(const ContentName& contentName) override;
@@ -26,13 +25,5 @@ public:
   void printCache() const {
     CLI_PRINTLN("=== Content Store ===");
     cache.printCache();
-  }
-
-  void setActiveSize(size_t size) override {
-    cache.setActiveSize(size);
-  }
-
-  size_t getActiveSize() const override {
-    return cache.getActiveSize();
   }
 };
