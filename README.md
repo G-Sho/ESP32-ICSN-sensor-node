@@ -49,29 +49,39 @@ ESP-NOW の WPA2 ベース暗号化を有効化します。
 - `UseCaseInteractor` は Data Access 具象（`LRUContentStore` 等）へ直接依存せず、インターフェース経由でアクセスする。
 - Entity は外側レイヤー（controller / infrastructure / Arduino 固有 API）に依存しない。
 
+## ノードロール設定（Single Source of Truth）
+
+ノードロールごとの設定は `node_profiles/` を単一情報源とします。
+
+- `node_profiles/sensor.json`
+- `node_profiles/cluster_head.json`
+
+PlatformIO の pre-script（`scripts/generate_node_profile.py`）が、ロール設定から以下を生成します。
+
+- Build-time capacity ヘッダ: `.pio/build/<env>/generated/BuildCapacity.hpp`
+- Runtime 設定プレビュー: `.pio/build/<env>/generated/config.json`
+
+`uploadfs` 実行時は同じ内容が `data/config.json` にも出力され、LittleFS に書き込まれます。
+
+`custom_node_profile`（既定: `sensor`）または環境変数 `ICSN_NODE_PROFILE` でロールを選択できます。
+
 ## 設定ファイル `data/config.json`
 
-起動時に LittleFS から読み込まれる実行時設定です。`pio run -e <env> -t uploadfs` でデバイスへ書き込みます。
+起動時に LittleFS から読み込まれる実行時設定です。容量（FIB/PIT/CS/RIB）は Build-time に確定するため、`config.json` には runtime パラメータのみを持たせます。
 
 ```json
 {
-  "MAX_PIT_TABLE_SIZE": 50,
-  "MAX_CS_TABLE_SIZE": 80,
-  "MAX_FIB_TABLE_SIZE": 50,
-    "MAX_VIRTUAL_DEPTH": 5,
-    "HOP_COUNT_THRESHOLD": 10,
-    "PMK": "0123456789abcdef0123456789abcdef",
-    "LMK": "fedcba9876543210fedcba9876543210",
-    "peers": [],
-    "fib_init": []
+  "MAX_VIRTUAL_DEPTH": 5,
+  "HOP_COUNT_THRESHOLD": 10,
+  "PMK": "0123456789abcdef0123456789abcdef",
+  "LMK": "fedcba9876543210fedcba9876543210",
+  "peers": [],
+  "fib_init": []
 }
 ```
 
 | フィールド | 説明 |
 |-----------|------|
-| `MAX_PIT_TABLE_SIZE` | PIT（Pending Interest Table）の最大エントリ数（有効範囲: 0-50） |
-| `MAX_CS_TABLE_SIZE` | CS（Content Store）の最大エントリ数（有効範囲: 0-80） |
-| `MAX_FIB_TABLE_SIZE` | FIB（Forwarding Information Base）の最大エントリ数（有効範囲: 0-50） |
 | `MAX_VIRTUAL_DEPTH` | 仮想深さの上限（ルーティング制御用） |
 | `HOP_COUNT_THRESHOLD` | ホップカウントの上限（ループ抑制） |
 | `PMK` | ESP-NOW Global PMK（32 文字 hex = 16 バイト）。全ピア共通の暗号化マスターキー |
@@ -144,6 +154,10 @@ data/
 ```bash
 # ファイルシステム書き込み
 pio run -e normal -t uploadfs
+
+# ノードロールを切り替えてビルド（例: cluster_head）
+set ICSN_NODE_PROFILE=cluster_head
+pio run -e normal
 
 # normal / perf / release のいずれかを選んで書き込み
 pio run -e normal  -t upload

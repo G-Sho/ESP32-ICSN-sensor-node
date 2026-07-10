@@ -56,9 +56,6 @@ bool loadSystemConfig(const char* path) {
   if (deserializeJson(doc, file))
     return false;
 
-  systemConfig.maxPitTableSize = doc["MAX_PIT_TABLE_SIZE"] | MAX_PIT_TABLE_SIZE;
-  systemConfig.maxCsTableSize = doc["MAX_CS_TABLE_SIZE"] | MAX_CS_TABLE_SIZE;
-  systemConfig.maxFibTableSize = doc["MAX_FIB_TABLE_SIZE"] | MAX_FIB_TABLE_SIZE;
   systemConfig.maxVirtualDepth = doc["MAX_VIRTUAL_DEPTH"] | 5;
   systemConfig.hopCountThreshold = doc["HOP_COUNT_THRESHOLD"] | 10;
 

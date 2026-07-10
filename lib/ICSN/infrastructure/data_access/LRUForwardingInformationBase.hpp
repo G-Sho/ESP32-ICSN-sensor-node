@@ -21,7 +21,7 @@ private:
         : isVirtual(isVir), maximumDepth(maxDepth), nodeIds(nodes) {}
   };
 
-  FixedSizeLRUCache<FIBEntry, MAX_FIB_TABLE_SIZE> cache;
+  FixedSizeLRUCache<FIBEntry, BuildCapacity::FIB_ENTRIES> cache;
 
   // TwoStageアルゴリズム用ヘルパー関数
   std::string extractPrefix(const std::string& name, int prefixDepth) const;
@@ -38,8 +38,7 @@ private:
   }
 
 public:
-  /// @brief コンストラクタ（デフォルト activeSize は MAX_FIB_TABLE_SIZE）
-  LRUForwardingInformationBase(size_t activeSize = MAX_FIB_TABLE_SIZE) : cache(activeSize) {}
+  LRUForwardingInformationBase() = default;
 
   void save(const FIBPair& fibPair) override;
   void saveVirtualEntry(const ContentName& prefix, int maximumDepth) override;
@@ -51,13 +50,5 @@ public:
     CLI_PRINTLN("=== Forwarding Information Base (TwoStage + LRU) ===");
     cache.printCache();
     CLI_PRINTLN("======================");
-  }
-
-  void setActiveSize(size_t size) override {
-    cache.setActiveSize(size);
-  }
-
-  size_t getActiveSize() const override {
-    return cache.getActiveSize();
   }
 };

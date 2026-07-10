@@ -34,7 +34,7 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData& inputData) 
                       VALUE_NA, VALUE_NA);
   }
 
-  if (systemConfig.maxCsTableSize > 0 && csRepository.find(contentName)) {
+  if (csRepository.find(contentName)) {
     Content res = csRepository.get(contentName);
     // CSからデータ送信 (新しいDATAパケットなのでホップ数=0)
     return makeOutput(*destinationId.getValue().begin(), {senderId.getValue()},
@@ -71,10 +71,8 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData& inputData) {
   // DATA受信時の処理
   if (pitRepository.find(contentName.getValue())) {
     // CSにキャッシュ
-    if (systemConfig.maxCsTableSize > 0) {
-      CSPair csPair(contentName, content);
-      csRepository.save(csPair);
-    }
+    CSPair csPair(contentName, content);
+    csRepository.save(csPair);
 
     // PITに基づいてデータ送信 (転送なのでホップ数+1)
     return makeOutput(*destinationId.getValue().begin(), pitRepository.get(contentName).getValue(),
@@ -93,10 +91,8 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData& inputData) {
 void UseCaseInteractor::handleSensorDataReceive(const InputData& inputData) {
   ContentName contentName(inputData.contentName);
   Content content(inputData.content);
-  if (systemConfig.maxCsTableSize > 0) {
-    CSPair csPair(contentName, content);
-    csRepository.save(csPair);
-  }
+  CSPair csPair(contentName, content);
+  csRepository.save(csPair);
 
   // csRepository.printCache();
 }
