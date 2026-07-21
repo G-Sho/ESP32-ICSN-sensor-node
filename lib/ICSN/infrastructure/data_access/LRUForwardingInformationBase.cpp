@@ -66,14 +66,22 @@ void LRUForwardingInformationBase::save(const FIBPair& fibPair) {
   const std::string& name = fibPair.getContentName().getValue();
   const std::set<std::string>& nodeIds = fibPair.getDestinationId().getValue();
   int depth = std::count(name.begin(), name.end(), '/');
+  size_t dropped = 0;
 
   FIBEntry existing;
   if (cache.get(name, existing)) {
     existing.isVirtual = false;
-    existing.nodeIds.insert(nodeIds.begin(), nodeIds.end());
+    dropped += existing.nodeIds.insertFromStdSet(nodeIds);
     cache.put(name, existing);
   } else {
-    cache.put(name, FIBEntry(false, depth, nodeIds));
+    NextHopSet nextHops;
+    dropped += nextHops.insertFromStdSet(nodeIds);
+    cache.put(name, FIBEntry(false, depth, nextHops));
+  }
+
+  if (dropped > 0) {
+    LOG_WARNF("[FIB] next-hop capacity exceeded for key=%s, dropped=%u\n", name.c_str(),
+              static_cast<unsigned int>(dropped));
   }
 }
 
@@ -108,7 +116,7 @@ DestinationId LRUForwardingInformationBase::get(const ContentName& contentName) 
   if (fibLpmLookup(name, nameDepth, systemConfig.maxVirtualDepth, result)) {
     // LRUキャッシュを更新（アクセス順序を更新）
     cache.put(name, result);
-    return DestinationId(result.nodeIds);
+    return DestinationId(result.nodeIds.toStdSet());
   }
 
   return DestinationId::Null();

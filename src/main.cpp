@@ -67,6 +67,15 @@ void IRAM_ATTR onMemoryTicker() {
 void printMemoryUsage(const char* label) {
   const MemorySnapshot snapshot = collectMemorySnapshot();
   printMemorySnapshot(snapshot, label);
+  fibRepository.printUsageStats();
+  pitRepository.printUsageStats();
+  ribRepository.printUsageStats();
+  csRepository.printPayloadStats();
+}
+
+void printBuildMemoryPolicy() {
+  LOG_INFOF("[MEM-POLICY] CS payload psram preferred: %s\n",
+            BuildMemoryPolicy::CS_PAYLOAD_PSRAM_PREFERRED ? "true" : "false");
 }
 
 void cancelAutoInterestStart() {
@@ -167,6 +176,8 @@ void setup() {
     LOG_WARN("Failed to initialize communication stack");
     return;
   }
+
+  printBuildMemoryPolicy();
 
 #if ICSN_BUILD_PROFILE != ICSN_PROFILE_RELEASE
   printMemoryUsage("startup");
