@@ -1,4 +1,5 @@
 #include "Config.hpp"
+#include "BuildProfile.hpp"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
@@ -43,6 +44,112 @@ static bool macStringToBytes(const char* macStr, uint8_t out[6]) {
   return true;
 }
 
+static void resetSecurityConfig() {
+  systemConfig.espNowEncryptionEnabled = false;
+  systemConfig.espNowPmkConfigured = false;
+  memset(systemConfig.espNowPmk, 0, sizeof(systemConfig.espNowPmk));
+
+  systemConfig.espNowDefaultLmkConfigured = false;
+  memset(systemConfig.espNowDefaultLmk, 0, sizeof(systemConfig.espNowDefaultLmk));
+  systemConfig.espNowPeerLmkCount = 0;
+  memset(systemConfig.espNowPeerLmkEntries, 0, sizeof(systemConfig.espNowPeerLmkEntries));
+
+  systemConfig.hmacAuthenticationEnabled = false;
+  systemConfig.hmacDefaultKeyConfigured = false;
+  memset(systemConfig.hmacDefaultKey, 0, sizeof(systemConfig.hmacDefaultKey));
+  systemConfig.hmacPeerKeyCount = 0;
+  memset(systemConfig.hmacPeerKeyEntries, 0, sizeof(systemConfig.hmacPeerKeyEntries));
+}
+
+static size_t loadPeerKeys(JsonVariantConst peersNode, const char* keyName, PeerKeyConfig* outEntries,
+                           size_t maxEntries) {
+  if (!peersNode.is<JsonArrayConst>() || outEntries == nullptr || keyName == nullptr) {
+    return 0;
+  }
+
+  size_t count = 0;
+  JsonArrayConst peers = peersNode.as<JsonArrayConst>();
+  for (JsonObjectConst peer : peers) {
+    if (count >= maxEntries) {
+      break;
+    }
+
+    const char* macStr = peer["mac"] | "";
+    const char* keyStr = peer[keyName] | "";
+
+    PeerKeyConfig& entry = outEntries[count];
+    if (macStringToBytes(macStr, entry.mac) && hexStringToBytes(keyStr, entry.key, ESP_NOW_LMK_LEN)) {
+      entry.valid = true;
+      count++;
+    }
+  }
+
+  return count;
+}
+
+static void loadLegacySecurityConfig(const JsonDocument& doc) {
+  const char* pmkStr = doc["PMK"] | "";
+  const char* lmkStr = doc["LMK"] | "";
+
+  const bool pmkValid = hexStringToBytes(pmkStr, systemConfig.espNowPmk, ESP_NOW_PMK_LEN);
+  const bool lmkValid = hexStringToBytes(lmkStr, systemConfig.espNowDefaultLmk, ESP_NOW_LMK_LEN);
+
+  systemConfig.espNowPmkConfigured = pmkValid;
+  systemConfig.espNowDefaultLmkConfigured = lmkValid;
+  systemConfig.espNowEncryptionEnabled = pmkValid;
+
+  if (lmkValid) {
+    memcpy(systemConfig.hmacDefaultKey, systemConfig.espNowDefaultLmk, ICSN_HMAC_KEY_LEN);
+    systemConfig.hmacDefaultKeyConfigured = true;
+    systemConfig.hmacAuthenticationEnabled = true;
+  }
+
+  systemConfig.espNowPeerLmkCount =
+      loadPeerKeys(doc["peers"], "lmk", systemConfig.espNowPeerLmkEntries, MAX_PEER_KEY_ENTRIES);
+
+  systemConfig.hmacPeerKeyCount =
+      loadPeerKeys(doc["peers"], "lmk", systemConfig.hmacPeerKeyEntries, MAX_PEER_KEY_ENTRIES);
+
+  if (pmkValid || lmkValid || systemConfig.espNowPeerLmkCount > 0) {
+    LOG_WARN("[SECURITY] Deprecated config detected. Use esp_now_security / icsn_security.");
+  }
+}
+
+static void loadSeparatedSecurityConfig(const JsonDocument& doc) {
+  JsonObjectConst espNowSecurity = doc["esp_now_security"].as<JsonObjectConst>();
+  JsonObjectConst icsnSecurity = doc["icsn_security"].as<JsonObjectConst>();
+
+  const bool espNowEnabledFlag = espNowSecurity["enabled"] | false;
+  const char* pmkStr = espNowSecurity["pmk"] | "";
+  const char* defaultLmkStr = espNowSecurity["default_lmk"] | "";
+
+  systemConfig.espNowPmkConfigured = hexStringToBytes(pmkStr, systemConfig.espNowPmk, ESP_NOW_PMK_LEN);
+  systemConfig.espNowDefaultLmkConfigured =
+      hexStringToBytes(defaultLmkStr, systemConfig.espNowDefaultLmk, ESP_NOW_LMK_LEN);
+  systemConfig.espNowPeerLmkCount = loadPeerKeys(espNowSecurity["peers"], "lmk",
+                                                 systemConfig.espNowPeerLmkEntries,
+                                                 MAX_PEER_KEY_ENTRIES);
+
+  systemConfig.espNowEncryptionEnabled = espNowEnabledFlag && systemConfig.espNowPmkConfigured;
+  if (espNowEnabledFlag && !systemConfig.espNowPmkConfigured) {
+    LOG_WARN("[SECURITY] esp_now_security.enabled is true but PMK is invalid or missing.");
+  }
+
+  const bool hmacEnabledFlag = icsnSecurity["hmac_enabled"] | false;
+  const char* defaultHmacKeyStr = icsnSecurity["default_hmac_key"] | "";
+  systemConfig.hmacDefaultKeyConfigured =
+      hexStringToBytes(defaultHmacKeyStr, systemConfig.hmacDefaultKey, ICSN_HMAC_KEY_LEN);
+  systemConfig.hmacPeerKeyCount = loadPeerKeys(icsnSecurity["peers"], "hmac_key",
+                                               systemConfig.hmacPeerKeyEntries,
+                                               MAX_PEER_KEY_ENTRIES);
+
+  systemConfig.hmacAuthenticationEnabled =
+      hmacEnabledFlag && (systemConfig.hmacDefaultKeyConfigured || systemConfig.hmacPeerKeyCount > 0);
+  if (hmacEnabledFlag && !systemConfig.hmacAuthenticationEnabled) {
+    LOG_WARN("[SECURITY] icsn_security.hmac_enabled is true but HMAC key is missing.");
+  }
+}
+
 bool loadSystemConfig(const char* path) {
   if (!LittleFS.begin())
     return false;
@@ -59,37 +166,11 @@ bool loadSystemConfig(const char* path) {
   systemConfig.maxVirtualDepth = doc["MAX_VIRTUAL_DEPTH"] | 5;
   systemConfig.hopCountThreshold = doc["HOP_COUNT_THRESHOLD"] | 10;
 
-  // セキュリティ設定の読み込み
-  const char* pmkStr = doc["PMK"] | "";
-  const char* lmkStr = doc["LMK"] | "";
-
-  if (strlen(pmkStr) == ESP_NOW_PMK_LEN * 2 && strlen(lmkStr) == ESP_NOW_LMK_LEN * 2) {
-    if (hexStringToBytes(pmkStr, systemConfig.pmk, ESP_NOW_PMK_LEN) &&
-        hexStringToBytes(lmkStr, systemConfig.lmk, ESP_NOW_LMK_LEN)) {
-      systemConfig.encryptionEnabled = true;
-    }
-  }
-
-  // ピア固有LMK設定の読み込み
-  systemConfig.peerLmkCount = 0;
-  memset(systemConfig.peerLmkEntries, 0, sizeof(systemConfig.peerLmkEntries));
-
-  if (doc.containsKey("peers")) {
-    JsonArray peers = doc["peers"].as<JsonArray>();
-    for (JsonObject peer : peers) {
-      if (systemConfig.peerLmkCount >= MAX_PEER_LMK_ENTRIES)
-        break;
-
-      const char* macStr = peer["mac"] | "";
-      const char* peerLmk = peer["lmk"] | "";
-
-      PeerLMKConfig& entry = systemConfig.peerLmkEntries[systemConfig.peerLmkCount];
-      if (macStringToBytes(macStr, entry.mac) &&
-          hexStringToBytes(peerLmk, entry.lmk, ESP_NOW_LMK_LEN)) {
-        entry.valid = true;
-        systemConfig.peerLmkCount++;
-      }
-    }
+  resetSecurityConfig();
+  if (doc.containsKey("esp_now_security") || doc.containsKey("icsn_security")) {
+    loadSeparatedSecurityConfig(doc);
+  } else {
+    loadLegacySecurityConfig(doc);
   }
 
   // FIB初期エントリの読み込み

@@ -34,6 +34,55 @@ def _load_profile(profile_path):
     build = profile.get("build", {})
     runtime = profile.get("runtime", {})
     security = runtime.get("security", {})
+    esp_now_security = runtime.get("esp_now_security", {})
+    icsn_security = runtime.get("icsn_security", {})
+    legacy_peers = runtime.get("peers", [])
+
+    if esp_now_security:
+        esp_now_cfg = {
+            "enabled": bool(esp_now_security.get("enabled", False)),
+            "pmk": str(esp_now_security.get("pmk", "")),
+            "default_lmk": str(esp_now_security.get("default_lmk", "")),
+            "peers": esp_now_security.get("peers", []),
+        }
+    else:
+        # Legacy runtime.security/runtime.peers から新形式へ変換する。
+        legacy_lmk = str(security.get("lmk", ""))
+        esp_now_cfg = {
+            "enabled": bool(security.get("pmk", "")),
+            "pmk": str(security.get("pmk", "")),
+            "default_lmk": legacy_lmk,
+            "peers": [
+                {
+                    "mac": str(peer.get("mac", "")),
+                    "lmk": str(peer.get("lmk", "")),
+                }
+                for peer in legacy_peers
+                if isinstance(peer, dict)
+            ],
+        }
+
+    if icsn_security:
+        icsn_cfg = {
+            "hmac_enabled": bool(icsn_security.get("hmac_enabled", False)),
+            "default_hmac_key": str(icsn_security.get("default_hmac_key", "")),
+            "peers": icsn_security.get("peers", []),
+        }
+    else:
+        # LegacyではLMKをHMAC鍵として使っていたため、互換で引き継ぐ。
+        legacy_lmk = str(security.get("lmk", ""))
+        icsn_cfg = {
+            "hmac_enabled": bool(legacy_lmk),
+            "default_hmac_key": legacy_lmk,
+            "peers": [
+                {
+                    "mac": str(peer.get("mac", "")),
+                    "hmac_key": str(peer.get("lmk", "")),
+                }
+                for peer in legacy_peers
+                if isinstance(peer, dict)
+            ],
+        }
 
     capacities = {
         "fib": _to_positive_int(build.get("fib_capacity"), "build.fib_capacity"),
@@ -65,9 +114,8 @@ def _load_profile(profile_path):
     runtime_config = {
         "MAX_VIRTUAL_DEPTH": int(runtime.get("max_virtual_depth", 5)),
         "HOP_COUNT_THRESHOLD": int(runtime.get("hop_count_threshold", 10)),
-        "PMK": str(security.get("pmk", "")),
-        "LMK": str(security.get("lmk", "")),
-        "peers": runtime.get("peers", []),
+        "esp_now_security": esp_now_cfg,
+        "icsn_security": icsn_cfg,
         "fib_init": runtime.get("fib_init", []),
     }
 
