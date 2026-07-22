@@ -61,7 +61,9 @@ static void resetSecurityConfig() {
   memset(systemConfig.hmacPeerKeyEntries, 0, sizeof(systemConfig.hmacPeerKeyEntries));
 }
 
-static size_t loadPeerKeys(JsonVariantConst peersNode, const char* keyName, PeerKeyConfig* outEntries,
+static size_t loadPeerKeys(JsonVariantConst peersNode,
+                           const char* keyName,
+                           PeerKeyConfig* outEntries,
                            size_t maxEntries) {
   if (!peersNode.is<JsonArrayConst>() || outEntries == nullptr || keyName == nullptr) {
     return 0;
@@ -78,7 +80,8 @@ static size_t loadPeerKeys(JsonVariantConst peersNode, const char* keyName, Peer
     const char* keyStr = peer[keyName] | "";
 
     PeerKeyConfig& entry = outEntries[count];
-    if (macStringToBytes(macStr, entry.mac) && hexStringToBytes(keyStr, entry.key, ESP_NOW_LMK_LEN)) {
+    if (macStringToBytes(macStr, entry.mac) &&
+      hexStringToBytes(keyStr, entry.key, ESP_NOW_LMK_LEN)) {
       entry.valid = true;
       count++;
     }
@@ -123,12 +126,15 @@ static void loadSeparatedSecurityConfig(const JsonDocument& doc) {
   const char* pmkStr = espNowSecurity["pmk"] | "";
   const char* defaultLmkStr = espNowSecurity["default_lmk"] | "";
 
-  systemConfig.espNowPmkConfigured = hexStringToBytes(pmkStr, systemConfig.espNowPmk, ESP_NOW_PMK_LEN);
+  systemConfig.espNowPmkConfigured =
+      hexStringToBytes(pmkStr, systemConfig.espNowPmk, ESP_NOW_PMK_LEN);
   systemConfig.espNowDefaultLmkConfigured =
       hexStringToBytes(defaultLmkStr, systemConfig.espNowDefaultLmk, ESP_NOW_LMK_LEN);
-  systemConfig.espNowPeerLmkCount = loadPeerKeys(espNowSecurity["peers"], "lmk",
-                                                 systemConfig.espNowPeerLmkEntries,
-                                                 MAX_PEER_KEY_ENTRIES);
+  systemConfig.espNowPeerLmkCount =
+      loadPeerKeys(espNowSecurity["peers"],
+                   "lmk",
+                   systemConfig.espNowPeerLmkEntries,
+                   MAX_PEER_KEY_ENTRIES);
 
   systemConfig.espNowEncryptionEnabled = espNowEnabledFlag && systemConfig.espNowPmkConfigured;
   if (espNowEnabledFlag && !systemConfig.espNowPmkConfigured) {
@@ -139,12 +145,15 @@ static void loadSeparatedSecurityConfig(const JsonDocument& doc) {
   const char* defaultHmacKeyStr = icsnSecurity["default_hmac_key"] | "";
   systemConfig.hmacDefaultKeyConfigured =
       hexStringToBytes(defaultHmacKeyStr, systemConfig.hmacDefaultKey, ICSN_HMAC_KEY_LEN);
-  systemConfig.hmacPeerKeyCount = loadPeerKeys(icsnSecurity["peers"], "hmac_key",
-                                               systemConfig.hmacPeerKeyEntries,
-                                               MAX_PEER_KEY_ENTRIES);
+  systemConfig.hmacPeerKeyCount =
+      loadPeerKeys(icsnSecurity["peers"],
+                   "hmac_key",
+                   systemConfig.hmacPeerKeyEntries,
+                   MAX_PEER_KEY_ENTRIES);
 
-  systemConfig.hmacAuthenticationEnabled =
-      hmacEnabledFlag && (systemConfig.hmacDefaultKeyConfigured || systemConfig.hmacPeerKeyCount > 0);
+  systemConfig.hmacAuthenticationEnabled = hmacEnabledFlag &&
+                                           (systemConfig.hmacDefaultKeyConfigured ||
+                                            systemConfig.hmacPeerKeyCount > 0);
   if (hmacEnabledFlag && !systemConfig.hmacAuthenticationEnabled) {
     LOG_WARN("[SECURITY] icsn_security.hmac_enabled is true but HMAC key is missing.");
   }
