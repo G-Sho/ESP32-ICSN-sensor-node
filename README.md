@@ -242,17 +242,49 @@ pio run -e normal_s3 -t monitor
 
 | コマンド | 説明 |
 |---------|-----|
-| `send_interest` | 宛先 MAC 必須 |
+| `send_interest <target-mac> [content-name]` | 宛先 MAC を指定して単発 INTEREST を送信 |
 | `stop_interest` | 定期 INTEREST 送信を停止 |
 | `read_sensor` | センサデータを手動送信 |
+| `show_status` | MAC、セキュリティ、テーブル使用量、メモリ状態をまとめて表示 |
 | `show_counters` | 全ピアの TX/RX カウンタ表示 |
 | `show_fib` | FIB（転送情報テーブル）の内容表示 |
+| `show_pit` | PIT の内容と使用量を表示 |
+| `show_cs` | Content Store の内容と使用量を表示 |
 | `clear_cache` | Content Store と PIT のキャッシュをクリア |
 | `show_mem` | 内部RAM/PSRAMヒープ統計（total/free/min）を表示 |
 | `dump_perf` | Interest受信パケット処理の計測バッファをJSON出力（perf buildのみ） |
 | `reset_perf` | Interest受信パケット処理の計測バッファをリセット（perf buildのみ） |
 | `perf_count` | 計測サンプル数を表示（perf buildのみ） |
 | `help` | コマンド一覧表示 |
+
+#### `send_interest` の書式
+
+```text
+send_interest <target-mac> [content-name]
+```
+
+例:
+
+```text
+send_interest 08:D1:F9:37:39:C0 /iot/buildingA/room101
+send_interest 08:d1:f9:37:39:c0
+```
+
+- MAC アドレスは `XX:XX:XX:XX:XX:XX` 形式で指定します。
+- 大文字・小文字はどちらでも受け付けます。
+- 全ゼロ、ブロードキャスト、マルチキャストの宛先は拒否されます。
+- Content Name を省略した場合は `/iot/buildingA/room101` を使います。
+- Content Name は `/` から始まる必要があります。
+
+#### 診断コマンド
+
+- `show_status` は、ノードの MAC、ビルドプロファイル、セキュリティ設定、FIB/PIT/CS/RIB の使用量、メモリ状態をまとめて確認するために使います。
+- `show_pit` は、PIT の登録状況と使用量を確認するために使います。
+- `show_cs` は、Content Store の登録状況と使用量を確認するために使います。
+
+#### セキュリティ表示
+
+`show_status` では、PMK、LMK、HMAC 鍵の実値は表示しません。表示するのは有効/無効と件数のみです。
 
 ### 設定ファイル一覧
 
