@@ -14,11 +14,17 @@
   "runtime": {
     "max_virtual_depth": 6,
     "hop_count_threshold": 12,
-    "security": {
+    "esp_now_security": {
+      "enabled": true,
       "pmk": "0123456789abcdef0123456789abcdef",
-      "lmk": "fedcba9876543210fedcba9876543210"
+      "default_lmk": "fedcba9876543210fedcba9876543210",
+      "peers": []
     },
-    "peers": [],
+    "icsn_security": {
+      "hmac_enabled": true,
+      "default_hmac_key": "fedcba9876543210fedcba9876543210",
+      "peers": []
+    },
     "fib_init": []
   }
 }

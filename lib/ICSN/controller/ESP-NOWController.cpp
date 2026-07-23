@@ -22,19 +22,23 @@ bool ESP_NOWController::loadAndApplyConfig(const char* configPath) {
     return false;
   }
 
-  encryptionEnabled = systemConfig.encryptionEnabled;
+  espNowEncryptionEnabled = systemConfig.espNowEncryptionEnabled;
+  hmacAuthenticationEnabled = systemConfig.hmacAuthenticationEnabled;
   memset(pmk, 0, sizeof(pmk));
 
-  if (encryptionEnabled) {
-    memcpy(pmk, systemConfig.pmk, sizeof(pmk));
-    setGlobalLMK(systemConfig.lmk);
-    LOG_INFO("[SECURITY] Global LMK configured for HMAC");
+  if (espNowEncryptionEnabled && systemConfig.espNowPmkConfigured) {
+    memcpy(pmk, systemConfig.espNowPmk, sizeof(pmk));
   }
 
-  for (size_t i = 0; i < systemConfig.peerLmkCount; i++) {
-    const PeerLMKConfig& entry = systemConfig.peerLmkEntries[i];
+  if (hmacAuthenticationEnabled && systemConfig.hmacDefaultKeyConfigured) {
+    setGlobalLMK(systemConfig.hmacDefaultKey);
+    LOG_INFO("[SECURITY] ICSN HMAC default key configured");
+  }
+
+  for (size_t i = 0; i < systemConfig.hmacPeerKeyCount; i++) {
+    const PeerKeyConfig& entry = systemConfig.hmacPeerKeyEntries[i];
     if (entry.valid) {
-      setPeerLMK(entry.mac, entry.lmk);
+      setPeerLMK(entry.mac, entry.key);
     }
   }
 
@@ -50,7 +54,7 @@ bool ESP_NOWController::loadAndApplyConfig(const char* configPath) {
 }
 
 bool ESP_NOWController::copyPMK(uint8_t* outPmk, size_t outLen) const {
-  if (outPmk == nullptr || outLen < sizeof(pmk) || !encryptionEnabled) {
+  if (outPmk == nullptr || outLen < sizeof(pmk) || !espNowEncryptionEnabled) {
     return false;
   }
 
@@ -87,7 +91,11 @@ bool ESP_NOWController::initializeCommunication(const char* configPath, uint8_t 
       LOG_WARN("Failed to set PMK");
       return false;
     }
-    LOG_INFO("ESP-NOW encryption enabled (PMK/LMK configured)");
+    LOG_INFO("[SECURITY] ESP-NOW PMK configured");
+  }
+
+  if (hmacAuthenticationEnabled) {
+    LOG_INFO("[SECURITY] ICSN HMAC authentication enabled");
   }
 
   esp_err_t macErr = esp_wifi_get_mac(WIFI_IF_STA, myMac);
@@ -104,20 +112,34 @@ bool ESP_NOWController::initializeCommunication(const char* configPath, uint8_t 
   return true;
 }
 
-void ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6]) {
+bool ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6]) {
   if (mac == nullptr || esp_now_is_peer_exist(mac)) {
-    return;
+    return true;
   }
 
   esp_now_peer_info_t peer = {};
   memcpy(peer.peer_addr, mac, 6);
   peer.channel = 0;
   peer.ifidx = WIFI_IF_STA;
-  peer.encrypt = false;
+
+  if (espNowEncryptionEnabled && !isBroadcastOrMulticast(mac)) {
+    const uint8_t* lmk = resolveEspNowLmk(mac);
+    if (lmk == nullptr) {
+      LOG_WARN("[SECURITY] LMK is missing for encrypted peer");
+      return false;
+    }
+    memcpy(peer.lmk, lmk, PEER_LMK_LEN);
+    peer.encrypt = true;
+  } else {
+    peer.encrypt = false;
+  }
 
   if (esp_now_add_peer(&peer) != ESP_OK) {
     LOG_WARN("[PEER] Failed to register peer");
+    return false;
   }
+
+  return true;
 }
 
 bool ESP_NOWController::sendPacketToAddresses(const ESP_NOWControlData& data) {
@@ -133,7 +155,10 @@ bool ESP_NOWController::sendPacketToAddresses(const ESP_NOWControlData& data) {
       continue;
     }
 
-    registerPeerIfNeeded(addr.data());
+    if (!registerPeerIfNeeded(addr.data())) {
+      LOG_WARN("[PEER] Packet dropped due to peer registration failure");
+      continue;
+    }
 
     esp_err_t err =
         esp_now_send(addr.data(), reinterpret_cast<const uint8_t*>(&packet), sizeof(packet));
@@ -199,7 +224,9 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6], const uint
     return false;
   }
 
-  registerPeerIfNeeded(senderMac);
+  if (!registerPeerIfNeeded(senderMac)) {
+    return false;
+  }
 
   CommunicationData receivedPacket = {};
   memcpy(&receivedPacket, data, sizeof(receivedPacket));
@@ -214,7 +241,7 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6], const uint
   }
 #endif
 
-  out.securityCheckRequired = true;
+  out.securityCheckRequired = hmacAuthenticationEnabled;
   if (out.securityCheckRequired) {
 #if ICSN_PERF_ENABLED
     if (out.isInterest) {
@@ -394,6 +421,10 @@ bool ESP_NOWController::buildPacketForAddress(const uint8_t txAddress[6],
 
 bool ESP_NOWController::verifyIncomingPacket(const uint8_t mac[6],
                                              const CommunicationData& packet) {
+  if (!hmacAuthenticationEnabled) {
+    return true;
+  }
+
   if (!peerCounterManager.verifyHMAC(mac, reinterpret_cast<const uint8_t*>(&packet),
                                      COMM_DATA_HMAC_DATA_LEN, packet.hmac)) {
     LOG_WARN("[SECURITY] HMAC verification FAILED");
@@ -406,6 +437,45 @@ bool ESP_NOWController::verifyIncomingPacket(const uint8_t mac[6],
   }
 
   return true;
+}
+
+const uint8_t* ESP_NOWController::resolveEspNowLmk(const uint8_t mac[6]) const {
+  if (mac == nullptr) {
+    return nullptr;
+  }
+
+  for (size_t i = 0; i < systemConfig.espNowPeerLmkCount; i++) {
+    const PeerKeyConfig& entry = systemConfig.espNowPeerLmkEntries[i];
+    if (entry.valid && memcmp(entry.mac, mac, 6) == 0) {
+      return entry.key;
+    }
+  }
+
+  if (systemConfig.espNowDefaultLmkConfigured) {
+    return systemConfig.espNowDefaultLmk;
+  }
+
+  return nullptr;
+}
+
+bool ESP_NOWController::isBroadcastOrMulticast(const uint8_t mac[6]) const {
+  if (mac == nullptr) {
+    return false;
+  }
+
+  bool allFF = true;
+  for (size_t i = 0; i < 6; i++) {
+    if (mac[i] != 0xFF) {
+      allFF = false;
+      break;
+    }
+  }
+
+  if (allFF) {
+    return true;
+  }
+
+  return (mac[0] & 0x01) != 0;
 }
 
 void ESP_NOWController::printCounters() const {

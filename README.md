@@ -19,18 +19,18 @@ ESP32を使用したICSN（Interest-Centric Sensor Network）の実装です。
 
 ESP-NOW の WPA2 ベース暗号化を有効化します。
 
-- **PMK (Primary Master Key)**: 全ピア共通のグローバルキー。`config.json` の `PMK` フィールド（32 文字 hex）で設定します。
-- **LMK (Local Master Key)**: ピアごとの暗号化キー。`config.json` の `LMK` フィールドをデフォルト値として使用し、ピア登録時に適用します。
+- **PMK (Primary Master Key)**: `esp_now_security.pmk`（32 文字 hex）を `esp_now_set_pmk()` へ設定します。
+- **LMK (Local Master Key)**: `esp_now_security.peers[].lmk` または `esp_now_security.default_lmk` を peer 登録時に `peer.lmk` へ設定し、`peer.encrypt = true` でCCMPを有効化します。
 
 ### HMAC-SHA256 による送信元認証
 
-各パケットには HMAC-SHA256 ダイジェスト（32 バイト）が付加されます。受信側は LMK を鍵として検証し、改ざんを検出します。
+各パケットには HMAC-SHA256 ダイジェスト（32 バイト）が付加されます。受信側は `icsn_security` の鍵を使って検証し、改ざんを検出します。
 
 ### リプレイ攻撃対策（送受信カウンタ）
 
 `PeerCounterManager` がピアごとに TX/RX カウンタを管理します。受信パケットのカウンタが既知の値以下の場合は破棄することで、録画・再送攻撃を防ぎます。
 
-> **注意**: PMK・LMK はデフォルト値のままでは安全ではありません。本番環境では必ず固有の値に変更してください。
+> **注意**: PMK・LMK・HMAC鍵はデフォルト値のままでは安全ではありません。本番環境では必ず固有の値に変更してください。
 
 ## 依存方向のルール
 
@@ -86,9 +86,17 @@ PlatformIO の pre-script（`scripts/generate_node_profile.py`）が、ロール
 {
   "MAX_VIRTUAL_DEPTH": 5,
   "HOP_COUNT_THRESHOLD": 10,
-  "PMK": "0123456789abcdef0123456789abcdef",
-  "LMK": "fedcba9876543210fedcba9876543210",
-  "peers": [],
+  "esp_now_security": {
+    "enabled": true,
+    "pmk": "0123456789abcdef0123456789abcdef",
+    "default_lmk": "fedcba9876543210fedcba9876543210",
+    "peers": []
+  },
+  "icsn_security": {
+    "hmac_enabled": true,
+    "default_hmac_key": "fedcba9876543210fedcba9876543210",
+    "peers": []
+  },
   "fib_init": []
 }
 ```
@@ -97,9 +105,13 @@ PlatformIO の pre-script（`scripts/generate_node_profile.py`）が、ロール
 |-----------|------|
 | `MAX_VIRTUAL_DEPTH` | 仮想深さの上限（ルーティング制御用） |
 | `HOP_COUNT_THRESHOLD` | ホップカウントの上限（ループ抑制） |
-| `PMK` | ESP-NOW Global PMK（32 文字 hex = 16 バイト）。全ピア共通の暗号化マスターキー |
-| `LMK` | ESP-NOW Local Master Key（32 文字 hex = 16 バイト）。ピア固有暗号化キーのデフォルト値 |
-| `peers` | 起動時に登録するピアの MAC アドレス一覧（省略可） |
+| `esp_now_security.enabled` | ESP-NOW CCMP暗号化を有効化するフラグ |
+| `esp_now_security.pmk` | ESP-NOW Global PMK（32 文字 hex = 16 バイト） |
+| `esp_now_security.default_lmk` | ESP-NOW 用のデフォルト LMK（32 文字 hex = 16 バイト） |
+| `esp_now_security.peers[].lmk` | ESP-NOW 用の peer 固有 LMK |
+| `icsn_security.hmac_enabled` | ICSN パケットの HMAC 検証/付与を有効化するフラグ |
+| `icsn_security.default_hmac_key` | ICSN 用のデフォルト HMAC 鍵（32 文字 hex = 16 バイト） |
+| `icsn_security.peers[].hmac_key` | ICSN 用の peer 固有 HMAC 鍵 |
 | `fib_init` | 起動時に投入する FIB 初期エントリ一覧（省略可） |
 
 ## ビルド環境

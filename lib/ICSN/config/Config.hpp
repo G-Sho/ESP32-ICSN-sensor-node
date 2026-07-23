@@ -7,22 +7,25 @@
 // セキュリティ関連定数
 constexpr size_t ESP_NOW_PMK_LEN = 16;
 constexpr size_t ESP_NOW_LMK_LEN = 16;
+constexpr size_t ICSN_HMAC_KEY_LEN = 16;
 
-/// @brief ピア固有LMK設定エントリ
-struct PeerLMKConfig {
+/// @brief ピア固有キー設定エントリ
+struct PeerKeyConfig {
   uint8_t mac[6];               ///< ピアのMACアドレス
-  uint8_t lmk[ESP_NOW_LMK_LEN]; ///< このピア向けのLocal Master Key
+  uint8_t key[ESP_NOW_LMK_LEN]; ///< このピア向けの16バイト鍵
   bool valid;                   ///< エントリが有効かどうか
 };
 
-/// @brief ピア固有LMKの最大登録数
-constexpr size_t MAX_PEER_LMK_ENTRIES = 20;
+/// @brief ピア固有鍵の最大登録数
+constexpr size_t MAX_PEER_KEY_ENTRIES = 20;
 
 /// @brief FIB初期エントリ（起動時にFIBへ投入するルーティング設定）
 struct FibInitEntry {
   char contentName[64]; ///< コンテンツ名プレフィックス（例: "/iot/buildingA/room101"）
-  char nextHopMac[18]; ///< 次ホップMACアドレス（小文字コロン区切り、例: "cc:7b:5c:9a:f3:ac"）
-  bool valid; ///< エントリが有効かどうか
+  /// 次ホップMACアドレス（小文字コロン区切り、例: "cc:7b:5c:9a:f3:ac"）
+  char nextHopMac[18];
+  /// エントリが有効かどうか
+  bool valid;
 };
 
 /// @brief FIB初期エントリの最大数
@@ -32,14 +35,21 @@ struct SystemConfig {
   int maxVirtualDepth = 5;
   int hopCountThreshold = 10;
 
-  // セキュリティ設定
-  uint8_t pmk[ESP_NOW_PMK_LEN] = {0}; // Primary Master Key
-  uint8_t lmk[ESP_NOW_LMK_LEN] = {0}; // グローバルLocal Master Key（ピア固有LMK未設定時に使用）
-  bool encryptionEnabled = false;
+  // ESP-NOW CCMP 設定
+  bool espNowEncryptionEnabled = false;
+  uint8_t espNowPmk[ESP_NOW_PMK_LEN] = {0};
+  bool espNowPmkConfigured = false;
+  uint8_t espNowDefaultLmk[ESP_NOW_LMK_LEN] = {0};
+  bool espNowDefaultLmkConfigured = false;
+  PeerKeyConfig espNowPeerLmkEntries[MAX_PEER_KEY_ENTRIES];
+  size_t espNowPeerLmkCount = 0;
 
-  // ピア固有LMK設定
-  PeerLMKConfig peerLmkEntries[MAX_PEER_LMK_ENTRIES];
-  size_t peerLmkCount = 0;
+  // ICSN HMAC 設定
+  bool hmacAuthenticationEnabled = false;
+  uint8_t hmacDefaultKey[ICSN_HMAC_KEY_LEN] = {0};
+  bool hmacDefaultKeyConfigured = false;
+  PeerKeyConfig hmacPeerKeyEntries[MAX_PEER_KEY_ENTRIES];
+  size_t hmacPeerKeyCount = 0;
 
   // FIB初期エントリ（テスト用ブランチで多段経路を事前設定するために使用）
   FibInitEntry fibInitEntries[MAX_FIB_INIT_ENTRIES];

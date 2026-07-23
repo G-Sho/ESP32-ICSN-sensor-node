@@ -21,7 +21,8 @@ private:
   IForwardingStateBoundary& forwardingStateBoundary;
   PeerCounterManager peerCounterManager;
   InterestPacketTimingBuffer interestTiming;
-  bool encryptionEnabled = false;
+  bool espNowEncryptionEnabled = false;
+  bool hmacAuthenticationEnabled = false;
   uint8_t pmk[PMK_LENGTH] = {0};
 
   ESP_NOWControlData receiveMessage(const uint8_t rxAddress[6], const uint8_t txAddress[6],
@@ -31,6 +32,8 @@ private:
                              bool applySecurity, CommunicationData& outPacket);
   bool verifyIncomingPacket(const uint8_t mac[6], const CommunicationData& packet);
   bool sendPacketToAddresses(const ESP_NOWControlData& data);
+  const uint8_t* resolveEspNowLmk(const uint8_t mac[6]) const;
+  bool isBroadcastOrMulticast(const uint8_t mac[6]) const;
 
 public:
   ESP_NOWController(IInputBoundary& inputBoundary,
@@ -50,7 +53,7 @@ public:
                                esp_now_send_cb_t sendCb, uint8_t channel = 1);
   bool copyPMK(uint8_t* outPmk, size_t outLen) const;
 
-  void registerPeerIfNeeded(const uint8_t mac[6]);
+  bool registerPeerIfNeeded(const uint8_t mac[6]);
   bool sendSensorData(const char* contentName, const char* content, uint8_t hopCount = 1);
   bool sendInterest(const char* contentName, const uint8_t* targetMac, uint8_t hopCount = 1);
   bool processReceivedPacket(const uint8_t myMac[6], const uint8_t senderMac[6],
