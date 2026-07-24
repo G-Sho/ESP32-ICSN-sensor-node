@@ -31,6 +31,21 @@ def _load_profile(profile_path):
     with profile_path.open("r", encoding="utf-8") as f:
         profile = json.load(f)
 
+    def _normalize_peer_entries(peers, key_name):
+        normalized = []
+        if not isinstance(peers, list):
+            return normalized
+        for peer in peers:
+            if not isinstance(peer, dict):
+                continue
+            normalized.append(
+                {
+                    "mac": str(peer.get("mac", peer.get("peer_mac", ""))),
+                    key_name: str(peer.get(key_name, peer.get("lmk", peer.get("hmac_key", "")))),
+                }
+            )
+        return normalized
+
     build = profile.get("build", {})
     runtime = profile.get("runtime", {})
     security = runtime.get("security", {})
@@ -43,7 +58,7 @@ def _load_profile(profile_path):
             "enabled": bool(esp_now_security.get("enabled", False)),
             "pmk": str(esp_now_security.get("pmk", "")),
             "default_lmk": str(esp_now_security.get("default_lmk", "")),
-            "peers": esp_now_security.get("peers", []),
+            "peers": _normalize_peer_entries(esp_now_security.get("peers", []), "lmk"),
         }
     else:
         # Legacy runtime.security/runtime.peers から新形式へ変換する。
@@ -66,7 +81,7 @@ def _load_profile(profile_path):
         icsn_cfg = {
             "hmac_enabled": bool(icsn_security.get("hmac_enabled", False)),
             "default_hmac_key": str(icsn_security.get("default_hmac_key", "")),
-            "peers": icsn_security.get("peers", []),
+            "peers": _normalize_peer_entries(icsn_security.get("peers", []), "hmac_key"),
         }
     else:
         # LegacyではLMKをHMAC鍵として使っていたため、互換で引き継ぐ。

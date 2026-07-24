@@ -74,8 +74,8 @@ static size_t loadPeerKeys(JsonVariantConst peersNode, const char* keyName,
       break;
     }
 
-    const char* macStr = peer["mac"] | "";
-    const char* keyStr = peer[keyName] | "";
+    const char* macStr = peer["mac"] | peer["peer_mac"] | "";
+    const char* keyStr = peer[keyName] | peer["lmk"] | peer["hmac_key"] | "";
 
     PeerKeyConfig& entry = outEntries[count];
     if (macStringToBytes(macStr, entry.mac) &&
