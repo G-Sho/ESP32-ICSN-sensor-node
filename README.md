@@ -78,16 +78,6 @@ PlatformIO の pre-script（`scripts/generate_node_profile.py`）が、ロール
 
 `custom_node_profile`（既定: `sensor`）または環境変数 `ICSN_NODE_PROFILE` でロールを選択できます。
 
-### サンプルファイルからの作成
-
-このリポジトリでは、実際に編集して使うファイルはローカル専用とし、Git にはサンプルだけを残しています。
-
-- `platformio.sample.ini` をコピーして `platformio.ini` として使う
-- `node_profiles/*.sample.json` をコピーして `node_profiles/*.json` として使う
-- `data/config.json` は `uploadfs` 実行時に生成されるため、通常は直接編集しない
-
-必要に応じて、サンプルをコピーしたあとに `custom_node_profile` や `ICSN_NODE_PROFILE` で参照先を切り替えてください。
-
 ## 設定ファイル `data/config.json`
 
 起動時に LittleFS から読み込まれる実行時設定です。容量（FIB/PIT/CS/RIB）は Build-time に確定するため、`config.json` には runtime パラメータのみを持たせます。

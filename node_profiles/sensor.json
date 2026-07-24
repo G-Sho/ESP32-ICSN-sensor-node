@@ -1,0 +1,30 @@
+{
+  "role": "sensor",
+  "build": {
+    "fib_capacity": 16,
+    "pit_capacity": 8,
+    "cs_capacity": 8,
+    "rib_capacity": 16,
+    "fib_next_hops_per_entry": 4,
+    "pit_requesters_per_entry": 4,
+    "rib_next_hops_per_node": 4,
+    "node_id_max_chars": 17,
+    "cs_payload_memory": "auto"
+  },
+  "runtime": {
+    "max_virtual_depth": 5,
+    "hop_count_threshold": 10,
+    "esp_now_security": {
+      "enabled": true,
+      "pmk": "0123456789abcdef0123456789abcdef",
+      "default_lmk": "fedcba9876543210fedcba9876543210",
+      "peers": []
+    },
+    "icsn_security": {
+      "hmac_enabled": true,
+      "default_hmac_key": "fedcba9876543210fedcba9876543210",
+      "peers": []
+    },
+    "fib_init": []
+  }
+}

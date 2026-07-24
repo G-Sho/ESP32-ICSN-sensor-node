@@ -6,8 +6,3 @@ include/generated/
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
-platformio.ini
-!platformio.sample.ini
-data/config.json
-node_profiles/*.json
-!node_profiles/*.sample.json
