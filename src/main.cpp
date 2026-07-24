@@ -7,6 +7,7 @@
 #include "ESP-NOWController.hpp"
 #include "MemoryStats.hpp"
 #include "Sensor.h"
+#include "config/Config.hpp"
 #include "infrastructure/data_access/LRUContentStore.hpp"
 #include "infrastructure/data_access/LRUForwardingInformationBase.hpp"
 #include "infrastructure/data_access/LRUPendingInterestTable.hpp"
@@ -94,6 +95,140 @@ void formatMac(const uint8_t* mac, char* out, size_t outLen) {
   }
   snprintf(out, outLen, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4],
            mac[5]);
+}
+
+const char* getBuildProfileName() {
+#if ICSN_BUILD_PROFILE == ICSN_PROFILE_NORMAL
+  return "normal";
+#elif ICSN_BUILD_PROFILE == ICSN_PROFILE_PERF
+  return "perf";
+#elif ICSN_BUILD_PROFILE == ICSN_PROFILE_RELEASE
+  return "release";
+#else
+  return "unknown";
+#endif
+}
+
+bool isHexDigit(char c) {
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+bool parseMacAddress(const String& text, uint8_t outMac[6]) {
+  if (text.length() != 17) {
+    return false;
+  }
+
+  for (int i = 0; i < 6; i++) {
+    const int offset = i * 3;
+    if (i > 0 && text.charAt(offset - 1) != ':') {
+      return false;
+    }
+
+    const char hi = text.charAt(offset);
+    const char lo = text.charAt(offset + 1);
+    if (!isHexDigit(hi) || !isHexDigit(lo)) {
+      return false;
+    }
+
+    char bytes[3] = {hi, lo, '\0'};
+    char* end = nullptr;
+    long value = strtol(bytes, &end, 16);
+    if (end == bytes || *end != '\0' || value < 0 || value > 255) {
+      return false;
+    }
+
+    outMac[i] = static_cast<uint8_t>(value);
+  }
+
+  return true;
+}
+
+bool isZeroMacAddress(const uint8_t mac[6]) {
+  for (size_t i = 0; i < 6; i++) {
+    if (mac[i] != 0x00) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool isBroadcastOrMulticastMacAddress(const uint8_t mac[6]) {
+  bool allFF = true;
+  for (size_t i = 0; i < 6; i++) {
+    if (mac[i] != 0xFF) {
+      allFF = false;
+      break;
+    }
+  }
+
+  return allFF || ((mac[0] & 0x01) != 0);
+}
+
+bool isValidContentName(const String& contentName) {
+  return contentName.length() > 0 && contentName.charAt(0) == '/';
+}
+
+void printTableStatus() {
+  CLI_PRINTLN("[TABLES]");
+  fibRepository.printUsageStats();
+  pitRepository.printUsageStats();
+  csRepository.printPayloadStats();
+  ribRepository.printUsageStats();
+}
+
+void printStatus() {
+  char macStr[18];
+  formatMac(myMacAddress, macStr, sizeof(macStr));
+
+  CLI_PRINTLN("[DEVICE]");
+  CLI_PRINTF("mac=%s\n", macStr);
+  CLI_PRINTF("build_profile=%s\n", getBuildProfileName());
+
+  CLI_PRINTLN("\n[SECURITY]");
+  CLI_PRINTF("esp_now_ccmp=%s\n", systemConfig.espNowEncryptionEnabled ? "enabled" : "disabled");
+  CLI_PRINTF("esp_now_peer_lmk_count=%u\n",
+             static_cast<unsigned int>(systemConfig.espNowPeerLmkCount));
+  CLI_PRINTF("icsn_hmac=%s\n", systemConfig.hmacAuthenticationEnabled ? "enabled" : "disabled");
+  CLI_PRINTF("hmac_peer_key_count=%u\n", static_cast<unsigned int>(systemConfig.hmacPeerKeyCount));
+
+  CLI_PRINTLN("");
+  printTableStatus();
+
+  CLI_PRINTLN("\n[MEMORY]");
+  const MemorySnapshot snapshot = collectMemorySnapshot();
+  printMemorySnapshot(snapshot, "status");
+}
+
+void printHelp() {
+  CLI_PRINTLN("=== Available Commands ===");
+  CLI_PRINTLN("  send_interest <target-mac> [content-name]");
+  CLI_PRINTLN("      Send one INTEREST packet to the specified peer");
+  CLI_PRINTLN("  stop_interest");
+  CLI_PRINTLN("      Stop periodic INTEREST sending");
+  CLI_PRINTLN("  read_sensor");
+  CLI_PRINTLN("      Simulate sensor data input");
+  CLI_PRINTLN("  show_status");
+  CLI_PRINTLN("      Show device, security, table and memory status");
+  CLI_PRINTLN("  show_fib");
+  CLI_PRINTLN("      Show Forwarding Information Base");
+  CLI_PRINTLN("  show_pit");
+  CLI_PRINTLN("      Show Pending Interest Table");
+  CLI_PRINTLN("  show_cs");
+  CLI_PRINTLN("      Show Content Store");
+  CLI_PRINTLN("  show_counters");
+  CLI_PRINTLN("      Show peer TX/RX counters");
+  CLI_PRINTLN("  show_mem");
+  CLI_PRINTLN("      Show internal RAM and PSRAM status");
+  CLI_PRINTLN("  clear_cache");
+  CLI_PRINTLN("      Clear Content Store and PIT");
+  CLI_PRINTLN("  dump_perf");
+  CLI_PRINTLN("      Dump performance data in perf builds");
+  CLI_PRINTLN("  reset_perf");
+  CLI_PRINTLN("      Reset performance data in perf builds");
+  CLI_PRINTLN("  perf_count");
+  CLI_PRINTLN("      Show performance sample count");
+  CLI_PRINTLN("  help");
+  CLI_PRINTLN("      Show this help");
 }
 
 void printMac(const uint8_t* mac) {
@@ -236,9 +371,49 @@ void loop() {
     String msg = Serial.readStringUntil('\n');
     msg.trim();
 
-    if (msg == "send_interest") {
-      LOG_WARN("[CMD] send_interest requires target MAC. This command is disabled after broadcast "
-               "removal.");
+    if (msg == "send_interest" || msg.startsWith("send_interest ")) {
+      String args = msg.substring(String("send_interest").length());
+      args.trim();
+
+      if (args.length() == 0) {
+        CLI_PRINTLN("[CMD] ERROR: target MAC is required");
+        CLI_PRINTLN("Usage: send_interest <target-mac> [content-name]");
+      } else {
+        int separator = args.indexOf(' ');
+        String macText = (separator >= 0) ? args.substring(0, separator) : args;
+        String contentName = (separator >= 0) ? args.substring(separator + 1) : String("");
+        macText.trim();
+        contentName.trim();
+
+        if (contentName.length() == 0) {
+          contentName = "/iot/buildingA/room101";
+        }
+
+        uint8_t targetMac[6] = {0};
+        if (!parseMacAddress(macText, targetMac)) {
+          CLI_PRINTLN("[CMD] ERROR: invalid MAC address");
+          CLI_PRINTLN("Expected format: XX:XX:XX:XX:XX:XX");
+        } else if (isZeroMacAddress(targetMac)) {
+          CLI_PRINTLN("[CMD] ERROR: invalid MAC address");
+          CLI_PRINTLN("Zero address is not allowed");
+        } else if (isBroadcastOrMulticastMacAddress(targetMac)) {
+          CLI_PRINTLN("[CMD] ERROR: invalid MAC address");
+          CLI_PRINTLN("Broadcast and multicast addresses are not allowed");
+        } else if (!isValidContentName(contentName)) {
+          CLI_PRINTLN("[CMD] ERROR: invalid Content Name");
+          CLI_PRINTLN("Content Name must start with /");
+        } else if (!espNowController.sendInterest(contentName.c_str(), targetMac, 1)) {
+          CLI_PRINTLN("[CMD] ERROR: INTEREST send failed");
+          CLI_PRINTLN("Check peer registration and security configuration.");
+        } else {
+          char macStr[18];
+          formatMac(targetMac, macStr, sizeof(macStr));
+          CLI_PRINTLN("[CMD] INTEREST sent");
+          CLI_PRINTF("target=%s\n", macStr);
+          CLI_PRINTF("content=%s\n", contentName.c_str());
+          CLI_PRINTLN("hop_count=1");
+        }
+      }
       cancelAutoInterestStart();
       stopInterestTicker();
     } else if (msg == "stop_interest") {
@@ -260,6 +435,17 @@ void loop() {
     } else if (msg == "show_fib") {
       LOG_INFO("[CMD] show_fib received");
       espNowController.printFIB();
+    } else if (msg == "show_status") {
+      LOG_INFO("[CMD] show_status received");
+      printStatus();
+    } else if (msg == "show_pit") {
+      LOG_INFO("[CMD] show_pit received");
+      pitRepository.printCache();
+      pitRepository.printUsageStats();
+    } else if (msg == "show_cs") {
+      LOG_INFO("[CMD] show_cs received");
+      csRepository.printCache();
+      csRepository.printPayloadStats();
     } else if (msg == "clear_cache") {
       LOG_INFO("[CMD] clear_cache received");
       espNowController.clearCSCache();
@@ -269,20 +455,7 @@ void loop() {
       LOG_INFO("[CMD] show_mem received");
       printMemoryUsage("cli");
     } else if (msg == "help") {
-      CLI_PRINTLN("=== Available Commands ===");
-      CLI_PRINTLN("  send_interest   - Disabled (target MAC required; broadcast removed)");
-      CLI_PRINTLN("  stop_interest   - Stop periodic INTEREST sending");
-      CLI_PRINTLN("  read_sensor     - Simulate sensor data send");
-      CLI_PRINTLN("  show_counters   - Show tx/rx counter state for all peers");
-      CLI_PRINTLN("  show_fib        - Show Forwarding Information Base (FIB)");
-      CLI_PRINTLN("  clear_cache     - Clear Content Store and PIT");
-      CLI_PRINTLN("  show_mem        - Show internal RAM/PSRAM heap stats");
-      CLI_PRINTLN(
-          "  dump_perf       - Dump INTEREST packet timing buffer as JSON (perf build only)");
-      CLI_PRINTLN("  reset_perf      - Reset INTEREST packet timing buffer (perf build only)");
-      CLI_PRINTLN(
-          "  perf_count      - Show current sample count in measurement buffer (perf build only)");
-      CLI_PRINTLN("  help            - Show this help");
+      printHelp();
     } else {
       LOG_WARNF("Unknown command: %s\n", msg.c_str());
       CLI_PRINTLN("Type 'help' to see available commands.");

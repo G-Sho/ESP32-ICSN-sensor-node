@@ -32,6 +32,7 @@ private:
                              bool applySecurity, CommunicationData& outPacket);
   bool verifyIncomingPacket(const uint8_t mac[6], const CommunicationData& packet);
   bool sendPacketToAddresses(const ESP_NOWControlData& data);
+  bool registerConfiguredEspNowPeers();
   const uint8_t* resolveEspNowLmk(const uint8_t mac[6]) const;
   bool isBroadcastOrMulticast(const uint8_t mac[6]) const;
 

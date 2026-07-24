@@ -98,6 +98,11 @@ bool ESP_NOWController::initializeCommunication(const char* configPath, uint8_t 
     LOG_INFO("[SECURITY] ICSN HMAC authentication enabled");
   }
 
+  if (!registerConfiguredEspNowPeers()) {
+    LOG_WARN("[SECURITY] Failed to register configured ESP-NOW peers");
+    return false;
+  }
+
   esp_err_t macErr = esp_wifi_get_mac(WIFI_IF_STA, myMac);
   if (macErr != ESP_OK) {
     memset(myMac, 0, 6);
@@ -171,6 +176,23 @@ bool ESP_NOWController::sendPacketToAddresses(const ESP_NOWControlData& data) {
   }
 
   return sentAny;
+}
+
+bool ESP_NOWController::registerConfiguredEspNowPeers() {
+  bool allRegistered = true;
+
+  for (size_t i = 0; i < systemConfig.espNowPeerLmkCount; i++) {
+    const PeerKeyConfig& entry = systemConfig.espNowPeerLmkEntries[i];
+    if (!entry.valid) {
+      continue;
+    }
+
+    if (!registerPeerIfNeeded(entry.mac)) {
+      allRegistered = false;
+    }
+  }
+
+  return allRegistered;
 }
 
 bool ESP_NOWController::sendSensorData(const char* contentName, const char* content,
