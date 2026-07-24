@@ -4,10 +4,10 @@
 #include <esp_now.h>
 
 #include "BuildProfile.hpp"
-#include "config/Config.hpp"
 #include "ESP-NOWController.hpp"
 #include "MemoryStats.hpp"
 #include "Sensor.h"
+#include "config/Config.hpp"
 #include "infrastructure/data_access/LRUContentStore.hpp"
 #include "infrastructure/data_access/LRUForwardingInformationBase.hpp"
 #include "infrastructure/data_access/LRUPendingInterestTable.hpp"
@@ -189,8 +189,7 @@ void printStatus() {
   CLI_PRINTF("esp_now_peer_lmk_count=%u\n",
              static_cast<unsigned int>(systemConfig.espNowPeerLmkCount));
   CLI_PRINTF("icsn_hmac=%s\n", systemConfig.hmacAuthenticationEnabled ? "enabled" : "disabled");
-  CLI_PRINTF("hmac_peer_key_count=%u\n",
-             static_cast<unsigned int>(systemConfig.hmacPeerKeyCount));
+  CLI_PRINTF("hmac_peer_key_count=%u\n", static_cast<unsigned int>(systemConfig.hmacPeerKeyCount));
 
   CLI_PRINTLN("");
   printTableStatus();
