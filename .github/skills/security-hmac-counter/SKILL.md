@@ -5,6 +5,10 @@ description: HMAC 検証とカウンタによるリプレイ対策の実装指�
 
 # Security: HMAC and Counter
 
+## 共通前提
+
+全体方針（適用範囲、不変条件、3軸モデル）は `.github/skills/overview/SKILL.md` を参照する。
+
 ## 目的
 
 ESP-NOW ユニキャスト通信の改ざん検知とリプレイ防止を維持する。

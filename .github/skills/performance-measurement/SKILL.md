@@ -5,6 +5,10 @@ description: PERFORMANCE_MEASURE と InterestPacketTimingBuffer を使った計�
 
 # Performance Measurement
 
+## 共通前提
+
+全体方針（適用範囲、不変条件、3軸モデル）は `.github/skills/overview/SKILL.md` を参照する。
+
 ## 目的
 
 性能計測コードを安全に追加し、通常運用への影響を最小化する。

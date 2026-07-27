@@ -35,6 +35,9 @@
 
 以下の種類の依頼では、対応する SKILL を優先参照する。
 
+- 全体方針（適用範囲、不変条件、3軸モデル）
+  - `.github/skills/overview/SKILL.md`
+
 - アーキテクチャ整合性、依存方向、層境界
   - `.github/skills/architecture-clean-layers/SKILL.md`
 - ESP-NOW メッセージ処理フロー、Input/Output 変換
@@ -47,6 +50,8 @@
   - `.github/skills/performance-measurement/SKILL.md`
 - センサー追加・拡張
   - `.github/skills/sensor-extension/SKILL.md`
+
+個別 SKILL を参照する際は、必要に応じて先に overview を確認して共通前提を合わせる。
 
 ## 実装ポリシー
 
