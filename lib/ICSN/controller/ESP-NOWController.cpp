@@ -13,12 +13,16 @@
 #include <sstream>
 #include <string>
 
+static std::string addressToString(const uint8_t* address);
+
 ESP_NOWController::ESP_NOWController(IInputBoundary& inputBoundary,
                                      IForwardingStateBoundary& forwardingStateBoundary)
     : inputBoundary(inputBoundary), forwardingStateBoundary(forwardingStateBoundary) {}
 
 bool ESP_NOWController::loadAndApplyConfig(const char* configPath) {
   if (!loadSystemConfig(configPath)) {
+    LOG_WARNF("[WARN][CFG] config_load_failed path=%s\n",
+              configPath != nullptr ? configPath : "(null)");
     return false;
   }
 
@@ -32,7 +36,7 @@ bool ESP_NOWController::loadAndApplyConfig(const char* configPath) {
 
   if (hmacAuthenticationEnabled && systemConfig.hmacDefaultKeyConfigured) {
     setGlobalLMK(systemConfig.hmacDefaultKey);
-    LOG_INFO("[SECURITY] ICSN HMAC default key configured");
+    LOG_INFO("[INFO][SEC] hmac_default_key_configured");
   }
 
   for (size_t i = 0; i < systemConfig.hmacPeerKeyCount; i++) {
@@ -46,7 +50,8 @@ bool ESP_NOWController::loadAndApplyConfig(const char* configPath) {
     const FibInitEntry& entry = systemConfig.fibInitEntries[i];
     if (entry.valid) {
       initFIBEntry(std::string(entry.contentName), std::string(entry.nextHopMac));
-      LOG_INFOF("[FIB] Initial entry: %s -> %s\n", entry.contentName, entry.nextHopMac);
+      LOG_INFOF("[INFO][RIB] route_added name=%s next_hop=%s\n", entry.contentName,
+                entry.nextHopMac);
     }
   }
 
@@ -66,54 +71,57 @@ bool ESP_NOWController::initializeCommunication(const char* configPath, uint8_t 
                                                 esp_now_recv_cb_t recvCb, esp_now_send_cb_t sendCb,
                                                 uint8_t channel) {
   if (myMac == nullptr || recvCb == nullptr || sendCb == nullptr) {
+    LOG_WARN("[WARN][ESPNOW] init_failed reason=invalid_arguments");
     return false;
   }
 
   if (!loadAndApplyConfig(configPath)) {
+    LOG_WARN("[WARN][ESPNOW] init_failed reason=config_load_failed");
     return false;
   }
 
   WiFi.mode(WIFI_STA);
   esp_err_t channelErr = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
   if (channelErr != ESP_OK) {
-    LOG_WARNF("Failed to set Wi-Fi channel %u (err=%d)\n", channel, channelErr);
+    LOG_WARNF("[WARN][ESPNOW] init_failed reason=set_channel_failed channel=%u error=%d\n", channel,
+              channelErr);
     return false;
   }
 
   if (esp_now_init() != ESP_OK) {
-    LOG_WARN("ESP-NOW initialization failed");
+    LOG_WARN("[WARN][ESPNOW] init_failed reason=esp_now_init_failed");
     return false;
   }
 
   uint8_t localPmk[PMK_LENGTH] = {0};
   if (copyPMK(localPmk, sizeof(localPmk))) {
     if (esp_now_set_pmk(localPmk) != ESP_OK) {
-      LOG_WARN("Failed to set PMK");
+      LOG_WARN("[WARN][SEC] init_failed reason=pmk_set_failed");
       return false;
     }
-    LOG_INFO("[SECURITY] ESP-NOW PMK configured");
+    LOG_INFO("[INFO][SEC] pmk_configured");
   }
 
   if (hmacAuthenticationEnabled) {
-    LOG_INFO("[SECURITY] ICSN HMAC authentication enabled");
+    LOG_INFO("[INFO][SEC] hmac_enabled");
   }
 
   if (!registerConfiguredEspNowPeers()) {
-    LOG_WARN("[SECURITY] Failed to register configured ESP-NOW peers");
+    LOG_WARN("[WARN][ESPNOW] init_failed reason=configured_peer_registration_failed");
     return false;
   }
 
   esp_err_t macErr = esp_wifi_get_mac(WIFI_IF_STA, myMac);
   if (macErr != ESP_OK) {
     memset(myMac, 0, 6);
-    LOG_WARNF("Failed to get Wi-Fi MAC address (err=%d)\n", macErr);
+    LOG_WARNF("[WARN][ESPNOW] init_failed reason=get_mac_failed error=%d\n", macErr);
     return false;
   }
 
   esp_now_register_send_cb(sendCb);
   esp_now_register_recv_cb(recvCb);
 
-  LOG_INFO("ESP-NOW initialized successfully");
+  LOG_INFOF("[INFO][ESPNOW] initialized channel=%u\n", channel);
   return true;
 }
 
@@ -121,6 +129,8 @@ bool ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6]) {
   if (mac == nullptr || esp_now_is_peer_exist(mac)) {
     return true;
   }
+
+  const std::string peerStr = addressToString(mac);
 
   esp_now_peer_info_t peer = {};
   memcpy(peer.peer_addr, mac, 6);
@@ -130,7 +140,8 @@ bool ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6]) {
   if (espNowEncryptionEnabled && !isBroadcastOrMulticast(mac)) {
     const uint8_t* lmk = resolveEspNowLmk(mac);
     if (lmk == nullptr) {
-      LOG_WARN("[SECURITY] LMK is missing for encrypted peer");
+      LOG_WARNF("[WARN][SEC] peer_registration_failed reason=lmk_missing peer=%s\n",
+                peerStr.c_str());
       return false;
     }
     memcpy(peer.lmk, lmk, PEER_LMK_LEN);
@@ -140,10 +151,11 @@ bool ESP_NOWController::registerPeerIfNeeded(const uint8_t mac[6]) {
   }
 
   if (esp_now_add_peer(&peer) != ESP_OK) {
-    LOG_WARN("[PEER] Failed to register peer");
+    LOG_WARNF("[WARN][ESPNOW] peer_registration_failed peer=%s\n", peerStr.c_str());
     return false;
   }
 
+  LOG_DEBUGF("[DEBUG][ESPNOW] peer_registered peer=%s\n", peerStr.c_str());
   return true;
 }
 
@@ -155,20 +167,27 @@ bool ESP_NOWController::sendPacketToAddresses(const ESP_NOWControlData& data) {
       continue;
     }
 
+    const std::string peerStr = addressToString(addr.data());
+    LOG_DEBUGF("[DEBUG][TX] packet_queued peer=%s type=%s name=%s hop=%u\n", peerStr.c_str(),
+               data.signalCode, data.contentName, static_cast<unsigned int>(data.hopCount));
+
     CommunicationData packet = {};
     if (!buildPacketForAddress(addr.data(), data, true, packet)) {
+      LOG_WARNF("[WARN][TX] packet_build_failed peer=%s reason=security_build_failed\n",
+                peerStr.c_str());
       continue;
     }
 
     if (!registerPeerIfNeeded(addr.data())) {
-      LOG_WARN("[PEER] Packet dropped due to peer registration failure");
+      LOG_WARNF("[WARN][TX] send_rejected peer=%s reason=peer_registration_failed\n",
+                peerStr.c_str());
       continue;
     }
 
     esp_err_t err =
         esp_now_send(addr.data(), reinterpret_cast<const uint8_t*>(&packet), sizeof(packet));
     if (err != ESP_OK) {
-      LOG_WARNF("[TX] esp_now_send error: %d\n", err);
+      LOG_WARNF("[WARN][TX] send_rejected peer=%s error=%d\n", peerStr.c_str(), err);
       continue;
     }
 
@@ -241,12 +260,23 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6], const uint
   ReceiveProcessResult& out = (result == nullptr) ? localResult : *result;
   out = {};
 
-  if (myMac == nullptr || senderMac == nullptr || data == nullptr ||
-      len != static_cast<int>(sizeof(CommunicationData))) {
+  if (myMac == nullptr || senderMac == nullptr || data == nullptr) {
+    LOG_WARN("[WARN][RX] packet_dropped reason=invalid_arguments");
+    return false;
+  }
+
+  const std::string senderStr = addressToString(senderMac);
+  LOG_DEBUGF("[DEBUG][RX] packet_received peer=%s bytes=%d\n", senderStr.c_str(), len);
+
+  if (len != static_cast<int>(sizeof(CommunicationData))) {
+    LOG_WARNF("[WARN][RX] packet_dropped reason=invalid_length peer=%s actual=%d expected=%u\n",
+              senderStr.c_str(), len, static_cast<unsigned int>(sizeof(CommunicationData)));
     return false;
   }
 
   if (!registerPeerIfNeeded(senderMac)) {
+    LOG_WARNF("[WARN][RX] packet_dropped reason=peer_registration_failed peer=%s\n",
+              senderStr.c_str());
     return false;
   }
 
@@ -272,6 +302,8 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6], const uint
 #endif
     out.securityCheckVerified = verifyIncomingPacket(senderMac, receivedPacket);
     if (!out.securityCheckVerified) {
+      LOG_WARNF("[WARN][RX] packet_dropped reason=security_verification_failed peer=%s\n",
+                senderStr.c_str());
       return false;
     }
 
@@ -281,6 +313,10 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6], const uint
     }
 #endif
   }
+
+  LOG_DEBUGF("[DEBUG][RX] packet_accepted peer=%s type=%s name=%s hop=%u\n", senderStr.c_str(),
+             receivedPacket.signalCode, receivedPacket.contentName,
+             static_cast<unsigned int>(receivedPacket.hopCount));
 
   ESP_NOWControlData inputData = {};
   strncpy(inputData.signalCode, receivedPacket.signalCode, MAX_SIGNAL_CODE_LENGTH - 1);
@@ -313,6 +349,10 @@ bool ESP_NOWController::processReceivedPacket(const uint8_t myMac[6], const uint
 
 // ヘルパー: アドレスをログ用のstd::stringに変換
 static std::string addressToString(const uint8_t* address) {
+  if (address == nullptr) {
+    return "na";
+  }
+
   std::ostringstream oss;
   for (int i = 0; i < 6; ++i) {
     if (i > 0)
@@ -341,8 +381,6 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
   std::string rxAddrStr = addressToString(rxAddress);
   std::string txAddrStr = addressToString(txAddress);
 
-  LOG_DEBUGF("Received message from %s to %s\n", txAddrStr.c_str(), rxAddrStr.c_str());
-
   SignalCode code = fromString(data.signalCode);
 
   InputData inputData(txAddrStr, {rxAddrStr}, std::string(data.signalCode),
@@ -356,7 +394,8 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
   } else if (code == SignalCode::DATA) {
     outputData = inputBoundary.handleDataReceive(inputData);
   } else {
-    LOG_WARNF("Unknown signal code received\n");
+    LOG_WARNF("[WARN][RX] packet_dropped reason=unknown_signal peer=%s type=%s\n",
+              txAddrStr.c_str(), data.signalCode);
     return ESP_NOWControlData{};
   }
 
@@ -387,7 +426,7 @@ ESP_NOWControlData ESP_NOWController::receiveMessage(const uint8_t rxAddress[6],
 }
 
 void ESP_NOWController::receiveSensorData(const ESP_NOWControlData& data) {
-  LOG_INFOF("Received sensor data: %s\n", data.content);
+  LOG_INFOF("[INFO][RX] sensor_data_received name=%s\n", data.contentName);
 
   InputData inputData(std::string("N/A"), // senderId: 仮
                       {},                 // destId: 空
@@ -428,13 +467,16 @@ bool ESP_NOWController::buildPacketForAddress(const uint8_t txAddress[6],
   bool counterSuccess = false;
   outPacket.counter = peerCounterManager.incrementTxCounter(txAddress, counterSuccess);
   if (!counterSuccess) {
+    LOG_WARNF("[WARN][TX] packet_build_failed peer=%s reason=counter_increment_failed\n",
+              addressToString(txAddress).c_str());
     return false;
   }
 
   memset(outPacket.hmac, 0, sizeof(outPacket.hmac));
   if (!peerCounterManager.computeHMAC(txAddress, reinterpret_cast<const uint8_t*>(&outPacket),
                                       COMM_DATA_HMAC_DATA_LEN, outPacket.hmac)) {
-    LOG_WARN("[SECURITY] HMAC computation failed");
+    LOG_WARNF("[WARN][SEC] packet_build_failed reason=hmac_compute_failed peer=%s\n",
+              addressToString(txAddress).c_str());
     return false;
   }
 
@@ -449,12 +491,14 @@ bool ESP_NOWController::verifyIncomingPacket(const uint8_t mac[6],
 
   if (!peerCounterManager.verifyHMAC(mac, reinterpret_cast<const uint8_t*>(&packet),
                                      COMM_DATA_HMAC_DATA_LEN, packet.hmac)) {
-    LOG_WARN("[SECURITY] HMAC verification FAILED");
+    LOG_WARNF("[WARN][SEC] packet_dropped reason=hmac_failed peer=%s\n",
+              addressToString(mac).c_str());
     return false;
   }
 
   if (!peerCounterManager.validateRxCounter(mac, packet.counter)) {
-    LOG_WARNF("[SECURITY] Replay attack detected! counter=%lu\n", (unsigned long)packet.counter);
+    LOG_WARNF("[WARN][SEC] packet_dropped reason=replay_detected peer=%s counter=%lu\n",
+              addressToString(mac).c_str(), (unsigned long)packet.counter);
     return false;
   }
 

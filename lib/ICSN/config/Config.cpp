@@ -112,7 +112,7 @@ static void loadLegacySecurityConfig(const JsonDocument& doc) {
       loadPeerKeys(doc["peers"], "lmk", systemConfig.hmacPeerKeyEntries, MAX_PEER_KEY_ENTRIES);
 
   if (pmkValid || lmkValid || systemConfig.espNowPeerLmkCount > 0) {
-    LOG_WARN("[SECURITY] Deprecated config detected. Use esp_now_security / icsn_security.");
+    LOG_WARN("[WARN][SEC] config_deprecated reason=legacy_security_fields");
   }
 }
 
@@ -133,7 +133,7 @@ static void loadSeparatedSecurityConfig(const JsonDocument& doc) {
 
   systemConfig.espNowEncryptionEnabled = espNowEnabledFlag && systemConfig.espNowPmkConfigured;
   if (espNowEnabledFlag && !systemConfig.espNowPmkConfigured) {
-    LOG_WARN("[SECURITY] esp_now_security.enabled is true but PMK is invalid or missing.");
+    LOG_WARN("[WARN][SEC] config_invalid reason=pmk_missing_or_invalid");
   }
 
   const bool hmacEnabledFlag = icsnSecurity["hmac_enabled"] | false;
@@ -147,22 +147,29 @@ static void loadSeparatedSecurityConfig(const JsonDocument& doc) {
       hmacEnabledFlag &&
       (systemConfig.hmacDefaultKeyConfigured || systemConfig.hmacPeerKeyCount > 0);
   if (hmacEnabledFlag && !systemConfig.hmacAuthenticationEnabled) {
-    LOG_WARN("[SECURITY] icsn_security.hmac_enabled is true but HMAC key is missing.");
+    LOG_WARN("[WARN][SEC] config_invalid reason=hmac_key_missing");
   }
 }
 
 bool loadSystemConfig(const char* path) {
-  if (!LittleFS.begin())
+  if (!LittleFS.begin()) {
+    LOG_WARN("[WARN][CFG] littlefs_mount_failed");
     return false;
+  }
 
   File file = LittleFS.open(path, "r");
-  if (!file)
+  if (!file) {
+    LOG_WARNF("[WARN][CFG] config_open_failed path=%s\n", path != nullptr ? path : "(null)");
     return false;
+  }
 
   // 2048バイトに拡張: fib_init配列（最大10エントリ）の追加によりメモリが増加
   StaticJsonDocument<2048> doc;
-  if (deserializeJson(doc, file))
+  const DeserializationError jsonError = deserializeJson(doc, file);
+  if (jsonError) {
+    LOG_WARNF("[WARN][CFG] config_parse_failed error=%s\n", jsonError.c_str());
     return false;
+  }
 
   systemConfig.maxVirtualDepth = doc["MAX_VIRTUAL_DEPTH"] | 5;
   systemConfig.hopCountThreshold = doc["HOP_COUNT_THRESHOLD"] | 10;
@@ -198,6 +205,11 @@ bool loadSystemConfig(const char* path) {
       }
     }
   }
+
+  LOG_INFOF(
+      "[INFO][CFG] config_loaded path=%s max_virtual_depth=%d hop_limit=%d fib_init_entries=%u\n",
+      path != nullptr ? path : "(null)", systemConfig.maxVirtualDepth,
+      systemConfig.hopCountThreshold, static_cast<unsigned int>(systemConfig.fibInitCount));
 
   return true;
 }
