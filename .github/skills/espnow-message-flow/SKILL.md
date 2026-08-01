@@ -5,6 +5,10 @@ description: ESP-NOW 受信/送信、INTEREST/DATA フロー、InputData/OutputD
 
 # ESP-NOW Message Flow
 
+## 共通前提
+
+全体方針（適用範囲、不変条件、3軸モデル）は `.github/skills/overview/SKILL.md` を参照する。
+
 ## 目的
 
 ESP-NOW 通信処理の経路を揃え、分岐追加時の不整合を防ぐ。

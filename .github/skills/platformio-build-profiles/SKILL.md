@@ -5,6 +5,10 @@ description: PlatformIO の normal/perf/release プロファイル運用、ビ�
 
 # PlatformIO Build Profiles
 
+## 共通前提
+
+全体方針（適用範囲、不変条件、3軸モデル）は `.github/skills/overview/SKILL.md` を参照する。
+
 ## 目的
 
 ビルドプロファイルの使い分けを固定し、検証漏れを減らす。
@@ -22,11 +26,11 @@ description: PlatformIO の normal/perf/release プロファイル運用、ビ�
 
 ## 推奨コマンド
 
-> **注意**: コマンドは必ずプロジェクトルート（`ESP32-ICSN-sensor-node/`）で実行すること。また、環境によっては `pio` コマンドが正しく動作しない場合があるため、`C:\Users\shono\.platformio\penv\Scripts\platformio.exe` のフルパスを指定して実行することを推奨します。
+> **注意**: コマンドはプロジェクトルートで実行する。標準は `pio` を用い、`pio` が利用できない環境では `platformio` 実行ファイルのフルパス指定を代替手段として利用する。
 
-- normal Build: `C:\Users\shono\.platformio\penv\Scripts\platformio.exe run --environment normal`
-- perf Build: `C:\Users\shono\.platformio\penv\Scripts\platformio.exe run --environment perf`
-- release Build: `C:\Users\shono\.platformio\penv\Scripts\platformio.exe run --environment release`
+- normal Build: `pio run --environment normal`
+- perf Build: `pio run --environment perf`
+- release Build: `pio run --environment release`
 
 ## 実装時の注意
 
