@@ -73,15 +73,20 @@ void LRUForwardingInformationBase::save(const FIBPair& fibPair) {
     existing.isVirtual = false;
     dropped += existing.nodeIds.insertFromStdSet(nodeIds);
     cache.put(name, existing);
+    LOG_DEBUGF("[DEBUG][FIB] entry_saved name=%s next_hops=%u\n", name.c_str(),
+               static_cast<unsigned int>(existing.nodeIds.size()));
   } else {
     NextHopSet nextHops;
     dropped += nextHops.insertFromStdSet(nodeIds);
     cache.put(name, FIBEntry(false, depth, nextHops));
+    LOG_DEBUGF("[DEBUG][FIB] entry_saved name=%s next_hops=%u\n", name.c_str(),
+               static_cast<unsigned int>(nextHops.size()));
   }
 
   if (dropped > 0) {
-    LOG_WARNF("[FIB] next-hop capacity exceeded for key=%s, dropped=%u\n", name.c_str(),
-              static_cast<unsigned int>(dropped));
+    LOG_WARNF(
+        "[WARN][FIB] entry_save_partial name=%s reason=next_hop_capacity_exceeded dropped=%u\n",
+        name.c_str(), static_cast<unsigned int>(dropped));
   }
 }
 
@@ -94,18 +99,29 @@ void LRUForwardingInformationBase::saveVirtualEntry(const ContentName& prefix, i
   } else {
     cache.put(name, FIBEntry(true, maximumDepth, {}));
   }
+  LOG_DEBUGF("[DEBUG][FIB] virtual_entry_saved name=%s max_depth=%d\n", name.c_str(), maximumDepth);
 }
 
 void LRUForwardingInformationBase::remove(const ContentName& contentName) {
   const std::string& name = contentName.getValue();
-  cache.remove(name);
+  if (cache.contains(name)) {
+    cache.remove(name);
+    LOG_DEBUGF("[DEBUG][FIB] entry_removed name=%s\n", name.c_str());
+  }
 }
 
 bool LRUForwardingInformationBase::find(const ContentName& contentName) {
   const std::string& name = contentName.getValue();
   int nameDepth = std::count(name.begin(), name.end(), '/');
-  FIBEntry tempEntry;
-  return fibLpmLookup(name, nameDepth, systemConfig.maxVirtualDepth, tempEntry);
+  FIBEntry result;
+  const bool found = fibLpmLookup(name, nameDepth, systemConfig.maxVirtualDepth, result);
+  if (found) {
+    LOG_DEBUGF("[DEBUG][FIB] lookup_hit name=%s next_hops=%u\n", name.c_str(),
+               static_cast<unsigned int>(result.nodeIds.size()));
+  } else {
+    LOG_DEBUGF("[DEBUG][FIB] lookup_miss name=%s\n", name.c_str());
+  }
+  return found;
 }
 
 DestinationId LRUForwardingInformationBase::get(const ContentName& contentName) {

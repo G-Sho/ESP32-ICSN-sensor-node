@@ -167,6 +167,30 @@ data/
 | `perf` | ログ最小化（WARN中心）、perf 機能を有効化 |
 | `release` | ログ最小化（WARN中心）、perf 機能は無効 |
 
+### ログ方針
+
+診断ログは次の形式で統一されています。
+
+```text
+[LEVEL][COMPONENT] event key=value key=value
+```
+
+- `LEVEL`: `DEBUG` / `INFO` / `WARN`
+- `COMPONENT`: `APP`, `CFG`, `ESPNOW`, `RX`, `TX`, `UC`, `SEC`, `FIB`, `PIT`, `CS`, `RIB`
+- `event`: `snake_case`（例: `packet_received`, `lookup_miss`, `interest_forward`）
+- 追加情報は `key=value` 形式で出力
+
+プロファイルごとの可視性:
+
+- `normal`: DEBUG / INFO / WARN
+- `perf`: WARN のみ
+- `release`: WARN のみ
+
+メモ:
+
+- INTEREST/DATA の処理経路（CS/PIT/FIB 分岐、forward/drop 理由）の確認は `normal` を使用。
+- セキュリティ上、PMK/LMK/HMAC 鍵の実値はログに出力しません。
+
 利用可能な PlatformIO 環境は以下のとおりです。
 
 | Environment | Board | 用途 |

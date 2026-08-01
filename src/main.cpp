@@ -289,16 +289,23 @@ void autoStartInterest() {
 }
 
 // === ESP-NOW コールバック ===
-void onDataSent(const uint8_t* /*mac_addr*/, esp_now_send_status_t status) {
+void onDataSent(const uint8_t* mac_addr, esp_now_send_status_t status) {
   // This callback keeps warning output compact by design in perf/release-oriented profiles.
   // CLI commands remain available for deeper diagnostics when needed.
   if (status != ESP_NOW_SEND_SUCCESS) {
-    LOG_WARNF("[TX] FAIL to peer\n");
+    char macStr[18] = "na";
+    if (mac_addr != nullptr) {
+      formatMac(mac_addr, macStr, sizeof(macStr));
+    }
+    LOG_WARNF("[WARN][TX] delivery_failed peer=%s\n", macStr);
   }
 }
 
 void onDataReceive(const uint8_t* mac_addr, const uint8_t* data, int len) {
-  espNowController.processReceivedPacket(myMacAddress, mac_addr, data, len);
+  ESP_NOWController::ReceiveProcessResult rxResult;
+  if (!espNowController.processReceivedPacket(myMacAddress, mac_addr, data, len, &rxResult)) {
+    LOG_DEBUG("[DEBUG][RX] processing_failed");
+  }
 }
 
 void setup() {
