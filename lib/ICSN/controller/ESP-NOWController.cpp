@@ -50,7 +50,7 @@ bool ESP_NOWController::loadAndApplyConfig(const char* configPath) {
     const FibInitEntry& entry = systemConfig.fibInitEntries[i];
     if (entry.valid) {
       initFIBEntry(std::string(entry.contentName), std::string(entry.nextHopMac));
-      LOG_INFOF("[INFO][RIB] route_added name=%s next_hop=%s\n", entry.contentName,
+      LOG_INFOF("[INFO][CFG] fib_init_applied name=%s next_hop=%s\n", entry.contentName,
                 entry.nextHopMac);
     }
   }

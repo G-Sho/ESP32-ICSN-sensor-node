@@ -23,8 +23,8 @@ std::string PrefixTreeRIB::extractPrefix(const std::string& name, int prefixDept
 void PrefixTreeRIB::addRoute(const std::string& contentName, const std::string& nextHopId) {
   // RIB ノード上限チェック
   if (tree.find(contentName) == tree.end() && tree.size() >= BuildCapacity::RIB_ENTRIES) {
-    LOG_WARNF("[RIB] Capacity full (%u), cannot add: %s\n", (unsigned)BuildCapacity::RIB_ENTRIES,
-              contentName.c_str());
+    LOG_WARNF("[WARN][RIB] route_add_failed name=%s reason=capacity_full capacity=%u\n",
+              contentName.c_str(), static_cast<unsigned int>(BuildCapacity::RIB_ENTRIES));
     return;
   }
 
@@ -32,8 +32,13 @@ void PrefixTreeRIB::addRoute(const std::string& contentName, const std::string& 
   RIBEntry& node = tree[contentName];
   node.isReal = true;
   if (!node.nextHopIds.insert(nextHopId)) {
-    LOG_WARNF("[RIB] next-hop capacity exceeded for key=%s\n", contentName.c_str());
+    LOG_WARNF(
+        "[WARN][RIB] route_add_partial name=%s reason=next_hop_capacity_exceeded next_hop=%s\n",
+        contentName.c_str(), nextHopId.c_str());
   }
+
+  LOG_INFOF("[INFO][RIB] route_added name=%s next_hop=%s\n", contentName.c_str(),
+            nextHopId.c_str());
 
   int depth = std::count(contentName.begin(), contentName.end(), '/');
 
@@ -60,6 +65,7 @@ void PrefixTreeRIB::printUsageStats() const {
 void PrefixTreeRIB::removeRoute(const std::string& contentName) {
   tree.erase(contentName);
   fibRepository.remove(ContentName(contentName));
+  LOG_DEBUGF("[DEBUG][RIB] route_removed name=%s\n", contentName.c_str());
 
   // virtual prefix が他のエントリで不要になった場合は FIB からも削除
   int depth = std::count(contentName.begin(), contentName.end(), '/');
