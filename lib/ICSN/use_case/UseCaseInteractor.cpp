@@ -69,19 +69,18 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData& inputData) {
   Content content(inputData.content);
 
   // DATA受信時の処理
-  if (pitRepository.find(contentName.getValue())) {
-    // CSにキャッシュ
+  if (pitRepository.find(contentName)) {
+    const DestinationId requesters = pitRepository.get(contentName);
+
+    pitRepository.remove(contentName);
+
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
 
-    // PITに基づいてデータ送信 (転送なのでホップ数+1)
-    return makeOutput(*destinationId.getValue().begin(), pitRepository.get(contentName).getValue(),
-                      toString(SignalCode::DATA), hopcount.getValue() + 1, contentName.getValue(),
-                      content.getValue());
-  } else {
-    // パケット破棄 (対応するINTERESTがない)
-    return makeOutput(VALUE_NA, {VALUE_NA}, toString(SignalCode::INVALID), hopcount.getValue() + 1,
-                      VALUE_NA, VALUE_NA);
+    const std::string origin = inputData.destId.empty() ? VALUE_NA : *inputData.destId.begin();
+
+    return makeOutput(origin, requesters.getValue(), toString(SignalCode::DATA),
+                      hopcount.getValue() + 1, contentName.getValue(), content.getValue());
   }
 };
 
