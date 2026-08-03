@@ -82,6 +82,8 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData& inputData) {
     return makeOutput(origin, requesters.getValue(), toString(SignalCode::DATA),
                       hopcount.getValue() + 1, contentName.getValue(), content.getValue());
   }
+  return makeOutput(VALUE_NA, {VALUE_NA}, toString(SignalCode::INVALID), hopcount.getValue() + 1,
+                    VALUE_NA, VALUE_NA);
 };
 
 /// @brief センサーデータを受信したときの処理
