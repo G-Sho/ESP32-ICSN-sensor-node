@@ -5,6 +5,10 @@ description: 新しいセンサー追加時の抽象化ルールと実装手順�
 
 # Sensor Extension
 
+## 共通前提
+
+全体方針（適用範囲、不変条件、3軸モデル）は `.github/skills/overview/SKILL.md` を参照する。
+
 ## 目的
 
 センサー追加時に既存構造を保ったまま拡張できるようにする。

@@ -108,13 +108,14 @@ void LRUContentStore::save(const CSPair& csPair) {
 
   int newSlotIndex = -1;
   if (!storePayload(content, newSlotIndex)) {
-    LOG_WARNF("[CS] Failed to allocate payload for key=%s\n", name.c_str());
+    LOG_WARNF("[WARN][CS] entry_save_failed name=%s reason=payload_allocate_failed\n",
+              name.c_str());
     return;
   }
 
   if (!cache.put(name, newSlotIndex)) {
     releasePayloadSlot(newSlotIndex);
-    LOG_WARNF("[CS] Capacity full, cannot cache key=%s\n", name.c_str());
+    LOG_WARNF("[WARN][CS] entry_save_failed name=%s reason=capacity_full\n", name.c_str());
     return;
   }
 
@@ -122,7 +123,7 @@ void LRUContentStore::save(const CSPair& csPair) {
     releasePayloadSlot(oldSlotIndex);
   }
 
-  LOG_DEBUGF("[CS] Saved key=%s, slot=%d, payload=%s\n", name.c_str(), newSlotIndex,
+  LOG_DEBUGF("[DEBUG][CS] entry_saved name=%s slot=%d payload=%s\n", name.c_str(), newSlotIndex,
              payloadSlots[newSlotIndex].inPsram ? "psram" : "heap");
 }
 
@@ -135,11 +136,15 @@ void LRUContentStore::remove(const ContentName& contentName) {
 
   if (found) {
     releasePayloadSlot(slotIndex);
+    LOG_DEBUGF("[DEBUG][CS] entry_removed name=%s\n", name.c_str());
   }
 }
 
 bool LRUContentStore::find(const ContentName& contentName) {
-  return cache.contains(contentName.getValue());
+  const std::string& name = contentName.getValue();
+  const bool found = cache.contains(name);
+  LOG_DEBUGF("[DEBUG][CS] %s name=%s\n", found ? "lookup_hit" : "lookup_miss", name.c_str());
+  return found;
 }
 
 Content LRUContentStore::get(const ContentName& contentName) {

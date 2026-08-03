@@ -5,6 +5,10 @@ description: ESP32-ICSN の Clean Architecture を維持するための指針。
 
 # Architecture: Clean Layers
 
+## 共通前提
+
+全体方針（適用範囲、不変条件、3軸モデル）は `.github/skills/overview/SKILL.md` を参照する。
+
 ## 目的
 
 このリポジトリの層分離を維持し、拡張時の崩壊を防ぐ。

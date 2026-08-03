@@ -21,7 +21,6 @@ UseCaseInteractor::UseCaseInteractor(IForwardingInformationBase& fibRepository,
 OutputData UseCaseInteractor::handleInterestReceive(const InputData& inputData) {
   SenderId senderId(inputData.senderId);
   DestinationId destinationId({inputData.destId});
-  SignalCode signalCode = fromString(inputData.signalCode);
   HopCount hopcount(inputData.hopCount);
   ContentName contentName(inputData.contentName);
   Content content(inputData.content);
@@ -29,27 +28,42 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData& inputData) 
   // INTEREST受信時の処理
   // ホップカウントチェック（転送時の値で判定）
   if (hopcount.getValue() + 1 >= systemConfig.hopCountThreshold) {
+    LOG_DEBUGF("[DEBUG][UC] interest_dropped reason=hop_limit name=%s hop=%d limit=%d\n",
+               contentName.getValue().c_str(), hopcount.getValue() + 1,
+               systemConfig.hopCountThreshold);
     // パケット破棄
     return makeOutput(VALUE_NA, {VALUE_NA}, toString(SignalCode::INVALID), hopcount.getValue() + 1,
                       VALUE_NA, VALUE_NA);
   }
 
   if (csRepository.find(contentName)) {
+    LOG_DEBUGF("[DEBUG][UC] interest_cs_hit name=%s\n", contentName.getValue().c_str());
     Content res = csRepository.get(contentName);
     // CSからデータ送信 (新しいDATAパケットなのでホップ数=0)
+    LOG_DEBUGF("[DEBUG][UC] data_forward name=%s requesters=1\n", contentName.getValue().c_str());
     return makeOutput(*destinationId.getValue().begin(), {senderId.getValue()},
                       toString(SignalCode::DATA), 0, contentName.getValue(), res.getValue());
   } else {
+    LOG_DEBUGF("[DEBUG][UC] interest_cs_miss name=%s\n", contentName.getValue().c_str());
+
     // PITテーブルに保存
     PITPair pitPair(contentName, DestinationId({senderId.getValue()}));
     pitRepository.save(pitPair);
+    LOG_DEBUGF("[DEBUG][UC] interest_requester_saved name=%s requester=%s\n",
+               contentName.getValue().c_str(), senderId.getValue().c_str());
 
     if (fibRepository.find(contentName)) {
+      const DestinationId nextHops = fibRepository.get(contentName);
+      LOG_DEBUGF("[DEBUG][UC] interest_forward name=%s hop=%d next_hops=%u\n",
+                 contentName.getValue().c_str(), hopcount.getValue() + 1,
+                 static_cast<unsigned int>(nextHops.getValue().size()));
       // FIBテーブルに基づいてINTEREST送信 (転送なのでホップ数+1)
-      return makeOutput(*destinationId.getValue().begin(),
-                        fibRepository.get(contentName).getValue(), toString(SignalCode::INTEREST),
-                        hopcount.getValue() + 1, contentName.getValue(), content.getValue());
+      return makeOutput(*destinationId.getValue().begin(), nextHops.getValue(),
+                        toString(SignalCode::INTEREST), hopcount.getValue() + 1,
+                        contentName.getValue(), content.getValue());
     } else {
+      LOG_DEBUGF("[DEBUG][UC] interest_dropped reason=fib_miss name=%s\n",
+                 contentName.getValue().c_str());
       // FIB未ヒット時はブロードキャストせず破棄
       return makeOutput(VALUE_NA, {VALUE_NA}, toString(SignalCode::INVALID),
                         hopcount.getValue() + 1, VALUE_NA, VALUE_NA);
@@ -61,9 +75,6 @@ OutputData UseCaseInteractor::handleInterestReceive(const InputData& inputData) 
 /// @param inputData 入力された Data データ構造
 /// @return 応答パケット（DATA, INVALID）
 OutputData UseCaseInteractor::handleDataReceive(const InputData& inputData) {
-  SenderId senderId(inputData.senderId);
-  DestinationId destinationId({inputData.destId});
-  SignalCode signalCode = fromString(inputData.signalCode);
   HopCount hopcount(inputData.hopCount);
   ContentName contentName(inputData.contentName);
   Content content(inputData.content);
@@ -76,6 +87,12 @@ OutputData UseCaseInteractor::handleDataReceive(const InputData& inputData) {
 
     CSPair csPair(contentName, content);
     csRepository.save(csPair);
+    LOG_DEBUGF("[DEBUG][UC] data_cached name=%s\n", contentName.getValue().c_str());
+
+    LOG_DEBUGF("[DEBUG][UC] data_forward name=%s requesters=%u\n", contentName.getValue().c_str(),
+               static_cast<unsigned int>(requesters.getValue().size()));
+
+    const std::string origin = inputData.destId.empty() ? VALUE_NA : *inputData.destId.begin();
 
     const std::string origin = inputData.destId.empty() ? VALUE_NA : *inputData.destId.begin();
 
@@ -94,6 +111,7 @@ void UseCaseInteractor::handleSensorDataReceive(const InputData& inputData) {
   Content content(inputData.content);
   CSPair csPair(contentName, content);
   csRepository.save(csPair);
+  LOG_DEBUGF("[DEBUG][UC] sensor_cached name=%s\n", contentName.getValue().c_str());
 
   // csRepository.printCache();
 }
